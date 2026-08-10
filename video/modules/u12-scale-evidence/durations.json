@@ -1,1 +1,15 @@
-{}
+{
+  "apf-does-not-fix": 17.737063,
+  "authoritative-state": 17.501938,
+  "close": 14.079938,
+  "concurrency-is-finite": 21.864375,
+  "informers-as-load": 19.356625,
+  "isolate-the-layer": 21.054625,
+  "locate": 12.225188,
+  "ninety-seconds": 24.084813,
+  "no-ground-truth": 20.6105,
+  "shuffle-sharding": 18.494625,
+  "the-spine": 29.805625,
+  "two-objects": 18.990938,
+  "who-and-when": 19.905188
+}

@@ -1,12 +1,12 @@
 {
-  "admission-shape": 35.134625,
-  "authn-vs-authz": 38.9485,
-  "close": 19.853,
-  "concurrency": 24.50275,
-  "failure-policy": 29.93625,
-  "field-ownership": 27.559125,
-  "locate": 12.564813,
-  "still-rejected": 27.48075,
-  "webhook-cost": 29.5705,
-  "webhook-design": 31.346875
+  "admission-shape": 30.79825,
+  "authn-vs-authz": 43.572125,
+  "close": 20.688875,
+  "concurrency": 28.813,
+  "failure-policy": 28.682375,
+  "field-ownership": 33.724,
+  "locate": 13.217875,
+  "still-rejected": 35.526438,
+  "webhook-cost": 36.23175,
+  "webhook-design": 34.84725
 }

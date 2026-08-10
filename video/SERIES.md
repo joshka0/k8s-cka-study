@@ -9,10 +9,14 @@ it, one per course unit, each going deeper on one segment.
   ("between binding and CNI") and assumes the pilot has been watched. No module
   re-explains the three lanes, level-based reconciliation, or what a controller
   is.
-- **Length tracks the unit's depth**, not a fixed target. A clean five-minute
-  module beats a padded nine-minute one. Orientation units (01, 09) run ~5–6
-  min; the dense ones (02, 06, 07, 08, 10) run ~9–11. Narration speed is 1.0
-  (~180 wpm), so minutes × 180 gives the word budget.
+- **Length tracks the unit's depth**, not a fixed target. A clean four-minute
+  module beats a padded nine-minute one. In practice the delivered series runs
+  **4–6 minutes per module** (650–1050 narration words); the densest units sit
+  at the top of that range. An earlier draft of this contract said 9–11 minutes
+  for dense units, which the series never matched and did not need to — that
+  figure is retired. Narration speed is 1.0. Measure the voice rather than
+  assuming: it runs ~185 wpm, while `estSeconds` estimates are pitched near 96,
+  so an undubbed module renders roughly twice its finished length.
 - **Narration voice.** Say the thing. No signposting, no announcing what is
   about to be said. Banned openers, all of which appeared in the pilot's first
   draft and were cut:

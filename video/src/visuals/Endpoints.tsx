@@ -2,10 +2,26 @@ import React from 'react';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { PALETTE } from '../theme';
 import { Box, Horizontal, Label, SANS, MONO, Dot } from '../ui';
-import type { Beat } from '../script';
+import type { VisualProps } from '../module';
 import { appear, seg } from '../motion';
 
-export const Endpoints: React.FC<{ beat: Beat }> = () => {
+/**
+ * Shared pilot component; module 08 beat 2 extends it. The pilot beat has no
+ * `module` prop and renders exactly as before; module 08 renders the extended
+ * version — readiness as a condition, not a gate on membership.
+ *
+ * CORRECTION applied: membership comes from label matching, not readiness.
+ * The unready address stays INSIDE the EndpointSlice with ready:false, and
+ * the data plane declines to use it. Flip it ready and traffic reaches it —
+ * list first, traffic second.
+ */
+export const Endpoints: React.FC<VisualProps> = ({ module }) => {
+  if (module?.module.number === 8) return <ModuleEndpoints />;
+  return <PilotEndpoints />;
+};
+
+/** The pilot beat — unchanged. */
+const PilotEndpoints: React.FC = () => {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
   const t = frame / durationInFrames;
@@ -98,6 +114,270 @@ export const Endpoints: React.FC<{ beat: Beat }> = () => {
         <Label color={PALETTE.amber} size={11}>no ready backends</Label>
         <div style={{ fontFamily: MONO, color: PALETTE.amber, fontSize: 16, fontWeight: 800, marginTop: 4 }}>
           EndpointSlice empty (0 rows)
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Module 08 beat 2 — labels select, readiness conditions. Three Pods whose
+ * labels match the Service; all three addresses live in the EndpointSlice.
+ * Readiness only flips each row's condition — the unready address stays in
+ * the slice while the data plane declines it.
+ */
+const PODS = [
+  { name: 'pod-a', ip: '10.0.0.16:8080', ready: true },
+  { name: 'pod-b', ip: '10.0.0.17:8080', ready: true },
+  { name: 'pod-c', ip: '10.0.0.18:8080', ready: false },
+];
+
+const ModuleEndpoints: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { durationInFrames } = useVideoConfig();
+  const t = frame / durationInFrames;
+
+  const header = appear(t, 0.02, 0.08);
+  const podsIn = appear(t, 0.06, 0.13);
+  const matchLabel = appear(t, 0.12, 0.18);
+  const sliceIn = appear(t, 0.16, 0.24);
+  const allListed = seg(t, 0.2, 0.3);
+  const dataPlaneIn = appear(t, 0.3, 0.38);
+  const decline = seg(t, 0.38, 0.48);
+  const flip = seg(t, 0.5, 0.62);
+  const trafficC = seg(t, 0.58, 0.7);
+  const pubNote = appear(t, 0.7, 0.78);
+  const footer = appear(t, 0.82, 0.9);
+
+  const declined = decline > 0.5 && flip < 0.5;
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div style={{ width: 1620, height: 740, position: 'relative' }}>
+        <div style={{ position: 'absolute', left: 0, right: 0, top: 0, textAlign: 'center', opacity: header }}>
+          <Label color={PALETTE.cyan} size={13}>label matching decides membership · readiness decides use — a readiness probe changes a condition, not an address</Label>
+        </div>
+
+        {/* the three Pods */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 44,
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 36,
+            opacity: podsIn,
+          }}
+        >
+          {PODS.map((p, i) => {
+            const isThird = i === 2;
+            const nowReady = isThird ? flip > 0.5 : p.ready;
+            const readyNow = isThird ? flip > 0.3 : true;
+            return (
+              <div key={p.name} style={{ width: 300, textAlign: 'center' }}>
+                <div
+                  style={{
+                    border: `2px solid ${readyNow ? PALETTE.good : PALETTE.amber}`,
+                    borderRadius: 16,
+                    background: readyNow ? `${PALETTE.good}0d` : `${PALETTE.amber}0f`,
+                    padding: '16px 18px',
+                    boxShadow: readyNow ? `0 0 18px ${PALETTE.good}33` : `0 0 18px ${PALETTE.amber}33`,
+                  }}
+                >
+                  <div style={{ fontFamily: MONO, color: PALETTE.ink, fontSize: 22, fontWeight: 900 }}>{p.name}</div>
+                  <div style={{ fontFamily: MONO, color: PALETTE.muted, fontSize: 15, fontWeight: 700, marginTop: 4 }}>{p.ip}</div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      marginTop: 10,
+                      fontFamily: MONO,
+                      fontSize: 16,
+                      fontWeight: 900,
+                      color: readyNow ? PALETTE.good : PALETTE.amber,
+                    }}
+                  >
+                    <Dot color={readyNow ? PALETTE.good : PALETTE.amber} />
+                    ready: {readyNow ? 'true' : 'false'}
+                  </div>
+                  <div style={{ fontFamily: MONO, color: PALETTE.muted, fontSize: 13, fontWeight: 700, marginTop: 4 }}>
+                    labels: app=api
+                  </div>
+                </div>
+                {isThird && (
+                  <div style={{ marginTop: 10, minHeight: 20 }}>
+                    {flip > 0.3 ? (
+                      <Label color={PALETTE.good} size={11} style={{ textTransform: 'none', letterSpacing: 0 }}>
+                        readiness flips → condition changes
+                      </Label>
+                    ) : (
+                      <Label color={PALETTE.amber} size={11} style={{ textTransform: 'none', letterSpacing: 0 }}>
+                        unready — condition, not exclusion
+                      </Label>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* label-match arrows into the slice */}
+        <div style={{ position: 'absolute', left: 0, right: 0, top: 226, opacity: matchLabel }}>
+          <Label color={PALETTE.muted} size={11} style={{ textAlign: 'center', textTransform: 'none', letterSpacing: 0 }}>
+            all three match the Service selector → all three are members
+          </Label>
+          {allListed > 0 && (
+            <div style={{ textAlign: 'center', fontFamily: MONO, color: PALETTE.cyan, fontSize: 22, fontWeight: 900, marginTop: 2 }}>
+              ↓ ↓ ↓
+            </div>
+          )}
+        </div>
+
+        {/* the EndpointSlice — all three addresses inside, ready per row */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 260,
+            top: 300,
+            width: 1100,
+            border: `2px solid ${PALETTE.blue}`,
+            borderRadius: 18,
+            background: `${PALETTE.blue}0c`,
+            padding: '16px 20px',
+            opacity: sliceIn,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <Label color={PALETTE.blue} size={12}>Service · EndpointSlice</Label>
+            <span style={{ fontFamily: MONO, color: PALETTE.muted, fontSize: 13, fontWeight: 700 }}>
+              membership: label match — not readiness
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 14 }}>
+            {PODS.map((p, i) => {
+              const isThird = i === 2;
+              const readyNow = isThird ? flip > 0.3 : true;
+              return (
+                <div
+                  key={p.name}
+                  style={{
+                    flex: 1,
+                    border: `1px solid ${readyNow ? PALETTE.good : PALETTE.amber}88`,
+                    borderRadius: 12,
+                    background: readyNow ? `${PALETTE.good}12` : `${PALETTE.amber}12`,
+                    padding: '14px 16px',
+                    textAlign: 'center',
+                    opacity: allListed > 0 ? 1 : 0.35,
+                  }}
+                >
+                  <div style={{ fontFamily: MONO, color: PALETTE.ink, fontSize: 17, fontWeight: 900 }}>{p.ip}</div>
+                  <div
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 15,
+                      fontWeight: 900,
+                      marginTop: 8,
+                      color: readyNow ? PALETTE.good : PALETTE.amber,
+                    }}
+                  >
+                    ready: {readyNow ? 'true' : 'false'}
+                  </div>
+                  {isThird && !readyNow && (
+                    <div style={{ fontFamily: MONO, fontSize: 12.5, fontWeight: 800, color: PALETTE.amber, marginTop: 6 }}>
+                      inside the slice — unready
+                    </div>
+                  )}
+                  {isThird && readyNow && (
+                    <div style={{ fontFamily: MONO, fontSize: 12.5, fontWeight: 800, color: PALETTE.good, marginTop: 6 }}>
+                      condition flipped — still the same address
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* the data plane — declines the unready endpoint until it flips */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 200,
+            top: 540,
+            width: 1220,
+            border: `2px solid ${PALETTE.violet}`,
+            borderRadius: 18,
+            background: `${PALETTE.violet}0a`,
+            padding: '14px 20px',
+            opacity: dataPlaneIn,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: MONO, color: PALETTE.ink, fontSize: 19, fontWeight: 900 }}>Service data plane</div>
+              <div style={{ fontFamily: MONO, color: PALETTE.muted, fontSize: 13, fontWeight: 700, marginTop: 4 }}>
+                routes to ready endpoints only
+              </div>
+            </div>
+            <div style={{ display: 'flex', flex: 1, justifyContent: 'space-around', alignItems: 'center' }}>
+              {PODS.map((p, i) => {
+                const isThird = i === 2;
+                const reached = isThird ? trafficC > 0.5 : true;
+                const declinedNow = isThird ? declined : false;
+                return (
+                  <div key={p.name} style={{ textAlign: 'center', width: 300 }}>
+                    <div
+                      style={{
+                        fontFamily: MONO,
+                        fontSize: 20,
+                        fontWeight: 900,
+                        color: declinedNow ? PALETTE.amber : reached ? PALETTE.good : PALETTE.line,
+                        opacity: reached || declinedNow ? 1 : 0.3,
+                      }}
+                    >
+                      {declinedNow ? '↷ no traffic' : reached ? '➜ traffic' : '·'}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: MONO,
+                        fontSize: 13,
+                        fontWeight: 800,
+                        color: declinedNow ? PALETTE.amber : reached ? PALETTE.good : PALETTE.muted,
+                        marginTop: 4,
+                      }}
+                    >
+                      {declinedNow ? 'declined — ready:false' : reached ? 'accepted — ready:true' : ''}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* publishNotReadyAddresses note */}
+        <div style={{ position: 'absolute', left: 0, right: 0, top: 670, textAlign: 'center', opacity: pubNote }}>
+          <Label color={PALETTE.muted} size={12}>
+            publishNotReadyAddresses: true — the only thing that tells the data plane to use unready endpoints
+          </Label>
+        </div>
+
+        <div style={{ position: 'absolute', left: 0, right: 0, top: 706, textAlign: 'center', opacity: footer }}>
+          <Label color={PALETTE.amber} size={13}>list first, traffic second — a readiness probe never adds or removes an address, it changes a condition</Label>
         </div>
       </div>
     </div>

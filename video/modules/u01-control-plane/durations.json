@@ -1,13 +1,13 @@
 {
-  "close": 17.371313,
-  "controllers-plural": 22.883188,
-  "five-actors": 26.592563,
-  "kubelet-owns": 44.12075,
-  "locate": 17.319125,
-  "not-healthy": 21.237438,
-  "one-contract": 45.426875,
-  "outage-cost": 36.3885,
-  "scheduler-job": 17.815438,
-  "the-chain": 23.43175,
-  "what-etcd-holds": 34.350938
+  "close": 23.562375,
+  "controllers-plural": 21.603188,
+  "five-actors": 36.153375,
+  "kubelet-owns": 46.079938,
+  "locate": 17.632563,
+  "not-healthy": 17.214625,
+  "one-contract": 57.390938,
+  "outage-cost": 46.001563,
+  "scheduler-job": 24.39825,
+  "the-chain": 30.824375,
+  "what-etcd-holds": 38.7395
 }

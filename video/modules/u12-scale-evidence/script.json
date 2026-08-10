@@ -37,7 +37,7 @@
       "title": "Concurrency has to be allocated",
       "lane": "control",
       "estSeconds": 44,
-      "narration": "An API server can only handle so many requests at once. That capacity has to be allocated deliberately, not taken by whoever shouts loudest. FlowSchemas classify incoming requests by user, verb and resource. They sort them into priority levels. Limited levels then use queues and concurrency seats, so one noisy client cannot consume the whole server.",
+      "narration": "An API server can only handle so many requests at once. That capacity has to be allocated deliberately, not taken by whoever shouts loudest. FlowSchemas classify incoming requests by attributes such as user, verb, resource, API group and namespace. They sort them into priority levels. Limited levels then use queues and concurrency seats, so one noisy client cannot consume the whole server.",
       "visual": {
         "type": "concurrencySeats",
         "spec": "NEW. A finite pool of concurrency seats drawn as a real countable set. Requests arriving from several clients get classified and take seats. Show the pool filling, and one client being held in a queue rather than being allowed to take every remaining seat. The finiteness must be visible — a countable pool, not an abstract meter."
@@ -128,7 +128,7 @@
       "title": "Who deleted it",
       "lane": "control",
       "estSeconds": 36,
-      "narration": "When the question is who deleted this object and when, there is exactly one answer: the audit log. It records API requests and their stages, including identity. Events would not have retained it, and may never have recorded it at all. If audit is not enabled, the honest answer is that the information no longer exists.",
+      "narration": "When the question is who deleted this object and when, reach for the audit log. It records API requests and their stages, including identity. Events would not have retained it, and may never have recorded it at all. If audit is not enabled, or the event has aged out, the honest answer is that the information no longer exists.",
       "visual": {
         "type": "auditAnswers",
         "spec": "NEW. The question 'who deleted this, and when' tested against each evidence source. Events: expired or never recorded. Logs: not necessarily present. Metrics: aggregated away. Audit: identity, verb, resource and timestamp, present. Then the honest failure case — audit disabled, information genuinely gone, nothing to recover."
@@ -154,7 +154,7 @@
       "title": "The spine is the method",
       "lane": null,
       "estSeconds": 50,
-      "narration": "Which brings the series back to where it started. The spine is not a diagram to memorise. It is a path any symptom can be walked along. Intent arrives and is admitted. It is stored. Something watches, something reconciles, something schedules. A kubelet acts. Runtime, network and storage each do their part. Endpoints, Service and DNS make it reachable. Every failure you have studied lands on exactly one segment, and finding which one is the whole job.",
+      "narration": "Which brings the series back to where it started. The spine is not a diagram to memorise. It is a path any symptom can be walked along. Intent arrives and is admitted. It is stored. Something watches, something reconciles, something schedules. A kubelet acts. Runtime, network and storage each do their part. Endpoints, Service and DNS make it reachable. Every failure you have studied has a home segment, and often only one. Start there. If the evidence disagrees, walk the neighbouring segment.",
       "visual": {
         "type": "spineRecap",
         "spec": "REUSE the pilot's SpineRecap. Extend it: walk the full spine once, and as each segment lights, surface the characteristic failure signature taught in that module — write refused, nothing reconciles, no node name, no address, resolves but nothing answers, and so on. This is the payoff frame of the whole series, so it must be legible and unhurried."

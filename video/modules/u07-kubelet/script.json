@@ -50,10 +50,10 @@
       "title": "The order on the node",
       "lane": "node",
       "estSeconds": 45,
-      "narration": "Once a Pod is bound, the order on the node is fixed. The sandbox is created first. Its network is attached. Volumes are mounted. Init containers run to completion, in order. Then the application containers start. That order is not arbitrary. The sandbox exists first because it anchors the shared namespaces. A network attachment has to belong to something before a container can join it.",
+      "narration": "Once a Pod is bound, node setup is not one fixed sequence. Volume work runs alongside the rest. Before any container starts, the sandbox network and the required volumes both have to be ready. Init containers then run to completion, in order. Application containers start after them. The sandbox comes first because it anchors the Pod's network namespace.",
       "visual": {
         "type": "nodeSequence",
-        "spec": "NEW. Five ordered steps filling the stage width: sandbox created, network attached, volumes mounted, init containers (run to completion, in order), app containers start. Each lights in turn and stays lit. Under the first two, a short note on why they come first — the sandbox anchors the namespaces, the attachment needs something to attach to. Lay the steps as a row that wraps, never a fixed-width strip."
+        "spec": "NEW. Five ordered steps filling the stage width: sandbox created, network attached, volumes mounted, init containers (run to completion, in order), app containers start. Each lights in turn and stays lit. Under the first two, a short note on why they come first — the sandbox anchors the namespaces, the attachment needs something to attach to. Lay the steps as a row that wraps, never a fixed-width strip. CORRECTION: this is not a fixed total order. Draw sandbox network and required volumes as concurrent prerequisites that must both be ready, not as steps two and three of a chain. Init containers then run in order, then application containers."
       }
     },
     {
@@ -63,10 +63,10 @@
       "title": "What the sandbox is for",
       "lane": "node",
       "estSeconds": 42,
-      "narration": "So the sandbox is the thing that holds a Pod together. Shared network, IPC and UTS namespaces live there, which is what lets containers in one Pod reach each other on localhost. It also means networking is configured before any application container exists. A Pod can therefore have a perfectly healthy runtime and no network at all — the sandbox came up, the attachment did not.",
+      "narration": "On a typical Linux runtime the sandbox anchors the Pod's network namespace. Containers in the Pod share that namespace, which is what lets them reach each other on localhost. Networking is configured before any application container exists. If that initial setup fails, the application containers do not start at all, and the Pod sits in ContainerCreating. A running Pod can still lose its network later.",
       "visual": {
         "type": "sandbox",
-        "spec": "REUSE the pilot's Sandbox, which already draws the pod sandbox and its shared namespaces. Extend it: show two containers in the Pod reaching each other over localhost through the shared netns, then show the failure case — sandbox present and healthy, attachment absent, containers running with no route out. Keep the namespace labels at the same type scale as the rest; they are the point of the beat."
+        "spec": "REUSE the pilot's Sandbox, which already draws the pod sandbox and its shared namespaces. Extend it: show two containers in the Pod reaching each other over localhost through the shared netns, then show the failure case — sandbox present and healthy, attachment absent, containers running with no route out. Keep the namespace labels at the same type scale as the rest; they are the point of the beat. CORRECTION: do not draw a healthy sandbox with running application containers after an initial attachment failure — the containers would not have started. Show ContainerCreating for that case, and show network loss after start as the separate later case."
       }
     },
     {
@@ -76,7 +76,7 @@
       "title": "Four contracts, not one runtime",
       "lane": "node",
       "estSeconds": 45,
-      "narration": "Four acronyms get collapsed into the word runtime, and they are four separate contracts. CRI is the gRPC contract between the kubelet and a runtime like containerd. OCI specifies the lower-level image and runtime primitives underneath that. CNI attaches Pod networking. CSI handles storage. Each has its own failure mode and its own logs, so knowing which boundary broke tells you which log to open.",
+      "narration": "Four acronyms get collapsed into the word runtime, and they are four separate contracts. CRI is the gRPC contract between the kubelet and a runtime like containerd. OCI specifies the lower-level image and runtime primitives underneath it. CNI attaches Pod networking. CSI handles storage. Each has its own failure signature. Pod events and kubelet logs show CRI and CSI call failures. Runtime logs usually hold sandbox, CNI and OCI detail.",
       "visual": {
         "type": "fourBoundaries",
         "spec": "NEW. Four labelled contracts drawn as boundaries between named parties, not as a flat list: CRI between kubelet and containerd; OCI below containerd, at runc; CNI at the sandbox's network; CSI at the volume. Beside each, its characteristic failure and the log you would read. Fill the stage — this is the beat people screenshot."
@@ -89,7 +89,7 @@
       "title": "The kubelet never calls runc",
       "lane": "node",
       "estSeconds": 40,
-      "narration": "The kubelet speaks CRI and only CRI — a runtime service and an image service, both gRPC. It never calls runc. containerd receives the CRI call and, below that boundary, invokes a runtime that creates the namespaces and cgroups. That lower layer is OCI. The kubelet does not use it directly, and that distinction is usually what an interviewer is probing.",
+      "narration": "For container and image operations the kubelet uses CRI, and only CRI. A runtime service and an image service, both gRPC. It never calls runc. containerd receives the CRI call and, below that boundary, invokes an OCI runtime that creates the namespaces and cgroups. The kubelet does talk to other things — the API server, CSI, device plugins — but never to that OCI layer.",
       "visual": {
         "type": "criVsOci",
         "spec": "NEW. A vertical stack with one emphasised horizontal line: kubelet — [CRI: runtime service + image service, gRPC] — containerd — [OCI] — runc — namespaces and cgroups. Animate a call descending and stopping at the CRI line to show where the kubelet's reach ends. Draw the kubelet-to-runc arrow people imagine, then strike it through."
@@ -102,7 +102,7 @@
       "title": "Phase is not health",
       "lane": "node",
       "estSeconds": 40,
-      "narration": "Running is a phase. It means the process is alive. Ready is a separate signal, and it means the application will accept traffic. They are set by different mechanisms and they answer different questions. A container can run for hours, be entirely alive, and never be ready — and the Pod's phase will keep saying Running the whole time.",
+      "narration": "Running is a Pod phase. It means the Pod is bound, all containers are created, and at least one is running, starting or restarting. It does not prove your application is healthy. Ready is a separate signal. It means the configured checks and readiness gates pass, so matching Services can use the Pod. Different mechanisms, different questions.",
       "visual": {
         "type": "phaseVsHealth",
         "spec": "NEW. One Pod, two independent indicators side by side and clearly not linked: phase (Running) and ready (false). Run a clock forward so phase holds steady at Running while ready stays false. Two separate mechanisms feeding them, drawn as separate inputs. The whole beat fails if the two read as one status."
@@ -115,10 +115,10 @@
       "title": "Three probes, three jobs",
       "lane": "node",
       "estSeconds": 46,
-      "narration": "Three probes, three jobs. Startup gates the other two while a slow application initialises, and nothing else runs until it passes. Liveness restarts the container when it fails. Readiness removes the Pod from endpoints without restarting anything. Choosing the wrong one is the classic mistake. A liveness probe pointed at a slow dependency turns that dependency into a restart loop, and the restarts make it worse.",
+      "narration": "Three probes, three jobs. A startup probe gates the liveness and readiness probes for the same container while a slow application initialises, and the container keeps running throughout. After its failure threshold, a failed liveness probe stops the container, and the restart policy decides what happens next. A failed readiness probe marks the Pod not ready. It does not remove the address from its EndpointSlice. Liveness pointed at a slow dependency turns that dependency into a restart loop.",
       "visual": {
         "type": "probes",
-        "spec": "REUSE the pilot's Probes. Extend it with the consequence column: startup → gates the others, liveness → restarts the container, readiness → leaves endpoints. Then the trap: a liveness probe pointed at a slow dependency, restarting on a timer, with the restart count climbing and the dependency no healthier. Let the loop run long enough to read as a loop."
+        "spec": "REUSE the pilot's Probes. Extend it with the consequence column: startup → gates the others, liveness → restarts the container, readiness → leaves endpoints. Then the trap: a liveness probe pointed at a slow dependency, restarting on a timer, with the restart count climbing and the dependency no healthier. Let the loop run long enough to read as a loop. CORRECTION: readiness must not remove the address from the EndpointSlice. Show the endpoint staying in the slice with ready flipping to false. Show the startup probe gating only the same container's probes, with the container still running."
       }
     },
     {
@@ -128,7 +128,7 @@
       "title": "Running, receiving nothing",
       "lane": "node",
       "estSeconds": 42,
-      "narration": "When a Pod is Running and receives nothing, phase is exactly what misled you. Follow the chain instead. Is the container ready. Is the Pod in the EndpointSlice. Does the Service selector actually match its labels, and does the target port match the container port. Each link is checkable in a second, and the first one that fails is the answer.",
+      "narration": "When a Pod is Running and receives nothing, phase is exactly what misled you. Follow the chain in order. Does the Service selector match the Pod labels. Does an EndpointSlice contain the Pod address with ready true. Does targetPort reach the port the process is actually listening on. Run kubectl describe pod and read its events. List EndpointSlices by the Service name label. Read kubectl logs, and kubectl logs --previous.",
       "visual": {
         "type": "trafficChain",
         "spec": "NEW. A four-link chain, each link a question with a real check beside it: ready → EndpointSlice membership → selector matches labels → targetPort matches containerPort. Break one link and show traffic stopping there. The Pod's phase sits above the chain reading Running throughout, unchanged, to make the point that it is not part of the chain."
@@ -141,10 +141,10 @@
       "title": "Deletion is not a transaction",
       "lane": "node",
       "estSeconds": 45,
-      "narration": "Deletion is not a transaction. The grace period starts. The PreStop hook runs, then TERM is delivered. At the same time, not before, the Pod is being removed from endpoints. Those two run concurrently, so traffic can still arrive at a container that has already been told to shut down. A PreStop sleep is a real fix for that, not a hack. When the grace period expires, the process is killed.",
+      "narration": "Deletion is not a transaction. It sets a timestamp and starts the grace period. The EndpointSlice controller marks the endpoint terminating while the kubelet starts local shutdown. A PreStop hook runs before the runtime sends the configured stop signal, which may not be TERM, because an image can set its own. Those paths overlap, so traffic can still arrive at a container that is shutting down. A bounded delay reduces the race. It cannot prove propagation, so the application still has to drain. At expiry the runtime force-kills what is left.",
       "visual": {
         "type": "terminationRace",
-        "spec": "NEW. Two parallel timelines on one clock, deliberately not synchronised. Top: grace period starts, PreStop runs, TERM delivered, force kill at expiry. Bottom: endpoint removal propagating through EndpointSlice to the data plane. Show the overlap window shaded, with a request landing on the already-terminating container inside it. Then show a PreStop sleep widening the gap so the overlap closes."
+        "spec": "NEW. Two parallel timelines on one clock, deliberately not synchronised. Top: grace period starts, PreStop runs, TERM delivered, force kill at expiry. Bottom: endpoint removal propagating through EndpointSlice to the data plane. Show the overlap window shaded, with a request landing on the already-terminating container inside it. Then show a PreStop sleep widening the gap so the overlap closes. CORRECTION: do not draw the PreStop delay as closing the overlap or guaranteeing propagation. Show it narrowing the race only. The stop signal is the configured one, not necessarily TERM."
       }
     },
     {
@@ -154,7 +154,7 @@
       "title": "The API repeats what it was told",
       "lane": "node",
       "estSeconds": 40,
-      "narration": "Pod status is reported by the kubelet, asynchronously. If the node loses connectivity the kubelet stops reporting, and the last value simply persists. The API will show Running for a Pod on a node that is already gone. The node lease has to expire, the node controller has to mark the node unreachable, and only then do other controllers react.",
+      "narration": "The kubelet updates Node status and Lease renewTime. If those updates stop, the stored Pod phase can simply remain Running. After the configured monitoring grace period, the node controller marks the Node's Ready condition Unknown and adds the unreachable taint. Eviction then follows taint tolerations and controller policy. So the API is not telling you what is true. It is repeating what the kubelet last said.",
       "visual": {
         "type": "staleStatus",
         "spec": "NEW. A node reporting status up to the API on a tick. Cut the link: the tick stops, and the API's stored value freezes at Running while the node visibly goes dark. Show the lease counting down, the node controller marking unreachable, and only then downstream controllers moving. Put the elapsed time on screen so the delay is readable as a duration, not an instant."
@@ -167,7 +167,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 40,
-      "narration": "Segment six, then. A failure here has a signature: the Pod has a node, the node accepted it, and something on that node did not finish. The API tells you very little, because the API is only repeating what the kubelet last said. The next segment is the one the sandbox was waiting for — the network attachment itself. That is module eight.",
+      "narration": "Segment six, then. A failure here often means the Pod is bound and node-side setup did not finish. Binding does not prove the kubelet admitted it. The API stores conditions, events and the last reported status, and the node's own logs show the current failure. The next segment is the one the sandbox was waiting for, the network attachment itself. That is module eight.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: segment six shrinks back into the spine, segment seven lights to preview the next module."

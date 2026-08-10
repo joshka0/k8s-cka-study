@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Twelve narrated video modules on Kubernetes architecture, one per course unit — each going deeper on one segment of the request path.">
+  <title>Video Modules — Kubernetes Beyond YAML</title>
+  <script>
+    // Same path-agnostic guard as index.html: assets are referenced relatively,
+    // so the page must sit at a path ending in "/" or a real .html.
+    (function () {
+      var p = location.pathname;
+      if (p && !/\/$/.test(p) && !/\.html?$/i.test(p)) {
+        location.replace(p + '/' + location.search + location.hash);
+      }
+    })();
+  </script>
+  <link rel="icon" href="assets/favicon.svg">
+  <meta name="theme-color" content="#172554">
+  <link rel="stylesheet" href="assets/learn.css">
+  <style>
+    .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+    .lede { color: var(--muted, #94a3b8); max-width: 62ch; line-height: 1.6; }
+    .module { border: 1px solid #1e293b; border-radius: 14px; padding: 18px 20px;
+              margin: 18px 0; background: #0f172a; }
+    .module header { display: flex; gap: 16px; align-items: flex-start; }
+    .module .num { font: 700 13px/1 ui-monospace, monospace; color: #38bdf8;
+                   border: 1px solid #1e40af; border-radius: 8px; padding: 8px 10px; }
+    .module h3 { margin: 0 0 4px; font-size: 19px; }
+    .module .sub { margin: 0; color: #94a3b8; font-size: 14px; }
+    .module .spine { margin: 12px 0 8px; font-size: 13px; color: #64748b; }
+    .module .beats { margin: 0; padding-left: 20px; columns: 2; column-gap: 28px; }
+    .module .beats li { font-size: 14px; margin: 3px 0; break-inside: avoid; }
+    .watch { margin-left: auto; white-space: nowrap; background: #1d4ed8; color: #fff;
+             text-decoration: none; padding: 8px 14px; border-radius: 8px; font-size: 14px; }
+    .pending { margin-left: auto; white-space: nowrap; color: #64748b; font-size: 13px; }
+    @media (max-width: 720px) {
+      .module .beats { columns: 1; }
+      .module header { flex-wrap: wrap; }
+      .watch, .pending { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+<header class="topbar">
+  <a class="mark" href="index.html">Kubernetes Beyond YAML</a>
+</header>
+<main class="wrap">
+  <h1>Video modules</h1>
+  <p class="lede">
+    Twelve narrated modules, one per course unit. The pilot walks the whole
+    request path end to end; each module then goes deeper on a single segment
+    of it. They assume you have watched the pilot, and they teach only what
+    their unit teaches.
+  </p>
+<article class="module" id="module-01">
+        <header>
+          <span class="num">01</span>
+          <div>
+            <h3>Who Owns What</h3>
+            <p class="sub">Module 01 — the control-plane map, and what an outage actually costs</p>
+          </div>
+          <a class="watch" href="video/out/Module01.mp4">Watch · 6:00</a>
+        </header>
+        <p class="spine">Spine segment: <code>desired object</code> · unit u1</p>
+        <ul class="beats">
+          <li>Five actors</li>
+          <li>One contract</li>
+          <li>What etcd holds</li>
+          <li>Controllers, plural</li>
+          <li>One decision</li>
+          <li>The node's agent</li>
+          <li>Four loops, one Deployment</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-02">
+        <header>
+          <span class="num">02</span>
+          <div>
+            <h3>Five Gates</h3>
+            <p class="sub">Module 02 — the API request path, admission webhooks, and who owns a field</p>
+          </div>
+          <a class="watch" href="video/out/Module02.mp4">Watch · 5:06</a>
+        </header>
+        <p class="spine">Spine segment: <code>admission / storage</code> · unit u2</p>
+        <ul class="beats">
+          <li>Who, then may they</li>
+          <li>Mutate, then validate</li>
+          <li>Your Service, on the hot path</li>
+          <li>Fail closed or fail open</li>
+          <li>Before you write one</li>
+          <li>RBAC allows it, it still fails</li>
+          <li>Two writers, one object</li>
+          <li>Who owns this field</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-03">
+        <header>
+          <span class="num">03</span>
+          <div>
+            <h3>Events Are Hints</h3>
+            <p class="sub">Module 03 — informers, level-based reconciliation, and loops that eat themselves</p>
+          </div>
+          <a class="watch" href="video/out/Module03.mp4">Watch · 4:42</a>
+        </header>
+        <p class="spine">Spine segment: <code>watch / cache</code> · unit u3</p>
+        <ul class="beats">
+          <li>Observe, compare, act</li>
+          <li>Nobody polls</li>
+          <li>A key, not the object</li>
+          <li>Level, not edge</li>
+          <li>When the watch breaks</li>
+          <li>The loop that eats itself</li>
+          <li>Reconciling things outside the cluster</li>
+          <li>Why resync exists</li>
+          <li>What the queue gives you</li>
+          <li>Where you look when it stalls</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-04">
+        <header>
+          <span class="num">04</span>
+          <div>
+            <h3>Four Different Promises</h3>
+            <p class="sub">Module 04 — workload controllers, autoscaler conflict, and what a PDB really covers</p>
+          </div>
+          <a class="watch" href="video/out/Module04.mp4">Watch · 5:44</a>
+        </header>
+        <p class="spine">Spine segment: <code>controller queue</code> · unit u4</p>
+        <ul class="beats">
+          <li>Pick by invariant</li>
+          <li>What a StatefulSet does not do</li>
+          <li>Coverage versus completion</li>
+          <li>Two autoscalers, one number</li>
+          <li>Removing the shared signal</li>
+          <li>What a budget actually buys</li>
+          <li>Three ways a Pod dies</li>
+          <li>How a rollout actually moves</li>
+          <li>Readiness is the throttle</li>
+          <li>Completions and parallelism</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-05">
+        <header>
+          <span class="num">05</span>
+          <div>
+            <h3>An API You Cannot Take Back</h3>
+            <p class="sub">Module 05 — CRDs, operators, versioning, and finalizers</p>
+          </div>
+          <a class="watch" href="video/out/Module05.mp4">Watch · 5:26</a>
+        </header>
+        <p class="spine">Spine segment: <code>controller queue</code> · unit u5</p>
+        <ul class="beats">
+          <li>Four words people blur</li>
+          <li>A CRD on its own does nothing</li>
+          <li>Intent and observation</li>
+          <li>What you signed up for</li>
+          <li>Served, and stored</li>
+          <li>The order that works</li>
+          <li>Deletion that waits</li>
+          <li>Before you strip it</li>
+          <li>The schema is the API</li>
+          <li>Validation at the API, not the controller</li>
+          <li>When not to write one</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-06">
+        <header>
+          <span class="num">06</span>
+          <div>
+            <h3>Choose, Then Commit</h3>
+            <p class="sub">Module 06 — the scheduling framework, why a Pod stays Pending, and what preemption costs</p>
+          </div>
+          <a class="watch" href="video/out/Module06.mp4">Watch · 4:27</a>
+        </header>
+        <p class="spine">Spine segment: <code>scheduler queue + binding</code> · unit u6</p>
+        <ul class="beats">
+          <li>Two cycles, not one</li>
+          <li>Eliminate, then rank</li>
+          <li>The output is a name</li>
+          <li>Holding the claim</li>
+          <li>Requests are the currency</li>
+          <li>Wrong in both directions</li>
+          <li>Why is it still Pending</li>
+          <li>A hint, not a reservation</li>
+          <li>Queue order without displacement</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-07">
+        <header>
+          <span class="num">07</span>
+          <div>
+            <h3>Running Is Not Ready</h3>
+            <p class="sub">Module 07 — the kubelet's loop, the four boundaries, and what a Pod's status is really telling you</p>
+          </div>
+          <a class="watch" href="video/out/Module07.mp4">Watch · 4:29</a>
+        </header>
+        <p class="spine">Spine segment: <code>kubelet</code> · unit u7</p>
+        <ul class="beats">
+          <li>A loop, not an inbox</li>
+          <li>The order on the node</li>
+          <li>What the sandbox is for</li>
+          <li>Four contracts, not one runtime</li>
+          <li>The kubelet never calls runc</li>
+          <li>Phase is not health</li>
+          <li>Three probes, three jobs</li>
+          <li>Running, receiving nothing</li>
+          <li>Deletion is not a transaction</li>
+          <li>The API repeats what it was told</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-08">
+        <header>
+          <span class="num">08</span>
+          <div>
+            <h3>A Permission Is Not A Path</h3>
+            <p class="sub">Module 08 — Service identity, the two data planes, and how a Pod actually gets its address</p>
+          </div>
+          <span class="pending">Not yet rendered</span>
+        </header>
+        <p class="spine">Spine segment: <code>CNI</code> · unit u8</p>
+        <ul class="beats">
+          <li>Three owners, not one network</li>
+          <li>Labels select, readiness conditions</li>
+          <li>When the Service steps out</li>
+          <li>A permission is not a path</li>
+          <li>Implementations, not APIs</li>
+          <li>Past the O(1) slogan</li>
+          <li>The requirement does not go away</li>
+          <li>A program, not a service</li>
+          <li>The kubelet does not call it</li>
+          <li>Where the address comes from</li>
+          <li>It resolves, nothing answers</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-09">
+        <header>
+          <span class="num">09</span>
+          <div>
+            <h3>Not The Name You Typed</h3>
+            <p class="sub">Module 09 — resolver policy, the compiled plugin chain, and what Ready has not proven</p>
+          </div>
+          <span class="pending">Not yet rendered</span>
+        </header>
+        <p class="spine">Spine segment: <code>DNS</code> · unit u9</p>
+        <ul class="beats">
+          <li>The query that actually leaves</li>
+          <li>What expansion costs</li>
+          <li>One character</li>
+          <li>A cache on every node</li>
+          <li>One name, end to end</li>
+          <li>The endpoint is itself a Service</li>
+          <li>Corefile order is not execution order</li>
+          <li>Answers from a watch</li>
+          <li>Fallthrough is not forwarding</li>
+          <li>What Ready has not proven</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-10">
+        <header>
+          <span class="num">10</span>
+          <div>
+            <h3>Two Halves, One Volume</h3>
+            <p class="sub">Module 10 — claim, class and volume, the CSI split, and why storage decides where a Pod can run</p>
+          </div>
+          <span class="pending">Not yet rendered</span>
+        </header>
+        <p class="spine">Spine segment: <code>CSI</code> · unit u10</p>
+        <ul class="beats">
+          <li>Claim, class, volume</li>
+          <li>Pending on purpose</li>
+          <li>Four reasons, four checks</li>
+          <li>The split people merge</li>
+          <li>Only one half is privileged</li>
+          <li>Claim to container, in order</li>
+          <li>Stage once, publish per Pod</li>
+          <li>Storage is not a later phase</li>
+          <li>Scheduled, and stuck mounting</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-11">
+        <header>
+          <span class="num">11</span>
+          <div>
+            <h3>A Backup You Have Restored</h3>
+            <p class="sub">Module 11 — two availability models, quorum arithmetic, and what a snapshot leaves out</p>
+          </div>
+          <span class="pending">Not yet rendered</span>
+        </header>
+        <p class="spine">Spine segment: <code>admission / storage</code> · unit u11</p>
+        <ul class="beats">
+          <li>Two different availability models</li>
+          <li>Majority, exactly</li>
+          <li>The fourth member buys nothing</li>
+          <li>Hot standbys, not members</li>
+          <li>When the majority is gone</li>
+          <li>A backup is a hypothesis</li>
+          <li>What the snapshot does not hold</li>
+          <li>The deceptive minutes</li>
+          <li>The supported way</li>
+          <li>Proving it works</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-12">
+        <header>
+          <span class="num">12</span>
+          <div>
+            <h3>Which Signal Proves What</h3>
+            <p class="sub">Module 12 — API Priority and Fairness, the evidence hierarchy, and the spine as a diagnostic tool</p>
+          </div>
+          <span class="pending">Not yet rendered</span>
+        </header>
+        <p class="spine">Spine segment: <code>desired object</code> · unit u12</p>
+        <ul class="beats">
+          <li>Concurrency has to be allocated</li>
+          <li>Classify here, serve there</li>
+          <li>Blast radius, not fairness</li>
+          <li>Contained is not fixed</li>
+          <li>Why informers exist at all</li>
+          <li>No single source is truth</li>
+          <li>The object is the contract</li>
+          <li>Who deleted it</li>
+          <li>Which layer is slow</li>
+        </ul>
+      </article>
+</main>
+</body>
+</html>

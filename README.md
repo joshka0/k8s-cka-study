@@ -4,13 +4,12 @@ An offline, senior-engineer-focused CKA and Kubernetes architecture course
 derived from 33 available transcripts in `transcripts/`, mapped against the
 official CKA v1.35 curriculum, and cross-checked against current upstream docs.
 
-> **Accuracy status:** a fresh Kubernetes v1.36 review found open corrections
-> in the Module 7 video and prepared Module 8 script, with related wording in
-> the corresponding lesson/deck material. See
-> [`video/REVIEW-FINDINGS-07-08.md`](video/REVIEW-FINDINGS-07-08.md) before
-> relying on those two modules. The findings are intentionally published rather
-> than hidden; the remaining modules have not yet received that same v1.36
-> adversarial pass.
+> **Accuracy status:** Kubernetes v1.36 adversarial reviews now cover Modules
+> 1–12, and their corrections have been applied to the scripts, lesson path,
+> reference guide, and Anki source. The published `video/REVIEW-FINDINGS-*.md`
+> files preserve the audit trail and identify the superseded wording. Modules
+> 8–12 have reviewed, narrated compositions and validated stills, but do not
+> yet have full-module MP4 exports.
 
 ## Open the course
 
@@ -115,7 +114,7 @@ Two decks ship here. They overlap by design and answer different questions.
 | Deck | Notes | Trains |
 | --- | --- | --- |
 | `kubernetes-beyond-yaml.apkg` | 120 | Name and define the 60 components |
-| `kubernetes-beyond-yaml-lessons.apkg` | 206 | Reproduce the invariants, discriminations, orderings and diagnostics the lessons drill |
+| `kubernetes-beyond-yaml-lessons.apkg` | 219 | Reproduce the invariants, discriminations, orderings and diagnostics the lessons drill |
 
 The lessons deck mirrors all twenty units as twenty subdecks. Stable card GUIDs
 mean re-importing this expanded package updates the original cards in place.
@@ -138,6 +137,7 @@ rather than duplicating.
 ## Layout
 
 - `index.html` — the interactive lesson path
+- `modules.html` — the twelve-module video/composition index
 - `reference.html` — full prose guidebook, print-friendly
 - `start.sh` — serve the course to your tailnet with shared progress
 - `serve.js` — static server plus the `/api/progress` merge store
@@ -153,7 +153,7 @@ rather than duplicating.
 - `deck/render_preview.py`, `deck/card-preview.html` — its visual check
 - `deck/kubernetes-beyond-yaml.apkg` — vocabulary deck package
 - `deck/LESSONS-SPEC.md` — lessons-deck contract
-- `deck/lesson-cards.json` — 206 lesson-derived notes
+- `deck/lesson-cards.json` — 219 lesson-derived notes
 - `deck/build_lessons_deck.py` — packager for the lessons deck
 - `deck/render_lessons_preview.py`, `deck/lesson-card-preview.html` — its visual check
 - `deck/kubernetes-beyond-yaml-lessons.apkg` — lessons deck package

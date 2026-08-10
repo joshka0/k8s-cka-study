@@ -37,7 +37,11 @@ const MAX_SPOKEN_WORDS = 25;
 function longSentences(text) {
   return text
     .replace(/<[^>]+>/g, ' ')
-    .split(/(?<=[.!?])\s+(?=[A-Z(])/)
+    // A sentence may legitimately begin with a camelCase API field —
+    // `maxSurge sets how many…`, `spec.nodeName is empty`. Requiring an
+    // uppercase start merged those into the previous sentence and reported
+    // a false over-length finding.
+    .split(/(?<=[.!?])\s+(?=[A-Z(]|[a-z]+[A-Z]|[a-z]+\.[a-z])/)
     .map(x => x.trim())
     .filter(x => x.split(/\s+/).filter(Boolean).length > MAX_SPOKEN_WORDS);
 }

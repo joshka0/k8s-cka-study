@@ -37,7 +37,7 @@
       "title": "Claim, class, volume",
       "lane": "node",
       "estSeconds": 42,
-      "narration": "Three objects, three different jobs. A PVC is a namespaced request for storage, and it is what the application author writes. A PV is cluster-scoped capacity and its lifecycle. A StorageClass is the recipe: how to provision, and when to bind. Getting those three straight is the entry ticket to every storage question that follows.",
+      "narration": "Three objects, three different jobs. A PVC is a namespaced request for storage, and it names size, access mode and class. A PV is cluster-scoped capacity with a reclaim policy. A StorageClass is the recipe: how to provision, and when to bind. Access mode and reclaim policy are part of that contract, not optional detail.",
       "visual": {
         "type": "claimClassVolume",
         "spec": "NEW. Three objects side by side, each labelled with its scope, which is the distinction people get wrong: PVC inside a namespace boundary; PV and StorageClass outside it, cluster-scoped. Draw the namespace boundary explicitly as a container so the PVC sits visibly inside it and the other two visibly outside. Under each, one line on its job."
@@ -76,7 +76,7 @@
       "title": "The split people merge",
       "lane": "node",
       "estSeconds": 48,
-      "narration": "CSI has two halves that people merge into one. On the control-plane side, four sidecars watch Kubernetes objects and call CSI Controller RPCs: provisioner, attacher, resizer and snapshotter. On the node side, a privileged plugin runs NodeStageVolume and NodePublishVolume so the kubelet can mount into the container. The two halves never call each other. They meet through API objects, the PV and the VolumeAttachment.",
+      "narration": "CSI has two halves that people merge into one. On the control-plane side, sidecars watch Kubernetes objects and call CSI Controller RPCs. The common pair is external-provisioner and external-attacher. external-resizer and external-snapshotter join only when those features are installed. On the node side, a privileged plugin runs the node RPCs so the kubelet can mount into the container. The two halves never call each other. They meet through API objects, the PV and the VolumeAttachment.",
       "visual": {
         "type": "csiTwoHalves",
         "spec": "NEW. Two clearly separated halves with no direct arrow between them — that absence is the point. Left, control plane: the four named sidecars watching objects and calling Controller RPCs. Right, node: the privileged plugin running stage and publish. Between them, drawn as the only connection, the API objects they both touch: PV and VolumeAttachment. Name all four sidecars legibly."
@@ -102,10 +102,10 @@
       "title": "Claim to container, in order",
       "lane": "node",
       "estSeconds": 46,
-      "narration": "End to end, the journey has a fixed order. The claim is created. The provisioner sees it and creates the volume with the storage provider. The attacher attaches that volume to the chosen node, and a VolumeAttachment records it. The node plugin stages the device on that node. It then publishes it into the Pod's target path. Only then does the kubelet start the container. Six steps, and each one has its own way of stopping.",
+      "narration": "End to end, the path has ordered stages, not one fixed sequence. The claim is created. Under Immediate binding, the provisioner creates the volume and the PV binds. Under WaitForFirstConsumer, the scheduler picks topology first, and the provisioner then creates the volume there. Once a node is known, the attach-detach controller creates a VolumeAttachment, and the external-attacher calls ControllerPublishVolume. The node plugin may stage the volume, then publishes it into the Pod's path. Only then does the kubelet start the containers that need that mount.",
       "visual": {
         "type": "claimToMount",
-        "spec": "NEW. The six steps as one continuous journey filling the stage width: claim created → provisioner creates the volume → attacher attaches, VolumeAttachment recorded → NodeStageVolume on the node → NodePublishVolume into the Pod's target path → container starts. Show the object each step produces beneath it, and mark which side of the CSI split each step belongs to by colour, so the control-plane half and the node half are visible as regions of the same journey."
+        "spec": "NEW. The six steps as one continuous journey filling the stage width: claim created → provisioner creates the volume → attacher attaches, VolumeAttachment recorded → NodeStageVolume on the node → NodePublishVolume into the Pod's target path → container starts. Show the object each step produces beneath it, and mark which side of the CSI split each step belongs to by colour, so the control-plane half and the node half are visible as regions of the same journey. CORRECTION: the attach-detach controller creates the VolumeAttachment; the external-attacher watches it and calls ControllerPublishVolume. Do not draw the attacher creating the object, and do not draw provisioning as always preceding scheduler involvement — that is Immediate binding only."
       }
     },
     {
@@ -115,10 +115,10 @@
       "title": "Stage once, publish per Pod",
       "lane": "node",
       "estSeconds": 40,
-      "narration": "The node half has two steps and the difference matters. NodeStageVolume happens once per node, and it makes the device usable. NodePublishVolume happens per Pod target path, and it bind-mounts that staged device into the container. Knowing which of the two failed tells you whether you are debugging a device or a bind mount.",
+      "narration": "The node half can have two steps, and the difference matters. When the driver supports staging, NodeStageVolume runs once per volume per node and makes the device usable there. NodePublishVolume then runs per Pod target path and bind-mounts into the container. If the driver has no stage capability, only publish runs. Knowing which call failed tells you whether you are debugging the device or the bind mount.",
       "visual": {
         "type": "stageVsPublish",
-        "spec": "NEW. One node, one staged device, and two Pods each getting their own publish into their own target path. Show stage occurring exactly once while publish occurs per Pod. Then fail each independently: a stage failure leaves no usable device at all; a publish failure leaves a healthy staged device that never reaches one container. Two different logs, labelled."
+        "spec": "NEW. One node, one staged device, and two Pods each getting their own publish into their own target path. Show stage occurring exactly once while publish occurs per Pod. Then fail each independently: a stage failure leaves no usable device at all; a publish failure leaves a healthy staged device that never reaches one container. Two different logs, labelled. CORRECTION: staging is optional (STAGE_UNSTAGE_VOLUME). Show the no-stage driver going straight to publish. Stage is once per volume per node, not once per node overall."
       }
     },
     {
@@ -128,10 +128,10 @@
       "title": "Storage is not a later phase",
       "lane": "node",
       "estSeconds": 44,
-      "narration": "This is why storage is not a phase that happens after scheduling. With WaitForFirstConsumer the scheduler and the provisioner have to agree on a zone. The scheduler cannot place the Pod until it knows where the volume can exist. The provisioner will not create the volume until it knows where the Pod is going. That handshake is why storage topology can make a Pod unschedulable.",
+      "narration": "With WaitForFirstConsumer, storage is not a later phase after a blind schedule. The scheduler selects a node using the Pod's constraints and the driver's topology signals. Only then does the provisioner create the volume in that topology. If no node can satisfy both compute and storage topology, the Pod simply stays unschedulable.",
       "visual": {
         "type": "topologyHandshake",
-        "spec": "NEW. Scheduler and provisioner facing each other, each visibly waiting on the other, with the zone constraint between them. Show the deadlock read as a negotiation rather than a bug: each is waiting for information only the other has, and the binding mode is what breaks the tie. Then resolve it — zone agreed, Pod placed, volume created there."
+        "spec": "NEW. Scheduler and provisioner facing each other, each visibly waiting on the other, with the zone constraint between them. Show the deadlock read as a negotiation rather than a bug: each is waiting for information only the other has, and the binding mode is what breaks the tie. Then resolve it — zone agreed, Pod placed, volume created there. CORRECTION: this is not a mutual standoff. The scheduler selects topology first, then the provisioner creates the volume there. Do not draw each side waiting on the other."
       }
     },
     {

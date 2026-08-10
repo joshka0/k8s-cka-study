@@ -18,6 +18,11 @@ import u04 from '../modules/u04-workloads/script.json';
 import u05 from '../modules/u05-crds/script.json';
 import u06 from '../modules/u06-scheduling/script.json';
 import u07 from '../modules/u07-kubelet/script.json';
+import u08 from '../modules/u08-networking/script.json';
+import u09 from '../modules/u09-dns/script.json';
+import u10 from '../modules/u10-storage/script.json';
+import u11 from '../modules/u11-etcd-ha/script.json';
+import u12 from '../modules/u12-scale-evidence/script.json';
 
 const Pilot: React.FC<{ showCaptions: boolean }> = ({ showCaptions }) => {
   return (
@@ -51,6 +56,11 @@ const MODULES = [
   { id: 'Module05', name: 'u05-crds', script: u05 },
   { id: 'Module06', name: 'u06-scheduling', script: u06 },
   { id: 'Module07', name: 'u07-kubelet', script: u07 },
+  { id: 'Module08', name: 'u08-networking', script: u08 },
+  { id: 'Module09', name: 'u09-dns', script: u09 },
+  { id: 'Module10', name: 'u10-storage', script: u10 },
+  { id: 'Module11', name: 'u11-etcd-ha', script: u11 },
+  { id: 'Module12', name: 'u12-scale-evidence', script: u12 },
 ];
 
 export const RemotionRoot: React.FC = () => {

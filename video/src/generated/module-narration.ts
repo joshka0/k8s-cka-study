@@ -83,6 +83,67 @@ import sandbox_why_u07_kubelet from '../../modules/u07-kubelet/narration/sandbox
 import stale_status_u07_kubelet from '../../modules/u07-kubelet/narration/stale-status.mp3';
 import termination_u07_kubelet from '../../modules/u07-kubelet/narration/termination.mp3';
 import three_probes_u07_kubelet from '../../modules/u07-kubelet/narration/three-probes.mp3';
+import beyond_the_slogan_u08_networking from '../../modules/u08-networking/narration/beyond-the-slogan.mp3';
+import close_u08_networking from '../../modules/u08-networking/narration/close.mp3';
+import clusterip_timeout_u08_networking from '../../modules/u08-networking/narration/clusterip-timeout.mp3';
+import cni_is_a_program_u08_networking from '../../modules/u08-networking/narration/cni-is-a-program.mp3';
+import conntrack_moves_u08_networking from '../../modules/u08-networking/narration/conntrack-moves.mp3';
+import headless_u08_networking from '../../modules/u08-networking/narration/headless.mp3';
+import implementations_not_apis_u08_networking from '../../modules/u08-networking/narration/implementations-not-apis.mp3';
+import ipam_delegation_u08_networking from '../../modules/u08-networking/narration/ipam-delegation.mp3';
+import locate_u08_networking from '../../modules/u08-networking/narration/locate.mp3';
+import policy_is_permission_u08_networking from '../../modules/u08-networking/narration/policy-is-permission.mp3';
+import readiness_is_the_gate_u08_networking from '../../modules/u08-networking/narration/readiness-is-the-gate.mp3';
+import three_owners_u08_networking from '../../modules/u08-networking/narration/three-owners.mp3';
+import who_execs_it_u08_networking from '../../modules/u08-networking/narration/who-execs-it.mp3';
+import close_u09_dns from '../../modules/u09-dns/narration/close.mp3';
+import corefile_order_u09_dns from '../../modules/u09-dns/narration/corefile-order.mp3';
+import dns_is_a_service_u09_dns from '../../modules/u09-dns/narration/dns-is-a-service.mp3';
+import fallthrough_vs_forward_u09_dns from '../../modules/u09-dns/narration/fallthrough-vs-forward.mp3';
+import locate_u09_dns from '../../modules/u09-dns/narration/locate.mp3';
+import ndots_cost_u09_dns from '../../modules/u09-dns/narration/ndots-cost.mp3';
+import nodelocal_u09_dns from '../../modules/u09-dns/narration/nodelocal.mp3';
+import not_the_name_u09_dns from '../../modules/u09-dns/narration/not-the-name.mp3';
+import ready_proves_little_u09_dns from '../../modules/u09-dns/narration/ready-proves-little.mp3';
+import resolve_trace_u09_dns from '../../modules/u09-dns/narration/resolve-trace.mp3';
+import trailing_dot_u09_dns from '../../modules/u09-dns/narration/trailing-dot.mp3';
+import watched_records_u09_dns from '../../modules/u09-dns/narration/watched-records.mp3';
+import claim_to_mount_u10_storage from '../../modules/u10-storage/narration/claim-to-mount.mp3';
+import close_u10_storage from '../../modules/u10-storage/narration/close.mp3';
+import locate_u10_storage from '../../modules/u10-storage/narration/locate.mp3';
+import mount_stuck_trace_u10_storage from '../../modules/u10-storage/narration/mount-stuck-trace.mp3';
+import pending_evidence_u10_storage from '../../modules/u10-storage/narration/pending-evidence.mp3';
+import privileged_half_u10_storage from '../../modules/u10-storage/narration/privileged-half.mp3';
+import stage_vs_publish_u10_storage from '../../modules/u10-storage/narration/stage-vs-publish.mp3';
+import three_objects_u10_storage from '../../modules/u10-storage/narration/three-objects.mp3';
+import topology_handshake_u10_storage from '../../modules/u10-storage/narration/topology-handshake.mp3';
+import two_halves_u10_storage from '../../modules/u10-storage/narration/two-halves.mp3';
+import wait_for_first_consumer_u10_storage from '../../modules/u10-storage/narration/wait-for-first-consumer.mp3';
+import close_u11_etcd_ha from '../../modules/u11-etcd-ha/narration/close.mp3';
+import delete_the_data_dir_u11_etcd_ha from '../../modules/u11-etcd-ha/narration/delete-the-data-dir.mp3';
+import fourth_member_u11_etcd_ha from '../../modules/u11-etcd-ha/narration/fourth-member.mp3';
+import leases_not_consensus_u11_etcd_ha from '../../modules/u11-etcd-ha/narration/leases-not-consensus.mp3';
+import locate_u11_etcd_ha from '../../modules/u11-etcd-ha/narration/locate.mp3';
+import prove_recovery_u11_etcd_ha from '../../modules/u11-etcd-ha/narration/prove-recovery.mp3';
+import quorum_loss_u11_etcd_ha from '../../modules/u11-etcd-ha/narration/quorum-loss.mp3';
+import quorum_maths_u11_etcd_ha from '../../modules/u11-etcd-ha/narration/quorum-maths.mp3';
+import snapshot_omits_u11_etcd_ha from '../../modules/u11-etcd-ha/narration/snapshot-omits.mp3';
+import supported_capture_u11_etcd_ha from '../../modules/u11-etcd-ha/narration/supported-capture.mp3';
+import two_models_u11_etcd_ha from '../../modules/u11-etcd-ha/narration/two-models.mp3';
+import untested_backup_u11_etcd_ha from '../../modules/u11-etcd-ha/narration/untested-backup.mp3';
+import apf_does_not_fix_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/apf-does-not-fix.mp3';
+import authoritative_state_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/authoritative-state.mp3';
+import close_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/close.mp3';
+import concurrency_is_finite_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/concurrency-is-finite.mp3';
+import informers_as_load_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/informers-as-load.mp3';
+import isolate_the_layer_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/isolate-the-layer.mp3';
+import locate_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/locate.mp3';
+import ninety_seconds_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/ninety-seconds.mp3';
+import no_ground_truth_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/no-ground-truth.mp3';
+import shuffle_sharding_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/shuffle-sharding.mp3';
+import the_spine_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/the-spine.mp3';
+import two_objects_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/two-objects.mp3';
+import who_and_when_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/who-and-when.mp3';
 
 export const moduleAudioSources: Record<string, Record<string, string>> = {
   "u01-control-plane": {
@@ -181,121 +242,243 @@ export const moduleAudioSources: Record<string, Record<string, string>> = {
     "three-probes": three_probes_u07_kubelet,
   },
   "u08-networking": {
+    "beyond-the-slogan": beyond_the_slogan_u08_networking,
+    "close": close_u08_networking,
+    "clusterip-timeout": clusterip_timeout_u08_networking,
+    "cni-is-a-program": cni_is_a_program_u08_networking,
+    "conntrack-moves": conntrack_moves_u08_networking,
+    "headless": headless_u08_networking,
+    "implementations-not-apis": implementations_not_apis_u08_networking,
+    "ipam-delegation": ipam_delegation_u08_networking,
+    "locate": locate_u08_networking,
+    "policy-is-permission": policy_is_permission_u08_networking,
+    "readiness-is-the-gate": readiness_is_the_gate_u08_networking,
+    "three-owners": three_owners_u08_networking,
+    "who-execs-it": who_execs_it_u08_networking,
   },
   "u09-dns": {
+    "close": close_u09_dns,
+    "corefile-order": corefile_order_u09_dns,
+    "dns-is-a-service": dns_is_a_service_u09_dns,
+    "fallthrough-vs-forward": fallthrough_vs_forward_u09_dns,
+    "locate": locate_u09_dns,
+    "ndots-cost": ndots_cost_u09_dns,
+    "nodelocal": nodelocal_u09_dns,
+    "not-the-name": not_the_name_u09_dns,
+    "ready-proves-little": ready_proves_little_u09_dns,
+    "resolve-trace": resolve_trace_u09_dns,
+    "trailing-dot": trailing_dot_u09_dns,
+    "watched-records": watched_records_u09_dns,
   },
   "u10-storage": {
+    "claim-to-mount": claim_to_mount_u10_storage,
+    "close": close_u10_storage,
+    "locate": locate_u10_storage,
+    "mount-stuck-trace": mount_stuck_trace_u10_storage,
+    "pending-evidence": pending_evidence_u10_storage,
+    "privileged-half": privileged_half_u10_storage,
+    "stage-vs-publish": stage_vs_publish_u10_storage,
+    "three-objects": three_objects_u10_storage,
+    "topology-handshake": topology_handshake_u10_storage,
+    "two-halves": two_halves_u10_storage,
+    "wait-for-first-consumer": wait_for_first_consumer_u10_storage,
   },
   "u11-etcd-ha": {
+    "close": close_u11_etcd_ha,
+    "delete-the-data-dir": delete_the_data_dir_u11_etcd_ha,
+    "fourth-member": fourth_member_u11_etcd_ha,
+    "leases-not-consensus": leases_not_consensus_u11_etcd_ha,
+    "locate": locate_u11_etcd_ha,
+    "prove-recovery": prove_recovery_u11_etcd_ha,
+    "quorum-loss": quorum_loss_u11_etcd_ha,
+    "quorum-maths": quorum_maths_u11_etcd_ha,
+    "snapshot-omits": snapshot_omits_u11_etcd_ha,
+    "supported-capture": supported_capture_u11_etcd_ha,
+    "two-models": two_models_u11_etcd_ha,
+    "untested-backup": untested_backup_u11_etcd_ha,
   },
   "u12-scale-evidence": {
+    "apf-does-not-fix": apf_does_not_fix_u12_scale_evidence,
+    "authoritative-state": authoritative_state_u12_scale_evidence,
+    "close": close_u12_scale_evidence,
+    "concurrency-is-finite": concurrency_is_finite_u12_scale_evidence,
+    "informers-as-load": informers_as_load_u12_scale_evidence,
+    "isolate-the-layer": isolate_the_layer_u12_scale_evidence,
+    "locate": locate_u12_scale_evidence,
+    "ninety-seconds": ninety_seconds_u12_scale_evidence,
+    "no-ground-truth": no_ground_truth_u12_scale_evidence,
+    "shuffle-sharding": shuffle_sharding_u12_scale_evidence,
+    "the-spine": the_spine_u12_scale_evidence,
+    "two-objects": two_objects_u12_scale_evidence,
+    "who-and-when": who_and_when_u12_scale_evidence,
   },
 };
 
 export const moduleDurations: Record<string, Record<string, number>> = {
   "u01-control-plane": {
-    "close": 17.371313,
-    "controllers-plural": 22.883188,
-    "five-actors": 26.592563,
-    "kubelet-owns": 44.12075,
-    "locate": 17.319125,
-    "not-healthy": 21.237438,
-    "one-contract": 45.426875,
-    "outage-cost": 36.3885,
-    "scheduler-job": 17.815438,
-    "the-chain": 23.43175,
-    "what-etcd-holds": 34.350938,
+    "close": 23.562375,
+    "controllers-plural": 21.603188,
+    "five-actors": 36.153375,
+    "kubelet-owns": 46.079938,
+    "locate": 17.632563,
+    "not-healthy": 17.214625,
+    "one-contract": 57.390938,
+    "outage-cost": 46.001563,
+    "scheduler-job": 24.39825,
+    "the-chain": 30.824375,
+    "what-etcd-holds": 38.7395,
   },
   "u02-api-path": {
-    "admission-shape": 35.134625,
-    "authn-vs-authz": 38.9485,
-    "close": 19.853,
-    "concurrency": 24.50275,
-    "failure-policy": 29.93625,
-    "field-ownership": 27.559125,
-    "locate": 12.564813,
-    "still-rejected": 27.48075,
-    "webhook-cost": 29.5705,
-    "webhook-design": 31.346875,
+    "admission-shape": 30.79825,
+    "authn-vs-authz": 43.572125,
+    "close": 20.688875,
+    "concurrency": 28.813,
+    "failure-policy": 28.682375,
+    "field-ownership": 33.724,
+    "locate": 13.217875,
+    "still-rejected": 35.526438,
+    "webhook-cost": 36.23175,
+    "webhook-design": 34.84725,
   },
   "u03-reconciliation": {
     "close": 20.87175,
     "external": 26.1485,
     "hot-loop": 25.652125,
-    "informer": 23.928063,
+    "informer": 40.672563,
     "key-not-payload": 22.36075,
     "level-based": 23.693,
-    "locate": 14.915813,
+    "locate": 14.47175,
     "observability": 22.334625,
     "queue-shape": 20.76725,
     "relist": 19.853,
     "resync": 19.879125,
-    "the-loop": 18.677438,
+    "the-loop": 25.521563,
   },
   "u04-workloads": {
-    "close": 11.964,
-    "daemonset-job": 19.826875,
-    "four-promises": 22.36075,
-    "hpa-vpa-fix": 17.475813,
-    "hpa-vpa": 22.3085,
-    "job-semantics": 22.204,
-    "locate": 10.919125,
-    "pdb": 23.5885,
-    "preempt-vs-evict": 21.263563,
-    "readiness-gates-rollout": 20.715,
-    "rollout": 24.92075,
-    "statefulset-limit": 22.073375,
+    "close": 13.29625,
+    "daemonset-job": 35.892125,
+    "four-promises": 28.107688,
+    "hpa-vpa-fix": 27.193375,
+    "hpa-vpa": 35.395813,
+    "job-semantics": 29.309313,
+    "locate": 12.695438,
+    "pdb": 34.194188,
+    "preempt-vs-evict": 22.961563,
+    "readiness-gates-rollout": 31.2685,
+    "rollout": 43.232563,
+    "statefulset-limit": 29.962375,
   },
   "u05-crds": {
-    "cel-validation": 20.297063,
-    "close": 13.008875,
-    "contract": 19.173813,
-    "crd-alone": 18.834188,
-    "finalizers": 22.674188,
-    "force-remove": 22.125625,
-    "four-words": 21.8905,
-    "locate": 12.512563,
-    "migration": 14.497875,
-    "operator-scope": 23.745188,
-    "schema": 22.021125,
-    "spec-status": 20.845625,
-    "versions": 20.479938,
+    "cel-validation": 22.439125,
+    "close": 12.9305,
+    "contract": 20.897875,
+    "crd-alone": 32.49625,
+    "finalizers": 31.033375,
+    "force-remove": 20.97625,
+    "four-words": 41.221125,
+    "locate": 13.165625,
+    "migration": 15.203188,
+    "operator-scope": 24.81625,
+    "schema": 33.149313,
+    "spec-status": 28.029313,
+    "versions": 29.5705,
   },
   "u06-scheduling": {
-    "close": 18.834188,
-    "filter-then-score": 24.267688,
-    "locate": 16.221938,
-    "nominated-node": 22.961563,
-    "pending-ladder": 22.857063,
-    "preemption-policy": 19.38275,
-    "request-errors": 21.446438,
-    "requests-not-usage": 24.71175,
-    "reserve-unreserve": 20.97625,
-    "two-cycles": 26.488063,
-    "what-it-writes": 16.82275,
+    "close": 29.126438,
+    "filter-then-score": 24.084813,
+    "locate": 13.635813,
+    "nominated-node": 21.707688,
+    "pending-ladder": 34.8995,
+    "preemption-policy": 19.774625,
+    "request-errors": 26.174625,
+    "requests-not-usage": 25.390938,
+    "reserve-unreserve": 22.125625,
+    "two-cycles": 30.432563,
+    "what-it-writes": 19.252125,
   },
   "u07-kubelet": {
-    "close": 18.912563,
-    "cri-vs-oci": 23.11825,
-    "four-boundaries": 24.528875,
-    "locate": 13.479125,
-    "nobody-tells-it": 21.133,
-    "node-order": 21.394188,
-    "phase-is-not-health": 18.364,
-    "running-no-traffic": 17.99825,
-    "sandbox-why": 20.218688,
-    "stale-status": 19.774625,
-    "termination": 22.0995,
-    "three-probes": 22.204,
+    "close": 21.106875,
+    "cri-vs-oci": 23.875813,
+    "four-boundaries": 27.48075,
+    "locate": 13.661938,
+    "nobody-tells-it": 21.577063,
+    "node-order": 21.185188,
+    "phase-is-not-health": 18.31175,
+    "running-no-traffic": 22.3085,
+    "sandbox-why": 20.950125,
+    "stale-status": 22.935438,
+    "termination": 31.137875,
+    "three-probes": 24.685625,
   },
   "u08-networking": {
+    "beyond-the-slogan": 22.230125,
+    "close": 14.315,
+    "clusterip-timeout": 19.461125,
+    "cni-is-a-program": 20.76725,
+    "conntrack-moves": 19.670125,
+    "headless": 17.528063,
+    "implementations-not-apis": 24.6595,
+    "ipam-delegation": 17.084,
+    "locate": 15.725625,
+    "policy-is-permission": 25.547688,
+    "readiness-is-the-gate": 21.8905,
+    "three-owners": 23.22275,
+    "who-execs-it": 18.990938,
   },
   "u09-dns": {
+    "close": 21.577063,
+    "corefile-order": 22.073375,
+    "dns-is-a-service": 25.7305,
+    "fallthrough-vs-forward": 18.364,
+    "locate": 14.68075,
+    "ndots-cost": 20.375438,
+    "nodelocal": 16.953375,
+    "not-the-name": 21.0285,
+    "ready-proves-little": 23.53625,
+    "resolve-trace": 21.83825,
+    "trailing-dot": 15.43825,
+    "watched-records": 19.095438,
   },
   "u10-storage": {
+    "claim-to-mount": 26.827688,
+    "close": 18.703563,
+    "locate": 14.68075,
+    "mount-stuck-trace": 19.957438,
+    "pending-evidence": 21.83825,
+    "privileged-half": 14.26275,
+    "stage-vs-publish": 21.185188,
+    "three-objects": 19.017063,
+    "topology-handshake": 19.121563,
+    "two-halves": 27.350125,
+    "wait-for-first-consumer": 17.397438,
   },
   "u11-etcd-ha": {
+    "close": 18.128875,
+    "delete-the-data-dir": 18.573,
+    "fourth-member": 13.897063,
+    "leases-not-consensus": 15.412125,
+    "locate": 14.68075,
+    "prove-recovery": 27.37625,
+    "quorum-loss": 19.565625,
+    "quorum-maths": 17.084,
+    "snapshot-omits": 19.513375,
+    "supported-capture": 24.267688,
+    "two-models": 20.532125,
+    "untested-backup": 18.573,
   },
   "u12-scale-evidence": {
+    "apf-does-not-fix": 17.737063,
+    "authoritative-state": 17.501938,
+    "close": 14.079938,
+    "concurrency-is-finite": 21.864375,
+    "informers-as-load": 19.356625,
+    "isolate-the-layer": 21.054625,
+    "locate": 12.225188,
+    "ninety-seconds": 24.084813,
+    "no-ground-truth": 20.6105,
+    "shuffle-sharding": 18.494625,
+    "the-spine": 29.805625,
+    "two-objects": 18.990938,
+    "who-and-when": 19.905188,
   },
 };

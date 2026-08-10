@@ -37,7 +37,7 @@
       "title": "Four words people blur",
       "lane": "control",
       "estSeconds": 54,
-      "narration": "Four terms, and interviewers use the confusion between them as a filter. A CRD registers an API kind and its schema. A CR is one stored object of that kind. A controller reconciles those objects toward their spec. An operator is packaging: a controller plus domain lifecycle knowledge, RBAC, installation and upgrade. If you can say those four cleanly, you have answered most of what follows.",
+      "narration": "Four terms, and interviewers use the confusion between them as a filter. A CRD registers an API kind and its schema. A CR is one stored object of that kind. A controller reconciles those objects toward their spec. An operator is a domain-specific controller for custom resources. It encodes operational knowledge in a control loop. Its distribution normally includes CRDs, RBAC and installation resources. It can automate the managed application's lifecycle and upgrades. Use kubectl api-resources to find the custom kind. Inspect the CRD for scope, schema, served versions and the storage marker. Find the operator Deployment, ServiceAccount and RBAC. Read the custom resource status, conditions and controller logs.",
       "visual": {
         "type": "fourWords",
         "spec": "NEW. Four stacked cards revealing in order, each with a one-line definition. Then show them assembled: CRD registers the kind, a CR appears in the API, the controller picks it up, the operator wraps controller plus lifecycle."
@@ -50,7 +50,7 @@
       "title": "A CRD on its own does nothing",
       "lane": "control",
       "estSeconds": 44,
-      "narration": "Apply a CRD with no controller and the API server will happily accept your objects. It validates them against your schema, stores them, serves them, and lets you list them. Nothing else happens. Ever. That surprises almost everyone the first time, and it is the cleanest demonstration that the API server stores intent while controllers create reality.",
+      "narration": "Apply a CRD with no controller and the API server will happily accept your objects. It validates them against your schema, stores them, serves them, and lets you list them. Without a custom controller, no domain-specific system moves toward the CR's spec. The API still validates, stores, serves and deletes the object through normal Kubernetes machinery. A CRD creates an API. It does not create the domain behavior. That surprises almost everyone the first time, and it is the cleanest demonstration that the API server stores intent while controllers create reality.",
       "visual": {
         "type": "crdAlone",
         "spec": "NEW. A CRD is applied; the API gains a new kind. CRs are created and appear in a list. Nothing downstream moves. Hold on the stillness longer than feels comfortable, then a controller starts and everything begins."
@@ -63,7 +63,7 @@
       "title": "Intent and observation",
       "lane": "control",
       "estSeconds": 52,
-      "narration": "Split your object honestly. Spec is intent, written by the user. Status is observation, written by your controller, including conditions and observedGeneration. When your controller cannot do what was asked, report the shortfall in status. Do not edit spec down to match what you managed. That destroys the record of what was requested and makes the gap invisible to everyone, including you.",
+      "narration": "Split your object honestly. Use spec for desired state and status for observed state. Enable the status subresource. Let users and policy write spec. Let the controller write status. Define conditions and observedGeneration when clients need them. Kubernetes does not add those fields for you. When your controller cannot do what was asked, report the shortfall in status. Do not edit spec down to match what you managed. That destroys the record of what was requested and makes the gap invisible to everyone, including you.",
       "visual": {
         "type": "specStatus",
         "spec": "NEW. An object with spec and status panels. The user sets replicas to ten in spec. The controller manages six and writes that into status with a condition. Then show the wrong version: the controller rewrites spec to six and the discrepancy silently vanishes, flagged red."
@@ -89,7 +89,7 @@
       "title": "Served, and stored",
       "lane": "control",
       "estSeconds": 58,
-      "narration": "A CRD can serve several versions at once. Exactly one is the storage version. Changing that marker does not migrate anything already stored. Old objects keep their original encoding and convert on read. So the conversion path must keep working until you have actually rewritten them. Remove an old version before migrating, and you strand objects nobody can read.",
+      "narration": "A CRD can serve several versions at once. Exactly one is the storage version. Changing that marker does not migrate anything already stored. Old objects keep their original encoding and convert on read. So the conversion path must keep working until you have actually rewritten them. Changing the storage marker does not rewrite old objects. Keep conversion working while old encodings remain. The API blocks removal of a version listed in status.storedVersions. Do not clear that entry until migration proves that no object uses the old encoding.",
       "visual": {
         "type": "servedStored",
         "spec": "NEW. A CRD serving v1 and v2, with a storage marker on v1. Objects written under v1 sit in the store. Flip the marker to v2: new objects store as v2, old ones stay v1 and convert on read. Then remove v1 and show the old objects become unreadable."
@@ -102,7 +102,7 @@
       "title": "The order that works",
       "lane": "control",
       "estSeconds": 48,
-      "narration": "The safe order has five steps and each gates the next. Serve both versions. Verify conversion round-trips both ways. Mark the new version for storage. Migrate the existing objects by rewriting them. Confirm what is stored and who is still using the old version. Only then retire it.",
+      "narration": "Serve both versions. Verify conversion. Mark the new storage version. Rewrite every stored object. Confirm storage and old-version clients. Remove the old entry from status.storedVersions. Set served false. Then remove the old version and its conversion support.",
       "visual": {
         "type": "migrationOrder",
         "spec": "NEW. Five gates in sequence, each unlocking the next. Then replay it with step four skipped: the storage marker flips, old objects are never rewritten, and retiring v1 strands them."
@@ -115,7 +115,7 @@
       "title": "Deletion that waits",
       "lane": "control",
       "estSeconds": 56,
-      "narration": "Owner references and finalizers both affect deletion and do opposite jobs. An owner reference says delete me when my owner goes; that is garbage collection. A finalizer says do not actually remove me yet. The API marks the object for deletion and holds it until the owning controller clears the finalizer. So a CR stuck Terminating is usually not a Kubernetes bug. It is a controller that is down, crash-looping, or blocked on something external.",
+      "narration": "Owner references and finalizers both affect deletion and do opposite jobs. An owner reference says delete me when my owner goes; that is garbage collection. A finalizer says do not actually remove me yet. The API sets deletionTimestamp and keeps the object while any finalizer remains. The controller responsible for each finalizer performs its cleanup and removes its key. That controller need not own the object. Owner references drive garbage collection instead. So a CR stuck Terminating is usually not a Kubernetes bug. It is a controller that is down, crash-looping, or blocked on something external.",
       "visual": {
         "type": "finalizers",
         "spec": "NEW. Delete a CR with a finalizer: deletionTimestamp is set, the object stays. The controller cleans up an external resource, removes the finalizer, and the object disappears. Then the stuck case: the controller is down and the object simply waits."
@@ -141,7 +141,7 @@
       "title": "The schema is the API",
       "lane": "control",
       "estSeconds": 42,
-      "narration": "Your structural schema does more than reject bad input. It decides how server-side apply merges lists, whether unknown fields are pruned or kept, and what defaults appear on objects the user never touched. Declare a list as atomic and two controllers overwrite each other. Declare it as a merge key and they coexist. That choice looks like a detail in the CRD and behaves like an API design decision forever.",
+      "narration": "Your structural schema does more than reject bad input. It decides how server-side apply merges lists, whether unknown fields are pruned or kept, and what defaults appear on objects the user never touched. An atomic list is one field for server-side apply. A different apply manager conflicts before it replaces the list, unless it forces ownership. A map-style list with list-map keys gives entries separate ownership. Updates and non-apply patches follow different rules. That choice looks like a detail in the CRD and behaves like an API design decision forever.",
       "visual": {
         "type": "schemaSemantics",
         "spec": "NEW. The same list field declared two ways. Under atomic, two controllers apply and the second replaces the first. Under a merge key, both entries survive. Same YAML in, different outcomes."

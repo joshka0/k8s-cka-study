@@ -48,7 +48,7 @@
       <div class="eyebrow">Reference companion to the lesson path</div>
       <h1>Follow intent all the way to a packet.</h1>
       <p>A 20-stage systems course built from 33 video transcripts, the official CKA v1.35 curriculum, and current upstream documentation. Learn stable invariants, then diagnose the asynchronous boundaries where real clusters fail.</p>
-      <p class="callout"><strong>Accuracy note:</strong> Modules 7–8 have open Kubernetes v1.36 review corrections. Treat those sections as draft until <a href="video/REVIEW-FINDINGS-07-08.md">the published review findings</a> are resolved.</p>
+      <p class="callout"><strong>Accuracy note:</strong> Kubernetes v1.36 adversarial reviews cover Modules 1–12, and their corrections are applied here. The published <a href="video/REVIEW-FINDINGS-07-08.md">review findings</a> preserve the audit trail and superseded wording; Modules 8–12 have reviewed scripts but no narrated renders yet.</p>
       <div class="hero-grid">
         <div class="hero-stat"><strong>20</strong> architecture modules</div>
         <div class="hero-stat"><strong>60</strong> interview drills</div>
@@ -262,9 +262,9 @@
       </figure>
       <div class="grid-2">
         <div class="card"><h3>CRI boundary</h3><p>CRI is the gRPC contract between kubelet and a runtime such as containerd. OCI describes lower-level runtime and image specifications; it is not the kubelet API.</p></div>
-        <div class="card"><h3>Pod sandbox</h3><p>The runtime creates an isolation and network namespace anchor before normal containers. CNI configures its network attachment.</p></div>
-        <div class="card"><h3>Probe semantics</h3><p>Startup gates liveness/readiness during slow initialization; liveness restarts containers; readiness controls endpoint participation without restarting.</p></div>
-        <div class="card"><h3>Termination</h3><p>Deletion starts a grace period, lifecycle hooks and TERM, endpoint removal, and eventual force. Ordering is concurrent and should not be treated as a transaction.</p></div>
+        <div class="card"><h3>Pod sandbox</h3><p>A typical Linux runtime uses the sandbox as a Pod network-namespace anchor. Initial network failure prevents application-container startup; network can also fail after start.</p></div>
+        <div class="card"><h3>Probe semantics</h3><p>Startup gates liveness/readiness for the same container; liveness stops it after the failure threshold and restart policy governs what follows; readiness normally sets an EndpointSlice condition false.</p></div>
+        <div class="card"><h3>Termination</h3><p>Deletion starts a grace period. EndpointSlice termination and local shutdown overlap; PreStop precedes the configured stop signal, and the runtime eventually force-kills remaining processes.</p></div>
       </div>
       <aside class="references" aria-label="Module 7 reference shelf"><h3>Reference shelf</h3><ul>
         <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/" target="_blank" rel="noopener">Pod Lifecycle</a><span>Binding, sandbox readiness, phases, conditions, and termination flow.</span></li>
@@ -273,13 +273,13 @@
         <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/probes/" target="_blank" rel="noopener">Startup, liveness, and readiness probes</a><span>Exact consequences and common probe-induced failure patterns.</span></li>
         <li><a href="https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/" target="_blank" rel="noopener">Container lifecycle hooks</a><span><code>PostStart</code>, <code>PreStop</code>, ordering, delivery, and grace-period behavior.</span></li>
       </ul></aside>
-      <details><summary>Pod is Running but receives no traffic. Why?</summary><div><p class="rubric">Strong answer:</p><p>Running is a phase, not readiness. Inspect readiness gates/probes, container readiness, EndpointSlice membership, Service selection and ports, then the data plane.</p></div></details>
+      <details><summary>Pod is Running but receives no traffic. Why?</summary><div><p class="rubric">Strong answer:</p><p>Running is a phase, not health. Check Service label selection, then whether an EndpointSlice contains the Pod IP with ready true, the targetPort and listener, and finally the data plane.</p></div></details>
       <details><summary>CRI vs OCI vs CNI?</summary><div><p class="rubric">Strong answer:</p><p>CRI connects kubelet to the container runtime; OCI specifies image/runtime primitives used below that boundary; CNI configures network attachment for the Pod sandbox.</p></div></details>
       <details><summary>Why can the API show stale Pod status during node failure?</summary><div><p class="rubric">Strong answer:</p><p>Status is reported asynchronously by kubelet. Loss of node/API connectivity prevents updates until lease/node controllers infer unreachability and other controllers react.</p></div></details>
     </section>
 
     <section class="module" id="m8">
-      <div class="module-head"><div><div class="eyebrow">Module 8</div><h2>Networking separates Pod reachability from Service identity</h2><p class="lede">CNI attaches Pod networking. EndpointSlices represent ready backends. kube-proxy or an eBPF replacement translates stable Service semantics into a node data plane.</p></div></div>
+      <div class="module-head"><div><div class="eyebrow">Module 8</div><h2>Networking separates Pod reachability from Service identity</h2><p class="lede">The network implementation configures Pod reachability, commonly through CNI. EndpointSlices represent selector-matched backends and conditions. kube-proxy or a replacement translates Service semantics into a node data plane.</p></div></div>
       <div class="flow"><div>DNS / Service VIP</div><div>Node data-plane lookup</div><div>Select EndpointSlice backend</div><div>Route to Pod IP</div><div>Policy + listener</div></div>
       <figure class="diagram" aria-labelledby="network-diagram-title">
         <p class="diagram-title" id="network-diagram-title">One Service contract, alternative node data planes</p>
@@ -289,13 +289,13 @@
         <figcaption>Original reconstruction from the IPVS director diagram and Cilium's netfilter-bypass architecture. It deliberately preserves connection state in the eBPF branch.</figcaption>
       </figure>
       <div class="grid-2">
-        <div class="card"><h3>iptables, IPVS, nftables</h3><p>These are kube-proxy implementations, not different Service APIs. Simple O(N) vs O(1) slogans omit rule update, locality, kernel, and semantic tradeoffs; current clusters may use nftables.</p></div>
-        <div class="card"><h3>eBPF replacement</h3><p>An eBPF data plane can implement Service translation and connection tracking in BPF maps, at hooks such as socket or traffic control. It bypasses traditional netfilter, not connection state itself.</p></div>
+        <div class="card"><h3>iptables, IPVS, nftables</h3><p>These are Linux kube-proxy modes, not different Service APIs. Kubernetes 1.35 deprecated IPVS mode and recommends nftables as its replacement.</p></div>
+        <div class="card"><h3>eBPF replacement</h3><p>An eBPF data plane can replace kube-proxy, but connection-state placement is product- and mode-specific: some use BPF maps while others retain kernel conntrack for some traffic.</p></div>
         <div class="card"><h3>Headless Service</h3><p><code>clusterIP: None</code> removes VIP proxying and returns endpoint addresses through DNS, moving selection to clients.</p></div>
         <div class="card"><h3>Policy and routing</h3><p>NetworkPolicy declares allowed flows when the plugin enforces it. It does not create routes or prove an application listens.</p></div>
       </div>
       <h3>How a Pod gets its network</h3>
-      <p>A CNI plugin is an executable, not a service. The container runtime, not the kubelet, creates the sandbox’s network namespace. It reads CNI configuration from disk on that node and executes the plugin chain. The operation arrives in <code>CNI_COMMAND</code> and the configuration on stdin. A JSON result returns on stdout describing the IP, routes, DNS and MAC. Allocation is delegated to an IPAM plugin so every interface plugin does not reimplement it. If IPAM fails during <code>ADD</code>, the caller issues <code>DEL</code> to roll back. Each plugin in a chain acts on the same single interface, composing behaviour rather than adding interfaces.</p>
+      <p>A CNI plugin is an executable, not a service. Kubelet asks the runtime to create a sandbox over CRI. CRI does not mandate CNI, but common runtimes load network configuration and invoke a plugin chain against the sandbox namespace. The operation arrives in <code>CNI_COMMAND</code> and configuration on stdin. A result returns on stdout. Allocation may be delegated to IPAM or handled through an implementation-specific agent. Each plugin in a chain acts on the same interface, composing behaviour rather than adding interfaces.</p>
       <p class="callout">Currency: the maintainer talks describe four operations. CNI 1.1 adds <code>GC</code> and <code>STATUS</code> alongside <code>ADD</code>, <code>DEL</code>, <code>CHECK</code> and <code>VERSION</code>. Products such as Calico and Cilium also run a node agent, but that agent is not the CNI plugin binary.</p>
       <aside class="references" aria-label="Module 8 reference shelf"><h3>Reference shelf</h3><ul>
         <li><a href="https://kubernetes.io/docs/concepts/services-networking/service/" target="_blank" rel="noopener">Services and EndpointSlices</a><span>The stable Service contract, selectors, backends, and endpoint readiness.</span></li>
@@ -305,8 +305,8 @@
         <li><a href="https://www.cni.dev/docs/spec/" target="_blank" rel="noopener">CNI specification</a><span>Plugin execution contract, operations, result types, and IPAM delegation.</span></li>
         <li><a href="https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/" target="_blank" rel="noopener">Kubernetes network plugins</a><span>How the runtime loads CNI configuration and what Kubernetes requires of a plugin.</span></li>
       </ul></aside>
-      <details><summary>Service DNS resolves, but ClusterIP times out. Trace it.</summary><div><p class="rubric">Strong answer:</p><p>Inspect Service ports and EndpointSlices, test ready Pod IPs, inspect kube-proxy/BPF programming and conntrack, verify routing/MTU/policy, then the target listener.</p></div></details>
-      <details><summary>Does Cilium “remove conntrack”?</summary><div><p class="rubric">Strong answer:</p><p>It can bypass netfilter's conntrack path for Service handling while maintaining connection state in eBPF maps. Separate implementation from the need for stateful flow tracking.</p></div></details>
+      <details><summary>Service DNS resolves, but ClusterIP times out. Trace it.</summary><div><p class="rubric">Strong answer:</p><p>Inspect selector, ports and EndpointSlices; confirm the endpoint listener; test the Pod IP from the same source. A working direct path points to Service programming, while a failed one points to routing, MTU, policy or workload.</p></div></details>
+      <details><summary>Does eBPF “remove conntrack”?</summary><div><p class="rubric">Strong answer:</p><p>No universal answer exists. Stateful flow tracking remains; some implementations use BPF maps while others retain kernel conntrack for some traffic or modes.</p></div></details>
       <details><summary>CNI vs kube-proxy?</summary><div><p class="rubric">Strong answer:</p><p>CNI configures Pod network attachment; kube-proxy implements Service VIP forwarding. A single product may replace both paths, but the contracts and failure questions remain distinct.</p></div></details>
     </section>
 

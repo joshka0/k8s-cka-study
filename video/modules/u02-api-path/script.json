@@ -37,7 +37,7 @@
       "title": "Who, then may they",
       "lane": "control",
       "estSeconds": 62,
-      "narration": "Gate one establishes who you are. A certificate, a bearer token, a service account token — whatever the mechanism, its output is a username and a set of groups. That is all authentication does. It never decides anything. Gate two takes that identity and asks whether it may perform this verb on this resource: get pods, delete secrets, create deployments in this namespace. RBAC is the usual answer, and RBAC only grants. There is no deny rule to find. When a request is refused, look for a missing grant, not a rule that blocked it. And the two gates fail differently: a bad token is a 401, a good token without permission is a 403.",
+      "narration": "Gate one establishes who you are. Authentication produces user information: a username, groups, and possibly a UID and extra attributes. It establishes identity and grants nothing. Gate two asks whether that identity may perform this verb on this resource. RBAC only grants, so if RBAC is the only relevant authorizer, a refusal means no rule matched. Other configured authorizers can deny explicitly, so check the chain. A Role carries namespaced rules and a ClusterRole carries cluster-scoped or reusable ones. A RoleBinding grants inside one namespace, a ClusterRoleBinding grants cluster-wide. Verify with kubectl auth can-i. And the two gates fail differently: a bad token is a 401, a good token without permission is a 403.",
       "visual": {
         "type": "authGates",
         "spec": "NEW. Two gates side by side. A request token carries a certificate; gate one strips it and emits 'user: joshka, groups: [dev, sre]'. Gate two takes that identity plus verb+resource and consults a stack of RBAC rules, showing that they only ever add. Show both failure modes as labelled bounces: 401 at gate one, 403 at gate two."
@@ -63,7 +63,7 @@
       "title": "Your Service, on the hot path",
       "lane": "control",
       "estSeconds": 66,
-      "narration": "Both admission stages can call out to a webhook you wrote. This is where a policy change takes down a team that has never heard of you. Registering a webhook puts four things into the API server's critical path: your Service, its DNS, its TLS trust and its response deadline. That applies to every request its rules match. Breadth of those rules is your blast radius. A webhook scoped to one CRD in one namespace is a contained risk. The same webhook with a wildcard rule means every pod creation in the cluster now waits on your deployment being healthy.",
+      "narration": "Both admission stages can call out to a webhook you wrote. This is where a policy change takes down a team that has never heard of you. Every matching webhook adds a network call, TLS trust and a deadline to the API path. A Service reference also depends on that Service and cluster DNS. A URL uses its own network path. Limit resources with rules. Limit namespaces and objects with selectors or match conditions. That applies to every request its rules match. Breadth of those rules is your blast radius. A webhook scoped to one CRD in one namespace is a contained risk. The same webhook with a wildcard rule means every pod creation in the cluster now waits on your deployment being healthy.",
       "visual": {
         "type": "webhookBlast",
         "spec": "NEW. API server in the centre with requests streaming through. A webhook registers with a narrow rule — a thin slice of requests detours to it, the rest flow past. Then the rule widens to a wildcard and the detour swallows the whole stream. The webhook Service then goes unhealthy and the whole stream backs up. Show the queue building."
@@ -89,7 +89,7 @@
       "title": "Before you write one",
       "lane": "control",
       "estSeconds": 56,
-      "narration": "So before writing a webhook: scope the rules as narrowly as correctness allows, and use object selectors so unrelated traffic never reaches it. Pick failurePolicy from the domain, not from habit. Budget the timeout against API latency, because that timeout is now part of every matching request. Run enough replicas that a rolling update does not take the API path with it. Manage the certificate lifecycle before it expires at three in the morning. Keep the verdict deterministic — the same object must always get the same answer, or you have built something nobody can debug.",
+      "narration": "So before writing a webhook: scope the rules as narrowly as correctness allows, and use object selectors so unrelated traffic never reaches it. Pick failurePolicy from the domain, not from habit. Budget the timeout against API latency, because that timeout is now part of every matching request. Run enough replicas that a rolling update does not take the API path with it. Manage the certificate lifecycle before it expires at three in the morning. Make the result deterministic for the same admission request and the same policy state. Include the operation, old object, user, namespace and parameters in that input. Avoid time and remote mutable state unless the policy requires them.",
       "visual": {
         "type": "webhookChecklist",
         "spec": "NEW. Six items building as a checklist, each with a small icon and the failure it prevents in muted text beside it: match scope → blast radius, failurePolicy → silent bypass, timeout → API latency, replicas → self-inflicted outage, certs → 3am expiry, determinism → undebuggable. Not a bullet list — lay them out as a design card."
@@ -102,7 +102,7 @@
       "title": "RBAC allows it, it still fails",
       "lane": "control",
       "estSeconds": 52,
-      "narration": "A successful authorisation clears exactly one gate. When RBAC allows something and the API server still refuses it, six suspects remain. Admission policies and webhooks. Schema validation. Resource quota. Immutable field rules. API conversion. And storage failures. They fail with different messages, which is the fastest way to tell them apart — a quota rejection reads nothing like an immutability error. Reading the message properly is usually faster than reasoning about the pipeline.",
+      "narration": "A successful authorisation clears exactly one gate. Authorization clears one stage. Common later failures include admission, quota, schema or field validation, conversion, optimistic-concurrency conflicts and storage. The set is not closed. Read the Status reason, message and field causes first. Admission policies and webhooks. Schema validation. Resource quota. Immutable field rules. API conversion. And storage failures. They fail with different messages, which is the fastest way to tell them apart — a quota rejection reads nothing like an immutability error. Reading the message properly is usually faster than reasoning about the pipeline.",
       "visual": {
         "type": "rejectionLadder",
         "spec": "NEW. The five gates drawn as before, with authorisation lit green. Below the path, the six remaining rejection sources fan out, each with a representative error message in monospace. As each is named it lights. Emphasise that they sit downstream of a green authorisation."
@@ -115,7 +115,7 @@
       "title": "Two writers, one object",
       "lane": "control",
       "estSeconds": 58,
-      "narration": "Past the gates the object is stored. It immediately becomes something more than one actor writes to. resourceVersion keeps that safe. You read an object and send back the version you read. If anything changed in between, your update is rejected with a conflict. A conflict is not an error to retry blindly. Replaying your stale body destroys whatever the other writer did. Fetch the current object, recompute your delta against it, and retry with backoff.",
+      "narration": "Past the gates the object is stored. It immediately becomes something more than one actor writes to. For a read-modify-write Update, send the resourceVersion you read. If the object changed, the API rejects the stale Update. Read the current object, recompute and retry with backoff. Patch and server-side apply use different conflict rules. A conflict is not an error to retry blindly. Replaying your stale body destroys whatever the other writer did. Fetch the current object, recompute your delta against it, and retry with backoff.",
       "visual": {
         "type": "optimisticConcurrency",
         "spec": "NEW. Two controllers read the same object at resourceVersion 41. A writes, bumping it to 42. B submits its edit still carrying 41 — rejected, conflict. Show the wrong path first, greyed: B force-writes and A's change vanishes. Then the right path: B re-reads at 42, recomputes, writes 43, both changes present."
@@ -128,7 +128,7 @@
       "title": "Who owns this field",
       "lane": "control",
       "estSeconds": 60,
-      "narration": "Server-side apply takes that further and tracks ownership per field path in managed fields. When your apply conflicts, the API is telling you another manager already owns those fields. Your HPA owns replicas. Your service mesh owns that annotation. Forcing the apply resolves it by taking the field, and the previous owner will simply set it back on its next reconcile. You have built a fight, not a fix. Force is right when ownership is genuinely moving, and you know who held the field and why.",
+      "narration": "Server-side apply takes that further and tracks ownership per field path in managed fields. When your apply conflicts, the API is telling you another manager already owns those fields. Your HPA owns replicas. Your service mesh owns that annotation. Force changes the value and transfers field ownership. A controller that uses Update or Patch can overwrite it later. A controller that uses server-side apply can conflict unless it also forces. Either result means the ownership design is unresolved. You have built a fight, not a fix. Force is right when ownership is genuinely moving, and you know who held the field and why.",
       "visual": {
         "type": "managedFields",
         "spec": "NEW. One object with its field paths listed, each tagged with an owning manager. An apply arrives claiming spec.replicas, already owned by the HPA — conflict raised. Then show force: ownership flips, and on the next tick the HPA's loop flips it back, and back again, oscillating. Let the oscillation run long enough to read as a fight."

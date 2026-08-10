@@ -1,1 +1,14 @@
-{}
+{
+  "close": 18.128875,
+  "delete-the-data-dir": 18.573,
+  "fourth-member": 13.897063,
+  "leases-not-consensus": 15.412125,
+  "locate": 14.68075,
+  "prove-recovery": 27.37625,
+  "quorum-loss": 19.565625,
+  "quorum-maths": 17.084,
+  "snapshot-omits": 19.513375,
+  "supported-capture": 24.267688,
+  "two-models": 20.532125,
+  "untested-backup": 18.573
+}

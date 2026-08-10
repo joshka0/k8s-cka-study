@@ -1,14 +1,14 @@
 {
-  "close": 11.964,
-  "daemonset-job": 19.826875,
-  "four-promises": 22.36075,
-  "hpa-vpa-fix": 17.475813,
-  "hpa-vpa": 22.3085,
-  "job-semantics": 22.204,
-  "locate": 10.919125,
-  "pdb": 23.5885,
-  "preempt-vs-evict": 21.263563,
-  "readiness-gates-rollout": 20.715,
-  "rollout": 24.92075,
-  "statefulset-limit": 22.073375
+  "close": 13.29625,
+  "daemonset-job": 35.892125,
+  "four-promises": 28.107688,
+  "hpa-vpa-fix": 27.193375,
+  "hpa-vpa": 35.395813,
+  "job-semantics": 29.309313,
+  "locate": 12.695438,
+  "pdb": 34.194188,
+  "preempt-vs-evict": 22.961563,
+  "readiness-gates-rollout": 31.2685,
+  "rollout": 43.232563,
+  "statefulset-limit": 29.962375
 }

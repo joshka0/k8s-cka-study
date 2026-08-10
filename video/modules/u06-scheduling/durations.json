@@ -1,13 +1,13 @@
 {
-  "close": 18.834188,
-  "filter-then-score": 24.267688,
-  "locate": 16.221938,
-  "nominated-node": 22.961563,
-  "pending-ladder": 22.857063,
-  "preemption-policy": 19.38275,
-  "request-errors": 21.446438,
-  "requests-not-usage": 24.71175,
-  "reserve-unreserve": 20.97625,
-  "two-cycles": 26.488063,
-  "what-it-writes": 16.82275
+  "close": 29.126438,
+  "filter-then-score": 24.084813,
+  "locate": 13.635813,
+  "nominated-node": 21.707688,
+  "pending-ladder": 34.8995,
+  "preemption-policy": 19.774625,
+  "request-errors": 26.174625,
+  "requests-not-usage": 25.390938,
+  "reserve-unreserve": 22.125625,
+  "two-cycles": 30.432563,
+  "what-it-writes": 19.252125
 }

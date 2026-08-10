@@ -1,15 +1,15 @@
 {
-  "cel-validation": 20.297063,
-  "close": 13.008875,
-  "contract": 19.173813,
-  "crd-alone": 18.834188,
-  "finalizers": 22.674188,
-  "force-remove": 22.125625,
-  "four-words": 21.8905,
-  "locate": 12.512563,
-  "migration": 14.497875,
-  "operator-scope": 23.745188,
-  "schema": 22.021125,
-  "spec-status": 20.845625,
-  "versions": 20.479938
+  "cel-validation": 22.439125,
+  "close": 12.9305,
+  "contract": 20.897875,
+  "crd-alone": 32.49625,
+  "finalizers": 31.033375,
+  "force-remove": 20.97625,
+  "four-words": 41.221125,
+  "locate": 13.165625,
+  "migration": 15.203188,
+  "operator-scope": 24.81625,
+  "schema": 33.149313,
+  "spec-status": 28.029313,
+  "versions": 29.5705
 }

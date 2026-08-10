@@ -526,7 +526,7 @@
     "unit": "03 Reconciliation & watches",
     "type": "name_to_definition",
     "front": "A watch event is lost. Is correctness lost?",
-    "back": "No. The controller relists or reconnects, and resync or any related change schedules a reconcile that compares current state against intent. <b>Events improve latency, not correctness.</b>",
+    "back": "Reconciliation is level-based, so a later retry is safe — but a lost enqueue still needs <b>some</b> trigger: a later event, a delayed requeue, a configured resync, or a restart and relist. Resync is optional and commonly set to zero, so do not rely on it. <b>Events improve latency; they are not the source of correctness.</b>",
     "tags": [
       "03-reconciliation-watches",
       "understanding"
@@ -1173,7 +1173,7 @@
     "unit": "06 Scheduling under pressure",
     "type": "name_to_definition",
     "front": "A Pod is Pending although dashboards show plenty of free CPU. What is worth checking?",
-    "back": "<ul><li>Requests against allocatable capacity, not observed usage</li><li>Node affinity, taints and tolerations</li><li>Topology spread and pod anti-affinity</li><li>PVC topology and capacity, host port conflicts</li></ul>Image size never causes Pending — it only affects startup after scheduling.",
+    "back": "<ul><li>Requests against allocatable capacity, not observed usage</li><li>Node affinity, taints and tolerations</li><li>Topology spread and pod anti-affinity</li><li>PVC topology and capacity, host port conflicts</li></ul>First check whether <code>spec.nodeName</code> is empty: only then is this a scheduling problem. If a node name is already set, Pending can mean image pull, volume setup or sandbox creation — a large image <b>can</b> hold a bound Pod in Pending. It just cannot explain an empty node name.",
     "extra": "<a href='https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/'>📖 Assigning Pods to Nodes</a>",
     "tags": [
       "06-scheduling-under-pressure",
@@ -1335,7 +1335,7 @@
     "unit": "07 Kubelet, CRI & Pods",
     "type": "name_to_definition",
     "front": "What is the Pod sandbox for?",
-    "back": "Anchoring the isolation and network namespaces the Pod's containers share. It exists so a network namespace can be configured <i>before</i> any application container joins it. That is why a Pod can have a healthy-looking runtime and still no network.",
+    "back": "On a typical Linux runtime, the sandbox anchors the Pod network namespace. If initial network setup fails, application containers do not start and the Pod normally remains in <code>ContainerCreating</code>. A running Pod can lose network later.",
     "tags": [
       "07-kubelet-cri-pods",
       "understanding"
@@ -1347,7 +1347,7 @@
     "unit": "07 Kubelet, CRI & Pods",
     "type": "name_to_definition",
     "front": "Why can the API show stale Pod status during a node failure?",
-    "back": "Status is written by the kubelet asynchronously. If the node or its connectivity dies, no updates arrive and the API keeps showing the last reported state — which can look perfectly healthy. Only once the node lease stops being renewed do the node controllers infer unreachability and other controllers react.",
+    "back": "Status is written asynchronously by kubelet. If updates stop, the stored phase can remain Running. The Lease does not expire itself: renewTime stops advancing. After the monitoring grace period, the node controller marks Ready Unknown and adds the unreachable taint; eviction then follows tolerations and controller policy.",
     "extra": "<a href='https://kubernetes.io/docs/reference/node/kubelet-sync-loop/'>📖 Kubelet sync loop</a>",
     "tags": [
       "07-kubelet-cri-pods",
@@ -1428,7 +1428,7 @@
     "unit": "07 Kubelet, CRI & Pods",
     "type": "discrimination",
     "front": "A liveness probe and a readiness probe both fail. How do the consequences differ?",
-    "back": "<b>Liveness</b> restarts the container. <b>Readiness</b> removes it from endpoints without restarting anything.<br>A too-aggressive liveness probe turns a slow dependency into a restart loop.",
+    "back": "After its failure threshold, <b>liveness</b> stops the container and restartPolicy governs what follows. <b>Readiness</b> marks the Pod not ready without restarting it; the address normally remains in its EndpointSlice with <code>ready:false</code>.",
     "extra": "<a href='https://kubernetes.io/docs/concepts/workloads/pods/probes/'>📖 Probes</a>",
     "tags": [
       "07-kubelet-cri-pods",
@@ -1441,8 +1441,8 @@
     "lesson": "u7l3",
     "unit": "07 Kubelet, CRI & Pods",
     "type": "name_to_api",
-    "front": "Which lifecycle hook runs before TERM is delivered, and is commonly given a sleep so endpoint removal can catch up?",
-    "back": "<code>preStop</code>. Endpoint removal is concurrent with shutdown, not before it — the sleep buys time for the data plane to stop sending you traffic.",
+    "front": "Which lifecycle hook runs before the runtime sends the configured stop signal, and what can a bounded delay actually guarantee?",
+    "back": "<code>preStop</code>. EndpointSlice termination and local shutdown overlap. A bounded delay can reduce the race, but it cannot prove data-plane propagation; the application still has to drain work.",
     "extra": "<a href='https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/'>📖 Container lifecycle hooks</a>",
     "tags": [
       "07-kubelet-cri-pods",
@@ -1468,7 +1468,7 @@
     "lesson": "u7l3",
     "unit": "07 Kubelet, CRI & Pods",
     "type": "cloze",
-    "front": "{{c1::Running}} means the process is alive. {{c2::Ready}} means the application accepts traffic.",
+    "front": "{{c1::Running}} is a Pod phase, not proof of health. {{c2::Ready}} means configured checks and readiness gates pass.",
     "back": "Phase is not health — this single confusion is behind most \"the Pod is up but nothing works\" tickets.",
     "extra": "<a href='https://www.youtube.com/watch?v=PLCt3lSoXOw&t=423s'>▶ Running does not mean ready</a>",
     "tags": [
@@ -1483,7 +1483,7 @@
     "unit": "07 Kubelet, CRI & Pods",
     "type": "name_to_definition",
     "front": "A Pod is Running but receives no traffic. What do you inspect, in order?",
-    "back": "Container readiness and the readiness probe result → EndpointSlice membership for the Service → the Service's selector and port definitions. Do <i>not</i> keep staring at the phase field: it says Running, and that is exactly what misled you.",
+    "back": "Service selector matches Pod labels → EndpointSlice contains the Pod IP with <code>ready:true</code> → targetPort reaches the listening process. Do not keep staring at phase: Running is not proof of health or traffic eligibility.",
     "tags": [
       "07-kubelet-cri-pods",
       "understanding"
@@ -1507,7 +1507,7 @@
     "unit": "07 Kubelet, CRI & Pods",
     "type": "name_to_definition",
     "front": "What happens between \"delete this Pod\" and the process being gone?",
-    "back": "A grace period starts. The PreStop hook runs and TERM is delivered. Endpoint removal proceeds at the same time, through the EndpointSlice controller and each node's data plane. After the grace period the container is force-killed.<br>The steps are concurrent, not a transaction. That is why a Pod can still receive connections after it starts shutting down, and why PreStop sleeps exist.",
+    "back": "Deletion sets a timestamp and starts the grace period. EndpointSlice termination and local shutdown overlap. PreStop runs before the runtime sends the configured stop signal, which is not necessarily TERM. A delay can reduce but not close the race; at expiry the runtime force-kills what remains.",
     "extra": "<a href='https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/'>📖 Container lifecycle hooks</a>",
     "tags": [
       "07-kubelet-cri-pods",
@@ -1533,7 +1533,7 @@
     "unit": "08 Networking & the data plane",
     "type": "name_to_api",
     "front": "How do you remove VIP proxying from a Service so DNS returns the endpoint addresses and the client chooses?",
-    "back": "<code>clusterIP: None</code> — a headless Service. It hands the client the list and steps out of the path, which is what per-Pod StatefulSet DNS relies on. It also gives you no load balancing at all.",
+    "back": "<code>clusterIP: None</code> removes the Service virtual IP and kube-proxy handling. DNS returns endpoint records, so selection and any load balancing depend on the client or resolver. StatefulSet per-Pod DNS relies on this shape.",
     "tags": [
       "08-networking-the-data-plane",
       "recall",
@@ -1547,7 +1547,7 @@
     "type": "plain_phrase_to_name",
     "answer": "EndpointSlice",
     "front": "\"The object listing which backend addresses are currently ready to receive a Service's traffic.\"",
-    "back": "An <b>EndpointSlice</b>. Readiness changes its membership, and every node data plane reads it — that is the whole mechanism behind readiness controlling traffic.",
+    "back": "An <b>EndpointSlice</b>. For selector Services, label matching controls membership; readiness normally changes the endpoint's <code>ready</code> condition without removing its address. Node data planes consume that state when selecting backends.",
     "tags": [
       "08-networking-the-data-plane",
       "recall"
@@ -1586,7 +1586,7 @@
     "unit": "08 Networking & the data plane",
     "type": "name_to_definition",
     "front": "What puts a Pod's IP into a Service's EndpointSlice?",
-    "back": "The Pod becoming <b>ready</b>, observed by the EndpointSlice controller. This is the mechanical reason a readiness probe controls traffic — it changes EndpointSlice membership, which is what every data plane reads.",
+    "back": "For a selector Service, <b>label matching</b> controls EndpointSlice membership. Readiness normally changes the endpoint condition; an unready address remains in the slice with <code>ready:false</code>.",
     "extra": "<a href='https://kubernetes.io/docs/concepts/services-networking/service/'>📖 Services and EndpointSlices</a><a href='https://www.youtube.com/watch?v=gjk82Y2vyro&t=1080s'>▶ What kube-proxy is responsible for</a>",
     "tags": [
       "08-networking-the-data-plane",
@@ -1625,7 +1625,7 @@
     "unit": "08 Networking & the data plane",
     "type": "discrimination",
     "front": "Does an eBPF data plane like Cilium \"remove conntrack\"?",
-    "back": "No. It can bypass <i>netfilter's</i> conntrack path while maintaining connection state in <b>eBPF maps</b>. Separate the implementation from the requirement: stateful flow tracking is still needed, the state just lives somewhere else.",
+    "back": "No universal answer. Stateful flow tracking is still needed, but where it lives is implementation- and mode-dependent. Some eBPF data planes replace netfilter conntrack with BPF maps for selected paths; others retain kernel conntrack for some traffic.",
     "extra": "<a href='https://docs.cilium.io/en/stable/network/kubernetes/kubeproxy-free/'>📖 Cilium kube-proxy replacement</a><a href='https://www.youtube.com/watch?v=bIRwSIwNHC0&t=1110s'>▶ eBPF still creates connection-tracking entries</a>",
     "tags": [
       "08-networking-the-data-plane",
@@ -1653,7 +1653,7 @@
     "type": "plain_phrase_to_name",
     "answer": "connection tracking",
     "front": "\"The state a node must keep so reply packets of an established flow go back to the same backend.\"",
-    "back": "<b>Connection tracking</b> (conntrack). Every Service data plane needs it — netfilter and eBPF just store it in different places.",
+    "back": "<b>Connection tracking</b>. A stateful Service data plane needs equivalent flow state so return traffic stays consistent; the storage and lookup mechanism depends on the implementation and mode.",
     "tags": [
       "08-networking-the-data-plane",
       "recall"
@@ -1666,7 +1666,7 @@
     "type": "plain_phrase_to_name",
     "answer": "eBPF",
     "front": "\"The kernel technology that lets a data plane run Service translation at the socket layer and keep connection state in its own maps.\"",
-    "back": "<b>eBPF</b>. It bypasses netfilter's conntrack path — it does not remove the need for connection tracking.",
+    "back": "<b>eBPF</b>. It can implement Service translation and flow state in BPF programs and maps. Whether it bypasses netfilter conntrack depends on the product, traffic path and mode.",
     "tags": [
       "08-networking-the-data-plane",
       "recall"
@@ -1678,7 +1678,7 @@
     "unit": "08 Networking & the data plane",
     "type": "name_to_definition",
     "front": "Where can an eBPF data plane translate a Service address with the least overhead, and why there?",
-    "back": "At the <b>socket layer</b>, before packets are ever built. There is no per-packet rewrite on that path at all. It is also transparent to the application, which never learns the address changed.",
+    "back": "Some eBPF data planes can translate at the <b>socket layer</b>, before packets are built, avoiding per-packet rewriting on that path. This is an implementation capability, not a guarantee of every eBPF data plane or traffic path.",
     "extra": "<a href='https://www.youtube.com/watch?v=bIRwSIwNHC0&t=1350s'>▶ Socket-level Service translation with eBPF</a>",
     "tags": [
       "08-networking-the-data-plane",
@@ -1718,7 +1718,7 @@
     "unit": "08 Networking & the data plane",
     "type": "name_to_definition",
     "front": "A Pod is stuck in ContainerCreating with a network setup error. Where do you look?",
-    "back": "<ul><li>Container runtime logs — it is the process that execs the plugin</li><li>CNI config and plugin binaries present on that node</li><li>IPAM exhaustion for the node's allocatable range</li></ul>Not EndpointSlices: nothing has an address yet, so no endpoint could exist. The failure is below the Service layer entirely.",
+    "back": "<ul><li>Pod events and kubelet logs for the failed sandbox request</li><li>Runtime logs for deeper plugin detail</li><li>Node-local network configuration and plugin binaries</li><li>Address-allocation capacity</li></ul>The failure is below the Service layer.",
     "tags": [
       "08-networking-the-data-plane",
       "understanding"
@@ -1730,7 +1730,7 @@
     "unit": "08 Networking & the data plane",
     "type": "name_to_definition",
     "front": "Where does a Pod's IP address actually come from?",
-    "back": "The main plugin <b>delegates to an IPAM plugin</b> — host-local, dhcp, static. That plugin receives the full config and returns the IP, gateway and routes for the main plugin to apply. If IPAM fails during ADD, the caller must issue a DEL to roll back, so a half-allocated address is not stranded.",
+    "back": "A network plugin <b>can delegate to IPAM</b>. A delegated plugin receives the full configuration and can return addresses, gateways, routes and DNS. Delegation is optional; other implementations allocate through their own node agent or internal mechanism.",
     "extra": "<a href='https://www.cni.dev/docs/spec/'>📖 CNI specification</a>",
     "tags": [
       "08-networking-the-data-plane",
@@ -1757,7 +1757,7 @@
     "unit": "08 Networking & the data plane",
     "type": "name_to_definition",
     "front": "Trace how a Pod gets its IP address, end to end.",
-    "back": "Kubelet asks the runtime for a sandbox over CRI. The runtime creates the network namespace and reads CNI config from disk. It then execs the plugin chain with <code>CNI_COMMAND=ADD</code> and the config on stdin. The main plugin delegates allocation to IPAM. The interface is wired and the IP, routes and DNS applied. One JSON result returns to the runtime. Only then does the kubelet pull images and start containers.",
+    "back": "Kubelet requests a sandbox over CRI. CRI does not mandate CNI, but common runtimes load network configuration and invoke a plugin chain against the sandbox namespace. For ADD, the operation is in the environment and config is on stdin. Allocation may use delegated IPAM or another agent. Application containers start after required networking and storage are ready.",
     "extra": "<a href='https://www.youtube.com/watch?v=zChkx-AB5Xc&t=1035s'>▶ The result the chain returns</a>",
     "tags": [
       "08-networking-the-data-plane",
@@ -1770,7 +1770,7 @@
     "unit": "08 Networking & the data plane",
     "type": "discrimination",
     "front": "Kubelet vs container runtime — which one invokes the CNI plugin?",
-    "back": "The <b>container runtime</b>. The kubelet asks it for a Pod sandbox over CRI; the runtime creates the namespace and then execs the plugin chain against it.<br>Practical consequence: a CNI failure shows up in <i>runtime</i> logs, not kubelet logs.",
+    "back": "In common CRI implementations, the <b>runtime's CRI integration</b> handles Pod sandbox networking and invokes the configured plugin chain. CRI itself does not mandate CNI.<br>Practical consequence: start with Pod events and kubelet logs, then inspect runtime and network-plugin logs for the implementation-specific detail.",
     "extra": "<a href='https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/'>📖 Network plugins</a><a href='https://www.youtube.com/watch?v=YWXucnygGmY&t=528s'>▶ The runtime calls out to its plugin</a>",
     "tags": [
       "08-networking-the-data-plane",
@@ -2492,99 +2492,508 @@
     ]
   },
   {
-    "id": "u13l1::kubeadm-handoff", "lesson": "u13l1", "unit": "13 Cluster bootstrap & lifecycle",
-    "type": "name_to_definition", "front": "Explain the durable handoff performed by kubeadm during control-plane bootstrap.",
+    "id": "u13l1::kubeadm-handoff",
+    "lesson": "u13l1",
+    "unit": "13 Cluster bootstrap & lifecycle",
+    "type": "name_to_definition",
+    "front": "Explain the durable handoff performed by kubeadm during control-plane bootstrap.",
     "back": "kubeadm creates PKI, kubeconfigs and static Pod manifests, then exits. Kubelet watches those manifests and asks the runtime to start the control plane; API bootstrap objects and tokens then support node joins.",
-    "tags": ["13-cluster-bootstrap-lifecycle", "understanding"]
+    "tags": [
+      "13-cluster-bootstrap-lifecycle",
+      "understanding"
+    ]
   },
   {
-    "id": "u13l2::safe-upgrade", "lesson": "u13l2", "unit": "13 Cluster bootstrap & lifecycle",
-    "type": "name_to_definition", "front": "What distinguishes a safe Kubernetes upgrade from a command that merely exits successfully?",
+    "id": "u13l2::safe-upgrade",
+    "lesson": "u13l2",
+    "unit": "13 Cluster bootstrap & lifecycle",
+    "type": "name_to_definition",
+    "front": "What distinguishes a safe Kubernetes upgrade from a command that merely exits successfully?",
     "back": "Supported version skew, verified etcd and API health, one failure domain at a time, deliberate drain and node verification, preserved PKI/configuration, and a tested recovery path.",
-    "tags": ["13-cluster-bootstrap-lifecycle", "understanding"]
+    "tags": [
+      "13-cluster-bootstrap-lifecycle",
+      "understanding"
+    ]
   },
   {
-    "id": "u14l1::config-delivery", "lesson": "u14l1", "unit": "14 Configuration, QoS & eviction",
-    "type": "name_to_definition", "front": "A ConfigMap or Secret changed. Why might a running process still use the old value?",
+    "id": "u14l1::config-delivery",
+    "lesson": "u14l1",
+    "unit": "14 Configuration, QoS & eviction",
+    "type": "name_to_definition",
+    "front": "A ConfigMap or Secret changed. Why might a running process still use the old value?",
     "back": "Environment values are fixed at process start. Projected files refresh eventually, but the process may cache or never reread them. A Deployment only rolls when its Pod template changes.",
-    "tags": ["14-configuration-qos-eviction", "understanding"]
+    "tags": [
+      "14-configuration-qos-eviction",
+      "understanding"
+    ]
   },
   {
-    "id": "u14l2::eviction-vs-oom", "lesson": "u14l2", "unit": "14 Configuration, QoS & eviction",
-    "type": "discrimination", "front": "Discriminate kubelet node-pressure eviction from a kernel OOM kill.",
+    "id": "u14l2::eviction-vs-oom",
+    "lesson": "u14l2",
+    "unit": "14 Configuration, QoS & eviction",
+    "type": "discrimination",
+    "front": "Discriminate kubelet node-pressure eviction from a kernel OOM kill.",
     "back": "Kubelet proactively fails an entire Pod from pressure signals. The kernel OOM killer selects a process/container after memory exhaustion; kubelet may restart that container according to restartPolicy.",
-    "tags": ["14-configuration-qos-eviction", "understanding", "discrimination"]
+    "tags": [
+      "14-configuration-qos-eviction",
+      "understanding",
+      "discrimination"
+    ]
   },
   {
-    "id": "u15l1::route-data-plane", "lesson": "u15l1", "unit": "15 Ingress, Gateway API & policy",
-    "type": "name_to_definition", "front": "Why does a valid Ingress or HTTPRoute not prove external traffic will work?",
+    "id": "u15l1::route-data-plane",
+    "lesson": "u15l1",
+    "unit": "15 Ingress, Gateway API & policy",
+    "type": "name_to_definition",
+    "front": "Why does a valid Ingress or HTTPRoute not prove external traffic will work?",
     "back": "The object only states intent. A compatible controller must accept it and program a listener/data plane; the route, Service, EndpointSlice, policy and application listener must all work independently.",
-    "tags": ["15-ingress-gateway-api-policy", "understanding"]
+    "tags": [
+      "15-ingress-gateway-api-policy",
+      "understanding"
+    ]
   },
   {
-    "id": "u15l2::service-diagnosis", "lesson": "u15l2", "unit": "15 Ingress, Gateway API & policy",
-    "type": "name_to_definition", "front": "Give the shortest high-signal Service troubleshooting sequence.",
+    "id": "u15l2::service-diagnosis",
+    "lesson": "u15l2",
+    "unit": "15 Ingress, Gateway API & policy",
+    "type": "name_to_definition",
+    "front": "Give the shortest high-signal Service troubleshooting sequence.",
     "back": "Resolve and inspect the Service, inspect EndpointSlices, test the target port on a Pod IP, inspect Service data-plane programming, then evaluate NetworkPolicy and the application listener.",
-    "tags": ["15-ingress-gateway-api-policy", "understanding"]
+    "tags": [
+      "15-ingress-gateway-api-policy",
+      "understanding"
+    ]
   },
   {
-    "id": "u16l1::topology-protocol", "lesson": "u16l1", "unit": "16 NUMA-aware node resources",
-    "type": "name_to_definition", "front": "Explain the Topology Manager hint protocol.",
+    "id": "u16l1::topology-protocol",
+    "lesson": "u16l1",
+    "unit": "16 NUMA-aware node resources",
+    "type": "name_to_definition",
+    "front": "Explain the Topology Manager hint protocol.",
     "back": "CPU, memory and device managers emit NUMA affinity hints. Topology Manager merges them under its policy, then the managers enact the chosen affinity or strict node admission rejects the Pod.",
-    "tags": ["16-numa-aware-node-resources", "understanding"]
+    "tags": [
+      "16-numa-aware-node-resources",
+      "understanding"
+    ]
   },
   {
-    "id": "u16l2::qos-not-isolation", "lesson": "u16l2", "unit": "16 NUMA-aware node resources",
-    "type": "discrimination", "front": "Why is Guaranteed QoS not the same as isolated low-latency execution?",
+    "id": "u16l2::qos-not-isolation",
+    "lesson": "u16l2",
+    "unit": "16 NUMA-aware node resources",
+    "type": "discrimination",
+    "front": "Why is Guaranteed QoS not the same as isolated low-latency execution?",
     "back": "Guaranteed QoS classifies requests and limits. Isolation additionally depends on CPU Manager cpusets, CFS throttling, NUMA locality, topology policy, reserved CPUs, IRQ placement and system-daemon interference.",
-    "tags": ["16-numa-aware-node-resources", "understanding", "discrimination"]
+    "tags": [
+      "16-numa-aware-node-resources",
+      "understanding",
+      "discrimination"
+    ]
   },
   {
-    "id": "u17l1::device-plugin-vs-dra", "lesson": "u17l1", "unit": "17 Devices & Dynamic Resource Allocation",
-    "type": "discrimination", "front": "Device plugin versus Dynamic Resource Allocation: what is the architectural discriminator?",
+    "id": "u17l1::device-plugin-vs-dra",
+    "lesson": "u17l1",
+    "unit": "17 Devices & Dynamic Resource Allocation",
+    "type": "discrimination",
+    "front": "Device plugin versus Dynamic Resource Allocation: what is the architectural discriminator?",
     "back": "Device plugins advertise scalar extended resources through kubelet. DRA publishes structured device inventory as ResourceSlices and uses DeviceClasses and ResourceClaims for filtering, sharing and lifecycle.",
-    "tags": ["17-devices-dynamic-resource-allocation", "understanding", "discrimination"]
+    "tags": [
+      "17-devices-dynamic-resource-allocation",
+      "understanding",
+      "discrimination"
+    ]
   },
   {
-    "id": "u17l2::pending-dra", "lesson": "u17l2", "unit": "17 Devices & Dynamic Resource Allocation",
-    "type": "name_to_definition", "front": "A DRA-backed Pod is Pending. Which state separates the likely owners?",
+    "id": "u17l2::pending-dra",
+    "lesson": "u17l2",
+    "unit": "17 Devices & Dynamic Resource Allocation",
+    "type": "name_to_definition",
+    "front": "A DRA-backed Pod is Pending. Which state separates the likely owners?",
     "back": "Inspect ResourceClaim allocation and events, DeviceClass selectors, ResourceSlice inventory and reachable nodes, then scheduler allocation and DRA driver readiness/preparation evidence.",
-    "tags": ["17-devices-dynamic-resource-allocation", "understanding"]
+    "tags": [
+      "17-devices-dynamic-resource-allocation",
+      "understanding"
+    ]
   },
   {
-    "id": "u18l1::aggregation-cost", "lesson": "u18l1", "unit": "18 Advanced API machinery & policy",
-    "type": "name_to_definition", "front": "When is an aggregated API server worth its availability and operational cost?",
+    "id": "u18l1::aggregation-cost",
+    "lesson": "u18l1",
+    "unit": "18 Advanced API machinery & policy",
+    "type": "name_to_definition",
+    "front": "When is an aggregated API server worth its availability and operational cost?",
     "back": "When the API needs custom storage, arbitrary serving behavior or non-CRUD subresources that generic CRD serving cannot provide. APIService adds Service, TLS, discovery and latency dependencies.",
-    "tags": ["18-advanced-api-machinery-policy", "understanding"]
+    "tags": [
+      "18-advanced-api-machinery-policy",
+      "understanding"
+    ]
   },
   {
-    "id": "u18l2::token-vs-subject-review", "lesson": "u18l2", "unit": "18 Advanced API machinery & policy",
-    "type": "discrimination", "front": "Discriminate TokenReview from SubjectAccessReview.",
+    "id": "u18l2::token-vs-subject-review",
+    "lesson": "u18l2",
+    "unit": "18 Advanced API machinery & policy",
+    "type": "discrimination",
+    "front": "Discriminate TokenReview from SubjectAccessReview.",
     "back": "TokenReview asks authenticators to resolve bearer-token evidence into identity. SubjectAccessReview asks authorizers whether an explicit identity may perform an attributed action.",
-    "tags": ["18-advanced-api-machinery-policy", "understanding", "discrimination"]
+    "tags": [
+      "18-advanced-api-machinery-policy",
+      "understanding",
+      "discrimination"
+    ]
   },
   {
-    "id": "u19l1::leader-election-limit", "lesson": "u19l1", "unit": "19 Coordination & deferred commitment",
-    "type": "name_to_definition", "front": "What can Lease-backed leader election guarantee, and what remains the controller's responsibility?",
+    "id": "u19l1::leader-election-limit",
+    "lesson": "u19l1",
+    "unit": "19 Coordination & deferred commitment",
+    "type": "name_to_definition",
+    "front": "What can Lease-backed leader election guarantee, and what remains the controller's responsibility?",
     "back": "It provides one current API-visible holder and failover after renewal expiry. It cannot make external side effects exactly once; idempotency and sometimes fencing remain necessary.",
-    "tags": ["19-coordination-deferred-commitment", "understanding"]
+    "tags": [
+      "19-coordination-deferred-commitment",
+      "understanding"
+    ]
   },
   {
-    "id": "u19l2::four-gates", "lesson": "u19l2", "unit": "19 Coordination & deferred commitment",
-    "type": "discrimination", "front": "Which transitions do scheduling gates, readiness gates, finalizers and Leases each delay?",
+    "id": "u19l2::four-gates",
+    "lesson": "u19l2",
+    "unit": "19 Coordination & deferred commitment",
+    "type": "discrimination",
+    "front": "Which transitions do scheduling gates, readiness gates, finalizers and Leases each delay?",
     "back": "Scheduling gates delay placement; readiness gates delay Ready and endpoint participation; finalizers delay physical API deletion; Leases delay competing ownership or leadership.",
-    "tags": ["19-coordination-deferred-commitment", "understanding", "discrimination"]
+    "tags": [
+      "19-coordination-deferred-commitment",
+      "understanding",
+      "discrimination"
+    ]
   },
   {
-    "id": "u20l1::not-ready-path", "lesson": "u20l1", "unit": "20 CKA troubleshooting spine",
-    "type": "name_to_definition", "front": "Give a compact NotReady-node diagnostic path.",
+    "id": "u20l1::not-ready-path",
+    "lesson": "u20l1",
+    "unit": "20 CKA troubleshooting spine",
+    "type": "name_to_definition",
+    "front": "Give a compact NotReady-node diagnostic path.",
     "back": "Read Node conditions, taints and Lease; check host reachability and time; inspect kubelet configuration/certificates; verify CRI/runtime health; then inspect CNI initialization and routes. Preserve evidence before restart.",
-    "tags": ["20-cka-troubleshooting-spine", "understanding"]
+    "tags": [
+      "20-cka-troubleshooting-spine",
+      "understanding"
+    ]
   },
   {
-    "id": "u20l2::troubleshooting-algorithm", "lesson": "u20l2", "unit": "20 CKA troubleshooting spine",
-    "type": "name_to_definition", "front": "State the reusable troubleshooting algorithm for a Kubernetes failure.",
+    "id": "u20l2::troubleshooting-algorithm",
+    "lesson": "u20l2",
+    "unit": "20 CKA troubleshooting spine",
+    "type": "name_to_definition",
+    "front": "State the reusable troubleshooting algorithm for a Kubernetes failure.",
     "back": "Name the missing transition and its owner, inspect status/events/logs at that boundary, compare an adjacent healthy layer, make one evidence-backed change, and verify convergence.",
-    "tags": ["20-cka-troubleshooting-spine", "understanding"]
+    "tags": [
+      "20-cka-troubleshooting-spine",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u7l1::node-setup-not-a-sequence",
+    "lesson": "u7l1",
+    "unit": "07 Kubelet, CRI & Pods",
+    "type": "discrimination",
+    "front": "Is node setup for a bound Pod one fixed sequence of steps?",
+    "back": "<b>No.</b> Kubernetes does not define a total order. Volume work runs alongside other setup.<br>What is guaranteed: the sandbox network and the required volumes must both be ready before containers start. Init containers then run to completion, in order. Application containers start after them.",
+    "tags": [
+      "07-kubelet-cri-pods",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u7l2::which-log-per-boundary",
+    "lesson": "u7l2",
+    "unit": "07 Kubelet, CRI & Pods",
+    "type": "discrimination",
+    "front": "CRI, OCI, CNI, CSI — where does each boundary's failure actually appear?",
+    "back": "<b>Pod events and kubelet logs</b> show CRI and CSI call failures.<br><b>Runtime logs</b> usually hold sandbox, CNI and OCI detail.<br><b>CSI node-plugin logs</b> hold storage detail.<br>OCI is a specification, not a component — it has no log of its own.",
+    "tags": [
+      "07-kubelet-cri-pods",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u7l3::running-phase-precisely",
+    "lesson": "u7l3",
+    "unit": "07 Kubelet, CRI & Pods",
+    "type": "name_to_definition",
+    "front": "What does the Pod phase <code>Running</code> actually assert?",
+    "back": "The Pod is bound to a node, all containers have been created, and <b>at least one</b> is running, starting or restarting.<br>It does <b>not</b> prove your application is healthy, or that any particular process is alive.",
+    "tags": [
+      "07-kubelet-cri-pods",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u7l3::startup-probe-scope",
+    "lesson": "u7l3",
+    "unit": "07 Kubelet, CRI & Pods",
+    "type": "discrimination",
+    "front": "What exactly does a startup probe gate?",
+    "back": "The <b>liveness and readiness probes of the same container</b> — nothing else.<br>The container keeps running throughout. Other containers are unaffected. Probe results take effect only after the configured failure threshold.",
+    "tags": [
+      "07-kubelet-cri-pods",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u7l3::readiness-does-not-remove",
+    "lesson": "u7l3",
+    "unit": "07 Kubelet, CRI & Pods",
+    "type": "discrimination",
+    "front": "A readiness probe fails. What happens to the Pod's address in the EndpointSlice?",
+    "back": "<b>It stays in the slice.</b> The endpoint's <code>ready</code> condition flips to false.<br>Service data planes normally avoid an endpoint that is not ready, but the address is not removed. <code>publishNotReadyAddresses</code> changes even that behaviour.",
+    "tags": [
+      "07-kubelet-cri-pods",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u7l3::stop-signal-is-configured",
+    "lesson": "u7l3",
+    "unit": "07 Kubelet, CRI & Pods",
+    "type": "discrimination",
+    "front": "During termination, is SIGTERM always the signal your container receives?",
+    "back": "<b>No.</b> The runtime sends the <b>configured stop signal</b>, which an image can set via <code>STOPSIGNAL</code>.<br>A PreStop hook runs before it. Endpoint removal propagates concurrently, so a bounded delay narrows the race but cannot prove propagation — the application still has to drain.",
+    "tags": [
+      "07-kubelet-cri-pods",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u7l3::lease-does-not-expire-itself",
+    "lesson": "u7l3",
+    "unit": "07 Kubelet, CRI & Pods",
+    "type": "cloze",
+    "front": "The kubelet stops updating Node status and Lease {{c1::renewTime}}; after the monitoring grace period the node controller marks Ready as {{c2::Unknown}} and adds the unreachable taint.",
+    "back": "The Lease object does not expire itself — the kubelet simply stops renewing it. Eviction afterwards follows taint tolerations and controller policy, so the stored Pod phase can read Running long after the node is gone.",
+    "tags": [
+      "07-kubelet-cri-pods",
+      "recall",
+      "cloze"
+    ]
+  },
+  {
+    "id": "u8l1::what-puts-address-in-slice",
+    "lesson": "u8l1",
+    "unit": "08 Networking & the data plane",
+    "type": "discrimination",
+    "front": "For a selector Service, what puts a Pod's address into an EndpointSlice?",
+    "back": "<b>Label matching.</b> The EndpointSlice controller records endpoints whose labels the Service selector matches.<br>Readiness does something different: it sets that endpoint's <code>ready</code> condition. Membership and readiness are separate.",
+    "tags": [
+      "08-networking-the-data-plane",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u8l1::headless-load-balancing",
+    "lesson": "u8l1",
+    "unit": "08 Networking & the data plane",
+    "type": "discrimination",
+    "front": "With <code>clusterIP: None</code>, who decides which backend receives the connection?",
+    "back": "<b>The client or its resolver.</b> Kubernetes removes the virtual IP and kube-proxy does not handle the Service, so DNS returns endpoint records and selection happens client-side.<br>Balancing therefore depends entirely on client behaviour. StatefulSet per-Pod DNS is built on this.",
+    "tags": [
+      "08-networking-the-data-plane",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u8l1::policy-needs-both-sides",
+    "lesson": "u8l1",
+    "unit": "08 Networking & the data plane",
+    "type": "discrimination",
+    "front": "An ingress NetworkPolicy permits traffic from namespace A. Is the connection allowed?",
+    "back": "<b>Not necessarily.</b> A matching ingress rule permits the flow at the <b>destination</b> only. Any isolating <b>egress</b> policy at the source must also permit it — policies combine additively.<br>And a policy creates no route. If the network implementation does not enforce NetworkPolicy, the API stores the object with no enforcement status at all.",
+    "tags": [
+      "08-networking-the-data-plane",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u8l2::ipvs-deprecated",
+    "lesson": "u8l2",
+    "unit": "08 Networking & the data plane",
+    "type": "cloze",
+    "front": "Kubernetes {{c1::1.35}} deprecated kube-proxy's IPVS mode; {{c2::nftables}} is the recommended Linux replacement.",
+    "back": "IPVS remains available in 1.36 and warns at startup. Compare data planes on lookup cost, update cost under churn, locality, kernel support and Service semantics — not on a single O(1) versus O(N) slogan.",
+    "tags": [
+      "08-networking-the-data-plane",
+      "recall",
+      "cloze"
+    ]
+  },
+  {
+    "id": "u8l2::ebpf-conntrack-varies",
+    "lesson": "u8l2",
+    "unit": "08 Networking & the data plane",
+    "type": "discrimination",
+    "front": "Does an eBPF data plane remove connection tracking?",
+    "back": "<b>The requirement never goes away</b> — something must still remember which connection a returning packet belongs to.<br>Where that state lives is implementation-dependent. Some products replace netfilter conntrack with BPF maps; others keep kernel conntrack for certain traffic or modes. Check the product and the mode.",
+    "tags": [
+      "08-networking-the-data-plane",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u8l3::ipam-delegation-optional",
+    "lesson": "u8l3",
+    "unit": "08 Networking & the data plane",
+    "type": "discrimination",
+    "front": "Must a CNI plugin delegate address allocation to an IPAM plugin?",
+    "back": "<b>No — delegation is optional.</b> A plugin may delegate, and the delegated plugin receives the full configuration and can return addresses, gateways, routes and DNS.<br>Other implementations allocate through their own node agent instead.",
+    "tags": [
+      "08-networking-the-data-plane",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u9l1::ndots-four-dots",
+    "lesson": "u9l1",
+    "unit": "09 DNS & CoreDNS",
+    "type": "discrimination",
+    "front": "With the default <code>ndots:5</code>, is <code>payments.prod.svc.cluster.local</code> queried as-is first?",
+    "back": "<b>No.</b> It contains four dots, and ndots five means a name needs at least five before it is tried absolute first. The search list runs first, then the absolute form.<br>Only a <b>trailing dot</b> marks a name fully qualified and skips search entirely.",
+    "tags": [
+      "09-dns-coredns",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u9l2::coredns-layer-checks",
+    "lesson": "u9l2",
+    "unit": "09 DNS & CoreDNS",
+    "type": "name_to_definition",
+    "front": "Four checks that split a cluster DNS problem into its layer",
+    "back": "<ol><li>Read the Pod's <code>/etc/resolv.conf</code> — client policy.</li><li><code>dig</code> against the kube-dns Service — Service routing.</li><li><code>dig</code> against a CoreDNS Pod IP — is CoreDNS answering at all.</li><li>Read the <code>coredns</code> ConfigMap and CoreDNS logs — configuration and stale watches.</li></ol>",
+    "tags": [
+      "09-dns-coredns",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u10l2::who-creates-volumeattachment",
+    "lesson": "u10l2",
+    "unit": "10 Storage & CSI",
+    "type": "discrimination",
+    "front": "Which component creates the VolumeAttachment object?",
+    "back": "The <b>attach-detach controller</b> creates it. The <b>external-attacher</b> watches that object and calls <code>ControllerPublishVolume</code>.<br>The attacher does not create the object it reacts to — a common inversion.",
+    "tags": [
+      "10-storage-csi",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u10l2::stage-is-optional",
+    "lesson": "u10l2",
+    "unit": "10 Storage & CSI",
+    "type": "discrimination",
+    "front": "Does <code>NodeStageVolume</code> always run before <code>NodePublishVolume</code>?",
+    "back": "<b>Only if the driver advertises <code>STAGE_UNSTAGE_VOLUME</code>.</b> Without it the kubelet goes straight to publish.<br>When it does run, stage is once per <b>volume per node</b> — not once per node overall. Publish is per Pod target path.",
+    "tags": [
+      "10-storage-csi",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u10l2::wffc-not-a-standoff",
+    "lesson": "u10l2",
+    "unit": "10 Storage & CSI",
+    "type": "discrimination",
+    "front": "Under WaitForFirstConsumer, do the scheduler and provisioner wait on each other?",
+    "back": "<b>No — it is ordered, not mutual.</b> The scheduler selects a node using the Pod's constraints and the driver's topology signals. Only then does the provisioner create the volume in that topology.<br>If no node satisfies both compute and storage topology, the Pod stays unschedulable.",
+    "tags": [
+      "10-storage-csi",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u10l1::access-modes-reclaim",
+    "lesson": "u10l1",
+    "unit": "10 Storage & CSI",
+    "type": "name_to_definition",
+    "front": "Beyond size and class, what else does the claim/volume contract carry?",
+    "back": "<b>Access mode</b> on the PVC — RWO, ROX, RWX, RWOP — and <b>reclaim policy</b> on the PV, Retain or Delete.<br>Both are part of the contract, not optional detail, and both change what happens to the data when the claim goes away.",
+    "tags": [
+      "10-storage-csi",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u11l2::etcdctl-restore-path",
+    "lesson": "u11l2",
+    "unit": "11 HA, etcd & recovery",
+    "type": "name_to_definition",
+    "front": "The operator path for etcd backup and restore",
+    "back": "<code>etcdctl snapshot save</code> with the endpoint and certs. Verify with <code>snapshot status</code>. Restore with <code>snapshot restore</code> into a <b>new data directory</b>, then point the etcd static Pod at that directory and start it.<br>Never restore over the live directory. On a multi-member cluster restore each member consistently, so Raft membership is rebuilt rather than overwritten.",
+    "tags": [
+      "11-ha-etcd-recovery",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u11l1::apiservers-share-config",
+    "lesson": "u11l1",
+    "unit": "11 HA, etcd & recovery",
+    "type": "discrimination",
+    "front": "API servers are “stateless”. What does that <i>not</i> mean?",
+    "back": "It means they hold no <b>durable cluster state</b>, so they are replaceable behind a load balancer.<br>It does <b>not</b> mean any binary with any flags is interchangeable — they must share the same etcd and compatible configuration: admission, authentication and encryption-at-rest keys.",
+    "tags": [
+      "11-ha-etcd-recovery",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u12l1::flowschema-attributes",
+    "lesson": "u12l1",
+    "unit": "12 Scale, APF & evidence",
+    "type": "cloze",
+    "front": "A FlowSchema classifies requests by attributes such as user, verb, resource, {{c1::API group}} and {{c2::namespace}}; the PriorityLevelConfiguration decides how that bucket is served.",
+    "back": "User, verb and resource are the common case, not the full classifier — matching can also use non-resource URLs, service accounts and groups. Classification and execution policy are deliberately separate objects.",
+    "tags": [
+      "12-scale-apf-evidence",
+      "recall",
+      "cloze"
+    ]
+  },
+  {
+    "id": "u12l2::audit-is-conditional",
+    "lesson": "u12l2",
+    "unit": "12 Scale, APF & evidence",
+    "type": "discrimination",
+    "front": "Who deleted this object, and when? Where does the answer live?",
+    "back": "The <b>audit log</b> — it records API requests and their stages, including identity.<br>But only if auditing was enabled, the policy recorded that request, and the backend still holds the event. If not, the honest answer is that the information no longer exists. Events would not have retained it and may never have recorded it.",
+    "tags": [
+      "12-scale-apf-evidence",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u12l2::failures-span-segments",
+    "lesson": "u12l2",
+    "unit": "12 Scale, APF & evidence",
+    "type": "discrimination",
+    "front": "Does every failure belong to exactly one segment of the diagnostic spine?",
+    "back": "<b>Usually one, but not always.</b> Real failures can span segments — DNS plus the Service data plane, or CSI attach plus kubelet mount.<br>Start at the symptom's home segment. If the evidence disagrees, walk the neighbouring segment rather than forcing the diagnosis to fit.",
+    "tags": [
+      "12-scale-apf-evidence",
+      "understanding",
+      "discrimination"
+    ]
   }
 ]

@@ -13,18 +13,23 @@ import { appear, seg } from '../motion';
  * volume attach) Pod B is already running the top track. The overlap is the
  * point: a slow bind delays one Pod, never the queue.
  */
-const STAGE_W = 300;
-const GAP = 40;
-const TRACK_W = 4 * STAGE_W + 3 * GAP;
-const TOP_STAGES = ['sort', 'pre-filter', 'filter', 'score'];
-const BOTTOM_STAGES = ['reserve', 'permit', 'pre-bind', 'bind'];
+const STAGE_W = 250;
+const GAP = 30;
+const TOP_N = 6;
+const TRACK_W = TOP_N * STAGE_W + (TOP_N - 1) * GAP;
+// Corrected against the scheduling framework. QueueSort orders Pods BEFORE an
+// attempt begins — it is not a stage inside a Pod's scheduling cycle. Reserve
+// and Permit end the SCHEDULING cycle; the binding cycle is PreBind, Bind and
+// PostBind. The previous arrangement had all four on the wrong track.
+const TOP_STAGES = ['pre-filter', 'filter', 'pre-score', 'score', 'reserve', 'permit'];
+const BOTTOM_STAGES = ['pre-bind', 'bind', 'post-bind'];
 
 // Each row carries its own captions. Deriving them from the column index gave
 // the binding row the scheduling row's captions — "bind · pick best", which is
 // not what binding does. Only captions the narration supports are used; permit
 // is left blank rather than invented.
-const TOP_SUBS = ['queue order', 'per-node', 'per-node', 'pick best'];
-const BOTTOM_SUBS = ['hold the claim', '', 'slow work', 'write the name'];
+const TOP_SUBS = ['setup', 'per-node', 'setup', 'pick best', 'hold the claim', 'may delay'];
+const BOTTOM_SUBS = ['slow work', 'write the name', 'after bind'];
 
 const stageLeft = (i: number) => i * (STAGE_W + GAP);
 const stageCenter = (i: number) => stageLeft(i) + STAGE_W / 2;
@@ -46,8 +51,8 @@ function tokenX(hop: Hop, t: number): number | null {
 }
 
 /** Stage a token is currently inside (by its centre), or -1. */
-function activeStage(x: number): number {
-  for (let i = 0; i < 4; i++) {
+function activeStage(x: number, count = TOP_N): number {
+  for (let i = 0; i < count; i++) {
     if (x >= stageLeft(i) && x <= stageLeft(i) + STAGE_W) return i;
   }
   return -1;
@@ -69,7 +74,7 @@ export const TwoCycles: React.FC<VisualProps> = () => {
     { a: 0.15, b: 0.205, x0: stageCenter(0), x1: stageCenter(1) },
     { a: 0.205, b: 0.26, x0: stageCenter(1), x1: stageCenter(2) },
     { a: 0.26, b: 0.315, x0: stageCenter(2), x1: stageCenter(3) },
-    { a: 0.315, b: 0.36, x0: stageCenter(3), x1: TRACK_W + 30 },
+    { a: 0.315, b: 0.36, x0: stageCenter(3), x1: TRACK_W - 10 },
   ];
   // Pod B — starts the scheduling cycle the moment A leaves it.
   const bTop: Hop[] = [
@@ -77,7 +82,7 @@ export const TwoCycles: React.FC<VisualProps> = () => {
     { a: 0.43, b: 0.48, x0: stageCenter(0), x1: stageCenter(1) },
     { a: 0.48, b: 0.53, x0: stageCenter(1), x1: stageCenter(2) },
     { a: 0.53, b: 0.58, x0: stageCenter(2), x1: stageCenter(3) },
-    { a: 0.58, b: 0.63, x0: stageCenter(3), x1: TRACK_W + 30 },
+    { a: 0.58, b: 0.63, x0: stageCenter(3), x1: TRACK_W - 10 },
   ];
   // Pod A — binding cycle, slower; held at pre-bind for a volume attach.
   const aBot: Hop[] = [
@@ -85,7 +90,7 @@ export const TwoCycles: React.FC<VisualProps> = () => {
     { a: 0.42, b: 0.48, x0: stageCenter(0), x1: stageCenter(1) },
     { a: 0.48, b: 0.54, x0: stageCenter(1), x1: stageCenter(2) },
     { a: 0.54, b: 0.7, x0: stageCenter(2), x1: stageCenter(3) },
-    { a: 0.7, b: 0.76, x0: stageCenter(3), x1: TRACK_W + 30 },
+    { a: 0.7, b: 0.76, x0: stageCenter(3), x1: TRACK_W - 10 },
   ];
 
   const aTopX = lastNonNull(aTop.map((h) => tokenX(h, t)), -30);
@@ -95,7 +100,7 @@ export const TwoCycles: React.FC<VisualProps> = () => {
   const aBotX = lastNonNull(aBot.map((h) => tokenX(h, t)), null);
 
   const aTopDone = t > 0.36 && t < 0.42; // in the gap while it drops to the bind track
-  const aBotStage = aBotX !== null ? activeStage(aBotX) : -1;
+  const aBotStage = aBotX !== null ? activeStage(aBotX, BOTTOM_STAGES.length) : -1;
   const aTopStage = aTopX !== null ? activeStage(aTopX) : -1;
 
   // Volume-attach wait: A stalls at pre-bind (stage 2 of the bottom track).

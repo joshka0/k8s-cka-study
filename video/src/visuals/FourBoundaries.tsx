@@ -22,7 +22,7 @@ const BOUNDARIES = [
     acronym: 'CRI',
     tag: 'gRPC · runtime service + image service',
     failure: 'the CRI call fails',
-    log: 'CRI logs',
+    log: 'pod events + kubelet',
   },
   {
     color: PALETTE.amber,
@@ -31,7 +31,7 @@ const BOUNDARIES = [
     acronym: 'OCI',
     tag: 'image + runtime primitives',
     failure: 'OCI primitives fail',
-    log: 'OCI logs',
+    log: 'runtime logs',
   },
   {
     color: PALETTE.violet,
@@ -40,7 +40,7 @@ const BOUNDARIES = [
     acronym: 'CNI',
     tag: 'network attachment',
     failure: 'the attachment fails',
-    log: 'CNI logs',
+    log: 'runtime logs',
   },
   {
     color: PALETTE.good,
@@ -49,7 +49,7 @@ const BOUNDARIES = [
     acronym: 'CSI',
     tag: 'storage',
     failure: 'storage fails',
-    log: 'CSI logs',
+    log: 'CSI node-plugin logs',
   },
 ];
 

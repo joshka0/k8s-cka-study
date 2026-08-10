@@ -37,7 +37,7 @@
       "title": "Observe, compare, act",
       "lane": "control",
       "estSeconds": 52,
-      "narration": "A controller does three things forever. It observes current state. It compares that against declared intent. It takes one idempotent step to close the gap. Then it does it again. There is no state machine and no progress counter. Each pass recomputes the answer from scratch, which is why a controller can be killed mid-work and restarted with no recovery logic.",
+      "narration": "A controller does three things forever. It observes current state. It compares that against declared intent. It takes one idempotent step to close the gap. Then it does it again. A reconciler observes durable state and computes the next safe action. It can use status, conditions, finalizers and external operation IDs as a state machine. Each action must tolerate retry and partial success. After restart, the controller observes that durable state and continues.",
       "visual": {
         "type": "controllerChain",
         "spec": "REUSE the pilot's ControllerChain, but hold on the observe/compare/act cycle rather than the Deployment chain. Kill the controller mid-cycle and restart it; the next pass reaches the same result."
@@ -50,7 +50,7 @@
       "title": "Nobody polls",
       "lane": "control",
       "estSeconds": 62,
-      "narration": "Naively, observing means asking the API server what exists. At a thousand controllers that would flatten it. So client-go gives you an informer. A reflector lists once to get current state and a resource version, then opens a watch for changes. Objects land in a shared cache. Many controllers read that one cache instead of each querying the API. The word shared matters: three controllers watching Deployments share a single watch stream.",
+      "narration": "Naively, observing means asking the API server what exists. At a thousand controllers that would flatten it. So client-go gives you an informer. A reflector establishes initial state and a resource version, then watches later changes. It can use a list followed by a watch. Current clients can also request initial state through a watch stream. Recovery can require another list. Objects land in a shared cache. Many controllers read that one cache instead of each querying the API. One SharedInformer can feed many handlers from one cache and watch. Controllers share it only when they use the same informer instance and collection. Separate processes, selectors and factories use separate streams.",
       "visual": {
         "type": "informerLoop",
         "spec": "NEW. API server on the left. A reflector performs list then watch, feeding a shared cache. Three controller chips all read from that one cache. Then show the naive alternative briefly: three separate polling arrows hammering the API server, visibly heavier."
@@ -63,7 +63,7 @@
       "title": "A key, not the object",
       "lane": "control",
       "estSeconds": 55,
-      "narration": "When something changes, the handler does not hand the object to a worker. It enqueues a key: namespace and name. The worker pops the key and reads current state from the cache. That looks like an extra step. It is the whole trick. A burst of twenty changes to one object collapses into one key in the queue. And the worker always acts on what is true now, never on a stale snapshot that arrived in a message.",
+      "narration": "The informer hands an object event to the handler. A common handler reduces it to a namespace and name key, and enqueues that. The worker pops the key and reads the latest state from its local cache. That looks like an extra step. It is the whole trick. A burst of twenty changes to one object collapses into one key in the queue. The worker acts on cached state rather than on the payload that arrived — though that cache is eventually consistent, not guaranteed current truth.",
       "visual": {
         "type": "workqueue",
         "spec": "NEW. Twenty rapid change events fire at one object. Show payloads piling into a queue in one lane, versus keys collapsing to a single entry in the other. The worker pops the single key and reads the current object from the cache."
@@ -76,7 +76,7 @@
       "title": "Level, not edge",
       "lane": "control",
       "estSeconds": 58,
-      "narration": "This makes reconciliation level-based. A level-based system asks what should be true now. An edge-triggered system reacts to each transition and must therefore see every one of them. No distributed watch can promise that. Connections drop, histories expire, processes restart. Because the reconciler recomputes from current state, a dropped event costs latency and nothing else. The next reconcile produces the same answer it would have produced anyway.",
+      "narration": "This makes reconciliation level-based. A level-based system asks what should be true now. An edge-triggered system reacts to each transition and must therefore see every one of them. No distributed watch can promise that. Connections drop, histories expire, processes restart. Level-based reconciliation makes a later retry safe. A lost enqueue still needs another trigger. A later event, delayed requeue, configured resync or restart can provide it. Without another trigger, the object can stay out of sync.",
       "visual": {
         "type": "levelVsEdge",
         "spec": "NEW. Two timelines. Edge-triggered: a transition is dropped and the state diverges permanently, flagged red. Level-based: the same drop happens, then a resync tick fires and the state converges to the correct value."
@@ -89,7 +89,7 @@
       "title": "When the watch breaks",
       "lane": "control",
       "estSeconds": 46,
-      "narration": "Watches do break. The API server keeps only a bounded history, so a slow or disconnected client can ask for a resource version that no longer exists. The reflector handles it by relisting and resuming from the new version. That is routine, not an incident. It is also the mechanism that makes the previous claim true: correctness never depended on the stream staying up.",
+      "narration": "Watches do break. The API server keeps only a bounded history, so a slow or disconnected client can ask for a resource version that no longer exists. The reflector handles it by relisting and resuming from the new version. That is routine, not an incident. Relisting repairs the cache after a watch can no longer continue. It does not repair an arbitrary lost enqueue. Correctness also needs reliable handler delivery or another explicit reconcile trigger.",
       "visual": {
         "type": "relist",
         "spec": "NEW. A watch stream running, then the connection drops. The client asks to resume from an expired resource version and is refused. The reflector then relists, the cache refills, and the watch resumes from the new version."
@@ -115,7 +115,7 @@
       "title": "Reconciling things outside the cluster",
       "lane": "control",
       "estSeconds": 58,
-      "narration": "The same loop gets harder when the thing you reconcile is not an API object. Your controller creates a cloud load balancer. It must be safe to run twice, because it will be. Use a stable idempotency key derived from the object, so a retry addresses the same external resource. Observe before you create. Persist the provider identity back onto the object as soon as you have it. In-memory success is lost on restart, and the next reconcile then creates a duplicate nobody is tracking.",
+      "narration": "The same loop gets harder when the thing you reconcile is not an API object. Your controller creates a cloud load balancer. It must be safe to run twice, because it will be. Build the provider idempotency key from the object UID and the operation purpose. A recreated object gets a new UID. Use provider-side idempotency so a crash after create cannot duplicate the resource. Persist the provider identity as soon as the API call returns. Observe before you create. Persist the provider identity back onto the object as soon as you have it. In-memory success is lost on restart, and the next reconcile then creates a duplicate nobody is tracking.",
       "visual": {
         "type": "externalState",
         "spec": "NEW. Controller reconciles toward a cloud resource. First the wrong version: create succeeds, the process dies before recording the id, the next reconcile creates a second orphaned resource. Then the right version: idempotency key, observe-then-create, id written back to status."
@@ -128,7 +128,7 @@
       "title": "Why resync exists",
       "lane": "control",
       "estSeconds": 34,
-      "narration": "Informers also resync on a timer, replaying everything in the cache through the handlers even when nothing changed. That looks wasteful. It is a safety net. It catches anything the controller failed to act on the first time. It also catches drift that happened outside the API entirely, such as someone deleting a cloud resource by hand. Correctness does not depend on it, but recovery time does.",
+      "narration": "An informer can also replay its cached objects on a configured resync period. Resync is optional, and it is commonly set to zero. It replays the local cache; it does not relist from the API. It can prompt a reconciler to re-check external state, but only if the reconciler actually performs that check. So treat it as a recovery-time lever. Do not make correctness depend on it.",
       "visual": {
         "type": "resyncTick",
         "spec": "NEW. The informer cache with a periodic resync tick sweeping every object back through the handlers. Show one object that was missed on its original event being picked up by the sweep."
@@ -141,7 +141,7 @@
       "title": "What the queue gives you",
       "lane": "control",
       "estSeconds": 36,
-      "narration": "The workqueue is doing more than holding keys. It deduplicates, so a burst becomes one item. It rate-limits, so a key that keeps failing backs off exponentially instead of spinning. And it tracks what is in flight, so the same key is never processed by two workers at once. Those three properties are why controllers survive a bad day without a queue of their own.",
+      "narration": "The base workqueue deduplicates keys and prevents concurrent processing of one key. A rate-limiting queue can also delay retries. The worker must call AddRateLimited on failure and Forget after success. The configured limiter decides whether backoff is exponential. And it tracks what is in flight, so the same key is never processed by two workers at once. Those three properties are why controllers survive a bad day without a queue of their own.",
       "visual": {
         "type": "queueProperties",
         "spec": "NEW. Three panels over the same queue: dedup collapsing a burst, exponential backoff stretching retries of a failing key, and an in-flight lock preventing two workers taking the same key."
@@ -154,7 +154,7 @@
       "title": "Where you look when it stalls",
       "lane": "control",
       "estSeconds": 38,
-      "narration": "When a controller stops making progress, three signals separate the causes. Workqueue depth tells you whether work is arriving and not draining. Workqueue latency tells you how long items wait before a worker takes them. And the reconcile duration tells you whether the handler itself is slow. Depth climbing with normal latency means too few workers. Depth climbing with high duration means the handler is blocked on something external.",
+      "narration": "When a controller stops making progress, three signals separate the causes. Workqueue depth tells you whether work is arriving and not draining. Workqueue latency tells you how long items wait before a worker takes them. And the reconcile duration tells you whether the handler itself is slow. Rising depth means arrivals exceed completions. Rising queue latency confirms that work is waiting. High reconcile duration points to slow processing, but not its cause. Compare arrival rate, worker concurrency, CPU, API latency, dependency latency and error retries before you decide.",
       "visual": {
         "type": "controllerSignals",
         "spec": "NEW. Three gauges side by side: queue depth, queue latency, reconcile duration. Play two scenarios and show which gauge moves in each — too few workers, versus a blocked handler."

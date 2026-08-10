@@ -37,7 +37,7 @@
       "title": "Five actors",
       "lane": "control",
       "estSeconds": 58,
-      "narration": "Five things do the work. The API server exposes the supported API and applies policy to every request. etcd stores what the API server persists. The controllers decide what objects should exist. The scheduler chooses which node a pod runs on. The kubelet turns an assignment into running containers. Reciting that list is worth doing. The boundaries between them matter more. Almost every question you will be asked is really about which of the five owns a given failure.",
+      "narration": "Five core roles explain this part of the path. The API server exposes the API and enforces request policy. etcd stores API state. Controllers reconcile objects. The scheduler chooses a node. The kubelet drives assigned Pods on one node. Runtime, network, storage and Service data-plane failures have other owners. Reciting that list is worth doing. The boundaries between them matter more. In a kubeadm cluster, check the kube-system Pods and `/etc/kubernetes/manifests`. Read static-Pod container logs. Check kubelet with systemctl and journalctl. Check API readiness and etcd health before you blame a downstream controller.",
       "visual": {
         "type": "componentMap",
         "spec": "NEW. Five chips arranged around a central API server node — not in a row. Each names its one-line ownership beneath it. As each is spoken it lights and draws its connection to the API server. End state: five chips, five connections, all through the middle. No connections between the outer four."
@@ -50,7 +50,7 @@
       "title": "One contract",
       "lane": "control",
       "estSeconds": 62,
-      "narration": "Notice what that shape means. The controllers do not talk to the scheduler. The scheduler does not talk to the kubelet. Nothing talks to etcd except the API server. Every interaction is a read or a write against one HTTP contract. That is what makes a cluster inspectable, because the API you use is the API the components use. kubectl is not privileged. It is just another client. That single boundary is also where seven things get enforced on every write: identity, authorisation, defaulting, schema validation, versioned conversion, audit, and supported watch semantics. A controller that reads etcd directly skips all seven. It also couples itself to a storage layout that is not a public contract. So it breaks on an upgrade that changed nothing about the API.",
+      "narration": "Notice what that shape means. The controllers do not talk to the scheduler. The scheduler does not talk to the kubelet. Nothing talks to etcd except the API server. Core components coordinate desired and observed state through the Kubernetes API. They do not call the next control loop to advance a Pod. Node-local runtime, network and storage work uses separate interfaces. The API server also connects to kubelets for logs, attach and port-forward. That is what makes a cluster inspectable, because the API you use is the API the components use. kubectl is not privileged. It is just another client. The API boundary authenticates and authorizes requests. Write paths can also default, convert, mutate, validate and admit an object before storage. Configured auditing records the request. List and watch semantics are part of the read contract. A controller that reads etcd directly skips all seven. It also couples itself to a storage layout that is not a public contract. So it breaks on an upgrade that changed nothing about the API.",
       "visual": {
         "type": "contractBoundary",
         "spec": "NEW. Start from the componentMap end state. Attempt to draw a direct arrow between two outer components — it is refused, dashed red, struck through. Then a controller draws a dashed red arrow straight to etcd, bypassing the API server; the seven things it skips stack up alongside it as a list, then the arrow is struck through too."
@@ -63,7 +63,7 @@
       "title": "What etcd holds",
       "lane": "control",
       "estSeconds": 48,
-      "narration": "etcd holds API state. Not container images — those live in a registry and on nodes. Not metrics — those come from a metrics pipeline. Not your pod logs — those stay on the node unless something ships them. The distinction matters the moment someone proposes backing up etcd as a disaster recovery plan. A snapshot of etcd captures your declared intent, not your cluster. The other thing to know about etcd here is that its latency is the control plane's latency. Every write waits on consensus across a majority of members. So slow disks under etcd do not show up as an etcd problem. They show up as everything being slow.",
+      "narration": "etcd holds API state. Not container images — those live in a registry and on nodes. Not metrics — those come from a metrics pipeline. Not your pod logs — those stay on the node unless something ships them. The distinction matters the moment someone proposes backing up etcd as a disaster recovery plan. A snapshot of etcd captures your declared intent, not your cluster. Persistent API writes depend on an etcd quorum commit. Slow disks raise etcd WAL and commit latency. That delay then raises API write latency and slows controllers. Cached reads and other request stages have different costs.",
       "visual": {
         "type": "storeContents",
         "spec": "NEW. An etcd cylinder. API objects flow in and settle. Then three things try to enter and bounce off, each redirected to where it actually lives: container images to a registry chip, metrics to a metrics pipeline chip, logs to a node chip. Keep the bounces quick and legible."
@@ -76,7 +76,7 @@
       "title": "Controllers, plural",
       "lane": "control",
       "estSeconds": 52,
-      "narration": "The controller manager is not one controller. It is one binary containing dozens of controllers. Each owns one kind of object: Deployment, ReplicaSet, Job, node, endpoints. They run as independent loops in one process. When someone says the controller did something, ask which one. The failure you are chasing usually belongs to exactly one of them, and they fail independently.",
+      "narration": "The controller manager is not one controller. It is one binary containing dozens of controllers. The controller manager contains many reconciliation loops. Each loop owns a responsibility, not always one kind. A loop can watch and write several resource kinds. Some failures stay local to one loop. Process, leader-election and API failures can stop many loops together.",
       "visual": {
         "type": "controllerFamily",
         "spec": "NEW. One box labelled kube-controller-manager. It unpacks into a grid of named controller chips, each with its own small loop icon spinning at a slightly different rate. Emphasise: one process, many independent loops."
@@ -89,7 +89,7 @@
       "title": "One decision",
       "lane": "control",
       "estSeconds": 44,
-      "narration": "The scheduler's entire job is choosing a node and writing that choice down. It does not create pods — controllers do that. It does not start containers — the kubelet does that. It does not contact the node at all. Its output is a single field, and the moment it is written the scheduler is finished with your pod forever.",
+      "narration": "The scheduler's entire job is choosing a node and writing that choice down. It does not create pods — controllers do that. It does not start containers — the kubelet does that. It does not contact the node at all. For a successful placement, the scheduler binds the Pod to a node. The API records that node in spec.nodeName. Before binding, the scheduler can retry and can nominate a node during preemption. After binding, it does not reschedule that Pod.",
       "visual": {
         "type": "binding",
         "spec": "REUSE the pilot's Binding component unchanged. It already shows the scheduler emitting a binding, nodeName filling in, and the deliberate absence of an arrow to the node."
@@ -102,7 +102,7 @@
       "title": "The node's agent",
       "lane": "node",
       "estSeconds": 50,
-      "narration": "The kubelet owns one node. It watches for pods assigned to that node, drives them toward their declared state, and reports what it observes back to the API. Nothing pushes work to it. Connections generally run from the node inward to the API server, not the other way. That lets nodes sit behind NAT. It also means the control plane cannot simply reach out and ask. The pull model also explains why a node can vanish while the control plane keeps serving the last thing it heard. The kubelet is the only thing reporting on it, and it has stopped reporting. What breaks the tie is the lease — a small object the node renews on a timer. When renewals stop, the node controller infers the node is unreachable and other controllers begin reacting.",
+      "narration": "The kubelet owns one node. It watches for pods assigned to that node, drives them toward their declared state, and reports what it observes back to the API. Nothing pushes work to it. The kubelet watches the API and reports status through outbound requests. The API server also reaches the kubelet for logs, attach and port-forward. Konnectivity can carry that traffic through node-initiated tunnels. Work assignment still comes from the Pod API, not a push call. The pull model also explains why a node can vanish while the control plane keeps serving the last thing it heard. The kubelet is the only thing reporting on it, and it has stopped reporting. What breaks the tie is the lease — a small object the node renews on a timer. When renewals stop, the node controller infers the node is unreachable and other controllers begin reacting.",
       "visual": {
         "type": "handoff",
         "spec": "REUSE the pilot's Handoff component, which already shows the kubelet's watch as a pull. Extend only at the end: the watch line goes dark and the API server's copy of the pod status freezes, greyed, with the last-reported timestamp held."
@@ -115,7 +115,7 @@
       "title": "Four loops, one Deployment",
       "lane": "control",
       "estSeconds": 56,
-      "narration": "Put it together with the question you will actually be asked: who starts a container after a Deployment is created? The Deployment controller creates a ReplicaSet. The ReplicaSet controller creates pods. The scheduler binds each pod to a node. That node's kubelet asks the runtime for a sandbox and containers. Four independent loops, each triggered by an API object the previous one wrote, and none of them aware of the others.",
+      "narration": "Put it together with the question you will actually be asked: who starts a container after a Deployment is created? The Deployment controller creates a ReplicaSet. The ReplicaSet controller creates pods. The scheduler binds each pod to a node. That node's kubelet asks the runtime for a sandbox and containers. No component calls the whole chain. The Deployment controller manages ReplicaSets. The ReplicaSet controller manages Pods. The scheduler binds unassigned Pods. The kubelet acts on Pods assigned to its node. API objects connect the loops.",
       "visual": {
         "type": "controllerChain",
         "spec": "REUSE the pilot's ControllerChain, extended to run all the way to the kubelet: Deployment → ReplicaSet → Pods → binding → kubelet → containers. Each hop shows the object that triggered it. No single arrow spans the whole chain."
@@ -128,7 +128,7 @@
       "title": "What an outage costs",
       "lane": null,
       "estSeconds": 64,
-      "narration": "So what breaks when the control plane goes down? Placement stops — nothing new gets scheduled. Self-healing stops — a crashed pod is not replaced, a failed node is not drained. EndpointSlice updates stop, so a pod that becomes unready keeps receiving traffic, which is the one that actually hurts. Leases stop being renewed, so the cluster loses its ability to tell a dead node from a quiet one. Most day-two operations stop: scaling, rollouts, secrets rotation, anything that is a write. What keeps working is everything already programmed — processes inside running containers, and forwarding rules already written into each node's data plane.",
+      "narration": "So what breaks when the control plane goes down? Placement stops — nothing new gets scheduled. Control-plane healing stops. Controllers cannot create replacement Pods, and the scheduler cannot place them. A live kubelet can still restart failed containers on its node from the Pod state it already has. It cannot move the Pod to another node. EndpointSlice updates stop, so a pod that becomes unready keeps receiving traffic, which is the one that actually hurts. Leases stop being renewed, so the cluster loses its ability to tell a dead node from a quiet one. Most day-two operations stop: scaling, rollouts, secrets rotation, anything that is a write. What keeps working is everything already programmed — processes inside running containers, and forwarding rules already written into each node's data plane.",
       "visual": {
         "type": "outageMatrix",
         "spec": "NEW. Two columns, 'stops' and 'keeps working'. The control-plane lane visibly goes dark, then items sort themselves into the two columns as they are named — placement, self-healing, endpoint updates, leases into the left; running processes and programmed forwarding into the right. Left column red-tinted, right column green-tinted."
@@ -154,7 +154,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 42,
-      "narration": "Segment one of the spine, then: desired object. If a failure lives here, the symptom is that nothing happened at all — no events, no pods, no attempt. Your write was rejected, or it never reached the API. Everything downstream at least leaves a trace. Next module: the five gates that write has to pass, and what it costs to put your own webhook in that path.",
+      "narration": "Segment one of the spine, then: desired object. Start with the API response. A rejected write returns an error. A successful read-back proves the object exists. Downstream failures may leave Events, status conditions or only component logs. Do not require an Event before you inspect the next owner. Next module: the five gates that write has to pass, and what it costs to put your own webhook in that path.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE this module's opening spineLocator, reversed: the enlarged first segment shrinks back into the full spine, then the second segment lights to preview the next module. Hold on the complete spine with the module title card."

@@ -37,10 +37,10 @@
       "title": "Two cycles, not one",
       "lane": "control",
       "estSeconds": 47,
-      "narration": "The scheduler runs two cycles, not one. The scheduling cycle is serial: sort the queue, pre-filter, filter, score. One Pod at a time, because the decisions interact. The binding cycle then runs reserve, permit, pre-bind and bind, and it may overlap with the next Pod's scheduling cycle. That split is what keeps the scheduler fast while it still does slow work, like waiting for a volume to attach. A slow bind delays one Pod. It does not stall the queue.",
+      "narration": "The scheduler runs two cycles, not one. QueueSort orders Pods before an attempt begins. The scheduling cycle is serial, one Pod at a time, because the decisions interact. It runs PreFilter and Filter, then PostFilter if no node survives, then PreScore and Score across the feasible nodes. It selects a node, and it ends with Reserve and Permit. The binding cycle then runs PreBind, Bind and PostBind, and it can overlap later scheduling cycles. That split keeps slow PreBind work from blocking the queue. A slow bind delays one Pod. It does not stall the queue.",
       "visual": {
         "type": "twoCycles",
-        "spec": "NEW. Two horizontal tracks filling the stage. Top track, 'scheduling cycle — serial': four labelled stages (sort, pre-filter, filter, score) with a single Pod token moving through, and the next Pod visibly waiting at the entrance. Bottom track, 'binding cycle — may overlap': reserve, permit, pre-bind, bind. When Pod A leaves the top track it enters the bottom one, and Pod B immediately starts the top track while A is still binding. Let that overlap be the whole point — run it long enough that two tokens are in flight at once. Wrap stage labels to rows if needed; no fixed-width slots."
+        "spec": "NEW. Two horizontal tracks filling the stage. QueueSort sits BEFORE both, ordering waiting Pods — it is not a stage inside either cycle. Top track, 'scheduling cycle — serial': PreFilter, Filter, (PostFilter only if no node survives), PreScore, Score, and then Reserve and Permit, which belong at the END of this track, not the next one. Bottom track, 'binding cycle — can overlap': PreBind, Bind, PostBind. When Pod A leaves the top track it enters the bottom one and Pod B starts the top track, so two tokens are in flight at once. Do not show the scheduler waiting for volume attachment — VolumeBinding binds claims before Pod binding, while attachment and mount happen after, elsewhere."
       }
     },
     {
@@ -102,7 +102,7 @@
       "title": "Wrong in both directions",
       "lane": "control",
       "estSeconds": 39,
-      "narration": "Both directions cost you. Requests set far above real usage waste allocatable capacity — the scheduler believes the node is full while the node is idle. Requests set below real usage produce the opposite. The scheduler packs the node, the Pods grow into their real appetite, and the kubelet starts evicting under pressure. One failure shows up at schedule time. The other shows up hours later.",
+      "narration": "Both directions cost you. Requests set far above real usage waste allocatable capacity — the scheduler believes the node is full while the node is idle. Low requests let the scheduler overpack a node. CPU contention causes throttling or reduced share. A memory limit can cause an OOM kill. Node memory, disk or inode pressure can make the kubelet evict Pods. The later failure depends on the resource and limits. One failure shows up at schedule time. The other shows up hours later.",
       "visual": {
         "type": "requestErrors",
         "spec": "NEW. Split stage, both halves equal. Left, over-requested: a node with large request blocks and small usage inside them, wasted space shaded, a Pending Pod outside, tagged 'fails at schedule time'. Right, under-requested: many Pods packed in, usage bars growing past their request outlines, then the kubelet evicting, tagged 'fails hours later'. Give each side its failure timing as a labelled clock so the delay reads."
@@ -115,7 +115,7 @@
       "title": "Why is it still Pending",
       "lane": "control",
       "estSeconds": 47,
-      "narration": "A Pending Pod has an order of investigation. Read the scheduler events on the Pod first — they usually name the predicate that failed, and that ends most searches. Then compare requests against node allocatable. Then affinity, taints, topology spread and host ports. Then the volume side: binding mode, storage topology, capacity. Then quota. Image size is not on that list — a large image is slow after scheduling, never a cause of Pending.",
+      "narration": "A Pending Pod needs one question first: is it actually unscheduled. If spec.nodeName is empty, read the FailedScheduling events and check scheduling gates. Then compare requests and Pod overhead against allocatable. Then required affinity, selectors, taints, topology spread, host ports and storage binding. Quota normally rejects creation outright, so inspect the create error rather than hunting a Pending Pod. And if a node name is already set, this is not a scheduler problem at all. Pending then means image pull, volume setup or sandbox creation, and a large image can hold it there.",
       "visual": {
         "type": "pendingLadder",
         "spec": "NEW. An ordered diagnostic ladder filling the stage, each rung lighting as it is named, with a real representative event string in monospace beside it — for example '0/8 nodes are available: 3 Insufficient cpu, 5 node(s) had untolerated taint'. The first rung is visually weighted heaviest, because it resolves most cases. Below the ladder, 'image size' drawn struck through and set apart, labelled 'slow start, not Pending'. Lay it out as rows, not a fixed-height column that clips."
@@ -154,7 +154,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 40,
-      "narration": "Segment five, then. A failure here has a signature: the Pod exists, it has passed every gate, and it has no node name. Nothing is wrong on any node, because nothing has been asked of any node yet. Once that name is written the failure moves — to the kubelet, the runtime, and the boundaries they own. That is module seven.",
+      "narration": "Segment five, then. A failure here has a signature: the Pod exists, it has passed every gate, and it has no node name. No kubelet has been asked to run the Pod yet. Node state can still be the cause. Check readiness, schedulability, taints, labels, allocatable resources, topology and storage constraints. The scheduler compares all of them before it writes a node name. Once that name is written the failure moves — to the kubelet, the runtime, and the boundaries they own. That is module seven.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: segment five shrinks back into the spine, segment six lights to preview the next module."

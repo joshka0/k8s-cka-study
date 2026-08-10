@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "Segment eight of the spine: CNI. A container exists on a node and it has no address yet. This module is how it gets one. Why Service identity is a different problem with a different owner, and what to check when a name resolves but nothing answers.",
+      "narration": "Segment eight of the spine: CNI. The runtime is creating a Pod sandbox, and that sandbox needs a network. This module is how it gets one. Why Service identity is a different problem with a different owner, and what to check when a name resolves but nothing answers.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with segment eight lit."
@@ -37,7 +37,7 @@
       "title": "Three owners, not one network",
       "lane": "pod",
       "estSeconds": 45,
-      "narration": "Pod reachability and Service identity are two problems, and three components share them. CNI makes Pods reachable — it gives them addresses and routes. EndpointSlices record which backends are ready. kube-proxy programs each node so traffic to a Service address reaches one of those backends. An eBPF data plane can replace kube-proxy entirely. Three responsibilities, three failure modes, three sets of logs.",
+      "narration": "Pod reachability and Service identity are two problems, and three owners share them. The network implementation configures Pod reachability, and CNI is the execution contract it is invoked through. The EndpointSlice controller records selector-matched backends and their conditions. kube-proxy, or a data plane replacing it, turns Service addresses into backend traffic. Three owners, three failure modes, three sets of logs.",
       "visual": {
         "type": "threeOwners",
         "spec": "NEW. Three labelled owners across the stage, each with what it owns and how it fails: CNI (Pod address and routes → no address, ContainerCreating), EndpointSlice (which backends are ready → empty slice, no backends), kube-proxy or eBPF (Service address to backend → rules not programmed, connection times out). Each owner's failure text is the point of the beat — give it the same weight as the owner name, not a footnote."
@@ -47,13 +47,13 @@
       "id": "readiness-is-the-gate",
       "n": 2,
       "stage": null,
-      "title": "Readiness is the gate",
+      "title": "Labels select, readiness conditions",
       "lane": "pod",
       "estSeconds": 40,
-      "narration": "What puts a Pod's address into an EndpointSlice is readiness. Not that the Pod exists. Not that it is Running. Readiness, and nothing else. That is the mechanical reason a readiness probe controls traffic. It changes EndpointSlice membership, and every data plane reads that membership. The probe never touches the network. It changes a list.",
+      "narration": "For a selector Service, label matching is what puts a Pod address into an EndpointSlice. Readiness does something different. It sets that endpoint's ready condition. An unready address stays in the slice with ready false, and Service data planes normally avoid it. Setting publishNotReadyAddresses changes that behaviour. So a readiness probe does not add or remove an address. It changes a condition.",
       "visual": {
         "type": "endpoints",
-        "spec": "REUSE the pilot's Endpoints. Extend it: three Pods, one not ready. Show the ready gate admitting two addresses into the EndpointSlice and holding the third out. Then flip the third to ready and let its address appear in the slice, and only then let traffic reach it. Make the causal order visible — list first, traffic second."
+        "spec": "REUSE the pilot's Endpoints. Extend it: three Pods, one not ready. Show the ready gate admitting two addresses into the EndpointSlice and holding the third out. Then flip the third to ready and let its address appear in the slice, and only then let traffic reach it. Make the causal order visible — list first, traffic second. CORRECTION: membership comes from label matching, not readiness. Draw the unready address INSIDE the slice with ready:false, and the data plane declining to use it. Do not draw the address being held outside the slice."
       }
     },
     {
@@ -63,10 +63,10 @@
       "title": "When the Service steps out",
       "lane": "pod",
       "estSeconds": 38,
-      "narration": "Setting clusterIP to None changes the shape of the answer. A headless Service hands the client the list of Pod addresses and steps out of the path. That is what per-Pod StatefulSet DNS depends on. It also means you get no load balancing at all. The client picks, and most clients pick the first address they are given.",
+      "narration": "Setting clusterIP to None removes the Service virtual IP. DNS returns endpoint records instead, and kube-proxy does not handle that Service at all. The client or its resolver then chooses an endpoint, so balancing depends entirely on client behaviour. StatefulSet per-Pod DNS is built on exactly this.",
       "visual": {
         "type": "headlessService",
-        "spec": "NEW. Two queries side by side against the same backends. Left, a normal ClusterIP: one virtual address returned, traffic passes through the data plane, spread across backends. Right, clusterIP None: the full list of Pod addresses returned to the client, no data plane in the path, and the client connecting to the first entry every time. Label the right side with what it enables (stable per-Pod names) and what it costs (no balancing)."
+        "spec": "NEW. Two queries side by side against the same backends. Left, a normal ClusterIP: one virtual address returned, traffic passes through the data plane, spread across backends. Right, clusterIP None: the full list of Pod addresses returned to the client, no data plane in the path, and the client connecting to the first entry every time. Label the right side with what it enables (stable per-Pod names) and what it costs (no balancing). CORRECTION: do not show 'client picks the first' as universal behaviour. Show the client choosing, with selection explicitly depending on the resolver and application."
       }
     },
     {
@@ -76,10 +76,10 @@
       "title": "A permission is not a path",
       "lane": "pod",
       "estSeconds": 42,
-      "narration": "A NetworkPolicy that allows traffic from another namespace has proven one thing: the traffic is permitted. It has not proven the traffic can arrive. A policy is a permission, not a path. It creates no routes. And if your CNI plugin does not implement NetworkPolicy, the object is accepted and then silently ignored. Allowed and unenforced look identical from the API.",
+      "narration": "A matching ingress rule permits the flow at the destination. An isolating egress policy at the source has to permit it too, because policies combine additively. And a policy creates no route at all. podSelector chooses the Pods a policy protects. An empty podSelector with no ingress rules is default-deny ingress. If your network implementation does not enforce NetworkPolicy, the API stores the object with no enforcement status.",
       "visual": {
         "type": "policyNotPath",
-        "spec": "NEW. A NetworkPolicy object drawn as a permit stamp, not a pipe. Show it granting permission while the route underneath is missing — traffic still fails, and the policy is still green. Then the worse case: a plugin with no NetworkPolicy support. The API accepts the object, nothing enforces it, and the cluster looks protected while being open. Draw the accepted-but-ignored state explicitly; it is the beat."
+        "spec": "NEW. A NetworkPolicy object drawn as a permit stamp, not a pipe. Show it granting permission while the route underneath is missing — traffic still fails, and the policy is still green. Then the worse case: a plugin with no NetworkPolicy support. The API accepts the object, nothing enforces it, and the cluster looks protected while being open. Draw the accepted-but-ignored state explicitly; it is the beat. CORRECTION: core NetworkPolicy has no enforcement status, so do not draw a green enforced state. Show the destination-side permit and a separate source-side egress policy that must also allow the flow."
       }
     },
     {
@@ -89,7 +89,7 @@
       "title": "Implementations, not APIs",
       "lane": "pod",
       "estSeconds": 40,
-      "narration": "iptables, IPVS, nftables and eBPF are implementations, not APIs. The Service object does not change when the backend does. Your manifests are identical across all four. That means the data plane is a swappable operational decision. It also means the Service API tells you nothing about what is actually forwarding your packets.",
+      "narration": "iptables, IPVS and nftables are kube-proxy modes on Linux. An eBPF data plane is a separate implementation that can replace kube-proxy entirely. Your Service manifest usually stays the same across them, though behaviour depends on the implementation. The Service types stay constant too. ClusterIP exposes inside the cluster, NodePort adds a port on every node, LoadBalancer asks an external implementation for one. All three still use endpoints.",
       "visual": {
         "type": "dataPlane",
         "spec": "REUSE the pilot's DataPlane. Extend it: one unchanged Service manifest at the top feeding four interchangeable implementations below — iptables, IPVS, nftables, eBPF. Swap the implementation underneath while the manifest stays visibly identical. Do not rank them here; that is the next beat."
@@ -102,7 +102,7 @@
       "title": "Past the O(1) slogan",
       "lane": "pod",
       "estSeconds": 48,
-      "narration": "Someone will say IPVS is order one and iptables is order N, so IPVS is always faster. The slogan is right about lookup and incomplete as a recommendation. Rule update cost matters when endpoints churn. So does locality, kernel version, and the semantics each one gives you. Current clusters may well be running nftables. Naming those axes is what shows you have operated these rather than read a comparison table.",
+      "narration": "Someone will say IPVS is order one and iptables is order N. The slogan is right about lookup and incomplete as a recommendation. Kubernetes 1.35 deprecated kube-proxy's IPVS mode. It still runs in 1.36 and warns at startup, and nftables is the recommended Linux replacement. Compare data planes on lookup cost, update cost under churn, locality, kernel support and Service semantics.",
       "visual": {
         "type": "beyondBigO",
         "spec": "NEW. Start with the slogan as a two-row comparison, then expand it into a multi-axis table the slogan omits: lookup cost, rule update cost under churn, locality, kernel version, semantics. Show the naive comparison shrinking into one column of a wider table. Every axis label must be legible — this beat is the correction, so the added axes carry it."
@@ -115,10 +115,10 @@
       "title": "The requirement does not go away",
       "lane": "pod",
       "estSeconds": 40,
-      "narration": "A related claim: that an eBPF data plane removes connection tracking. Separate the implementation from the requirement. Stateful flow tracking is still needed, because something has to remember which connection a returning packet belongs to. What changes is where that state lives. It moves out of the netfilter table and into BPF maps.",
+      "narration": "A related claim: that an eBPF data plane removes connection tracking. Separate the implementation from the requirement. Something still has to remember which connection a returning packet belongs to. Some implementations replace netfilter conntrack with BPF maps. Others keep kernel conntrack for certain traffic or modes. Check the product, and check the mode.",
       "visual": {
         "type": "conntrackMoves",
-        "spec": "NEW. The requirement drawn once, in the centre and unchanged: 'remember which flow this packet belongs to'. Two implementations beneath it holding the same state — netfilter conntrack table, and BPF maps. Animate the state moving from one to the other while the requirement above stays fixed. The fixed requirement is the argument."
+        "spec": "NEW. The requirement drawn once, in the centre and unchanged: 'remember which flow this packet belongs to'. Two implementations beneath it holding the same state — netfilter conntrack table, and BPF maps. Animate the state moving from one to the other while the requirement above stays fixed. The fixed requirement is the argument. CORRECTION: do not show a universal migration. Show it as implementation-dependent — some products move state to BPF maps, others keep kernel conntrack for some traffic or modes."
       }
     },
     {
@@ -141,7 +141,7 @@
       "title": "The kubelet does not call it",
       "lane": "pod",
       "estSeconds": 42,
-      "narration": "The kubelet does not call the plugin. It asks the runtime for a sandbox over CRI. The runtime creates the network namespace, reads the CNI configuration from disk, and execs the plugin chain against that namespace. So a network setup failure lives in the runtime's logs, not the kubelet's. Blaming the kubelet sends you to the wrong file.",
+      "narration": "The kubelet does not exec the plugin. Since Kubernetes 1.24 it asks the CRI runtime to create the sandbox. Common runtimes then load CNI configuration and execute the plugin chain, though CNI does not require that configuration to live on disk. Start with Pod events and kubelet logs. Go to the runtime's logs for plugin detail.",
       "visual": {
         "type": "whoExecs",
         "spec": "NEW. The real call chain as a sequence: kubelet → CRI → runtime → creates netns → reads CNI config from disk → execs plugin chain. Draw the imagined shortcut from kubelet straight to the plugin and strike it through. Tag each hop with the log you would read if it failed there, and make the runtime's log visually prominent, since that is the one people skip."
@@ -154,10 +154,10 @@
       "title": "Where the address comes from",
       "lane": "pod",
       "estSeconds": 40,
-      "narration": "The address itself comes from somewhere else again. The main plugin delegates allocation to an IPAM plugin. That plugin receives the full configuration and returns an address, a gateway and routes. The main plugin then applies them to the interface. Allocation is delegated so that every interface plugin does not reimplement it.",
+      "narration": "A network plugin can delegate address allocation to an IPAM plugin. That plugin receives the full configuration, and can return addresses, gateways, routes and DNS. Delegation is optional, though. Other implementations allocate through their own node agent instead. So the address does not always come from where you expect.",
       "visual": {
         "type": "ipamDelegation",
-        "spec": "NEW. A real nested block, not a footnote: the main plugin receives the ADD, and inside it a clearly nested IPAM call that returns address, gateway and routes. The main plugin then applies those to the interface. Render the nesting as genuine containment at full type scale — a previous cut put this detail at 14px grey against an edge and it was the point of the beat."
+        "spec": "NEW. A real nested block, not a footnote: the main plugin receives the ADD, and inside it a clearly nested IPAM call that returns address, gateway and routes. The main plugin then applies those to the interface. Render the nesting as genuine containment at full type scale — a previous cut put this detail at 14px grey against an edge and it was the point of the beat. CORRECTION: delegation is optional. Show the delegated path as one option alongside an implementation that allocates through its own node agent."
       }
     },
     {
@@ -167,7 +167,7 @@
       "title": "It resolves, nothing answers",
       "lane": "pod",
       "estSeconds": 46,
-      "narration": "DNS resolves and the ClusterIP times out. Trace it in order. Check the Service ports and its EndpointSlices — are there ready backends at all. Test a ready Pod address directly, which splits Service from Pod. Inspect the data-plane programming: kube-proxy rules or BPF maps, and conntrack. Verify routing, MTU and NetworkPolicy. Finally confirm the target is listening on that port.",
+      "narration": "DNS resolves and the ClusterIP times out. Check the Service selector, its ports, and its EndpointSlices. Confirm the target process is listening on the resolved endpoint port. From the same source, test the ready Pod address and port directly. If that direct path works, inspect the Service data plane. If it fails, inspect routing, MTU and NetworkPolicy.",
       "visual": {
         "type": "traceTimeout",
         "spec": "NEW. An ordered trace, each step lighting as named, with the check beside it and what a failure there would prove. Step two — testing a Pod address directly — should be visually emphasised as the split point, because it is the step that divides a Service problem from a Pod problem. Lay it out as rows that wrap; do not clip the longer checks."
@@ -180,7 +180,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 40,
-      "narration": "Segment eight, then. A failure here has two signatures. Either the name resolves and nothing answers, or the Pod never got an address at all. Those are different layers with different owners, and the fastest question is which of the two you are in. The next segment is the one that turned a name into an address. That is module nine.",
+      "narration": "Segment eight, then. Ask which path failed. Did the sandbox get an address. Can peers reach that address. Does the Service address reach a ready endpoint. Each answer points at a different owner, and separating them is the whole value. The next module is the one that turned a name into an address.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: segment eight shrinks back into the spine, segment nine lights to preview the next module."

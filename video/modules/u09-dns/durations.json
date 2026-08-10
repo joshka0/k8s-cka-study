@@ -1,1 +1,14 @@
-{}
+{
+  "close": 21.577063,
+  "corefile-order": 22.073375,
+  "dns-is-a-service": 25.7305,
+  "fallthrough-vs-forward": 18.364,
+  "locate": 14.68075,
+  "ndots-cost": 20.375438,
+  "nodelocal": 16.953375,
+  "not-the-name": 21.0285,
+  "ready-proves-little": 23.53625,
+  "resolve-trace": 21.83825,
+  "trailing-dot": 15.43825,
+  "watched-records": 19.095438
+}
