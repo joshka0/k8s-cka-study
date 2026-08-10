@@ -4,6 +4,14 @@ An offline, senior-engineer-focused CKA and Kubernetes architecture course
 derived from 33 available transcripts in `transcripts/`, mapped against the
 official CKA v1.35 curriculum, and cross-checked against current upstream docs.
 
+> **Accuracy status:** a fresh Kubernetes v1.36 review found open corrections
+> in the Module 7 video and prepared Module 8 script, with related wording in
+> the corresponding lesson/deck material. See
+> [`video/REVIEW-FINDINGS-07-08.md`](video/REVIEW-FINDINGS-07-08.md) before
+> relying on those two modules. The findings are intentionally published rather
+> than hidden; the remaining modules have not yet received that same v1.36
+> adversarial pass.
+
 ## Open the course
 
 Open `index.html` in a browser. It is an interactive lesson path: 20 units,

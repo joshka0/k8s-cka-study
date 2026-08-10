@@ -286,6 +286,7 @@ function showPath() {
     el('div', { cls: 'eyebrow', text: 'Senior platform / SRE preparation' }),
     el('h1', { text: COURSE.subtitle }),
     el('p', { text: '20 units built from 33 transcript-backed talks, 6 supplemental videos, and current upstream documentation. Short lessons, answered out loud, with the clip that teaches each idea one tap away.' }),
+    el('p', { text: 'Accuracy note: Modules 7–8 have open Kubernetes v1.36 review corrections. Treat those lessons as draft until the linked repository review is resolved.' }),
     el('div', { cls: 'hero-actions' }, [
       next ? el('button', { cls: 'btn', on: { click: () => startLesson(next.id) } },
         [document.createTextNode(doneLessons ? 'Continue · ' + next.title : 'Start unit 1')]) : null,
