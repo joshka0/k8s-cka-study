@@ -1,0 +1,634 @@
+hi everybody welcome to kubernetes
+leader election for fun and profit my
+name is nick young i am a staff engineer
+with vmware
+and i'm here to show you three things
+today firstly what is leader election
+and how do you implement it
+my guidelines for using it and then some
+common patterns
+that you can use when you're using it
+so um
+let's let's get straight into it um oh
+i seem to have some weirdness with my
+sides anyway um
+the there we are so what is leader
+election well
+kubernetes leader election allows you to
+use the same
+leader election code that the api server
+does
+and other parts of kubernetes for any of
+your controllers
+what that lets you do is it's a
+distributed lock coordinated and managed
+for you by kubernetes
+it lets your app essentially elect one
+instance as a leader
+what can you and the important part here
+is that only one
+instance actually makes changes
+now so what can you use it for um
+so there's a few patterns you can use it
+for firstly this one the basic
+controller pattern once
+one instance watches the kubernetes api
+and writes changes back
+other instances uh will just be sitting
+there doing nothing until they become
+the leader
+a slightly more complicated pattern is
+where one instance
+watches the kubernetes api takes actions
+outside the cluster and then writes the
+result back
+i'd call this an operator pattern
+whereas the previous one is a controller
+pattern
+another pattern is one where each
+instance watches the kubernetes api and
+only one writes a status back maybe
+because the other ones are doing
+some sort of uh synchronous asynchronous
+operations that don't require status
+updates
+or some other sort of updates
+and lastly they catch a bucket of other
+more complicated things oh i've got some
+example i've got an example of that i'll
+talk to you about later
+so all of these things though let you
+make your app more reliable by
+just sprinking that little bit of hay on
+it
+so the important part that everyone
+wants to know is how does it actually
+work
+well there's an election process that
+updates a shared object that functions
+as the lock
+now this shared object is obviously a
+kubernetes object
+this whole thing is built on kubernetes
+and the shared process
+is literally just done using the
+standard kubernetes
+leader election code the exact same code
+that the api server controller manager
+and other kubernetes components use
+the shared object can be one of two
+things depending on your kubernetes
+version
+before kubernetes 114 uh it was you
+could only use a config map
+well actually i tell a lie there you
+could use the endpoints object but that
+was
+deprecated very quickly in favor of the
+config map and only the
+map is recommended up until kubernetes 1
+14.
+uh greater than or equal to kubernetes 1
+14 you can use the config map
+or the new lease object which duplicates
+all the functions
+of the config map but in a dedicated
+object
+in the case of the configmap the info is
+actually stored in an annotation for
+least it's actually stored in the spec
+so that object is specifically designed
+to do this exact
+use case it's also used for holding
+information
+about the nodes that about their leases
+on certain network data
+so but in either case um you're
+absolutely going to need you need to
+make sure that your
+your role has the permissions to update
+the the type of object you're doing
+either config maps or leases
+the module to read the docs is here it's
+a client go tools leader election
+resource lock
+that one just the reason to check that
+one is it just has the details of how
+the um how the the objects actually get
+instantiated but also
+if new types of objects are added that's
+where that that's where the code to add
+them is added and there's also a
+interface there so that you can actually
+swap out this type very easily
+okay so if you're implementing leader
+election and you're using queue builder
+i've got good news for you um it's
+probably already available
+if you're using the generation tools
+it's certainly available all you've got
+to do
+is use the dash enable leader election
+flag on the command line and boom
+leader election is enabled and working
+for you i would strongly recommend doing
+this if you're
+running a queue border controller if you
+want to have a bit more detail or you've
+written your own things or
+wanted to check that it's there if you
+look in your
+new manager call you will see some extra
+options that you need to add
+here they are here there's a leader
+election which is bullion
+and a leader election id now the
+leader election id just ensures that
+your particular leader election
+is unique so if you want to
+implement it using the old way informers
+um
+then it's a little bit more complicated
+this one's relevant to me because i'm a
+maintainer on project contour
+and this this is what we do
+so using informers means that you have
+two jobs firstly
+getting that later election running and
+secondly watching the channel that the
+later election gives you
+obviously sorry i didn't say this before
+but obviously i'm talking mainly about
+go code here because
+the api server and all of the kubernetes
+support encoders written in go
+not making any statements here about how
+easy this is to do
+in other languages so but given that
+the leader election process just gives
+you a channel that you watch
+um in contour what we do is
+we start the the standard kubernetes
+selector this returns an
+ibleader channel and then basically you
+can
+watch that channel and when you become
+the leader that channel will be closed
+so in contour the second thing that we
+do is we have a dedicated
+go routine that runs that watches when
+we become leader by watching that
+channel
+when we do become leader it fires off an
+update
+and then does nothing for the rest of
+the lifetime of the program
+there's a few other parts of contour run
+in separate go routines that
+will check the status of that channel as
+well and if it's been closed then they
+know that it's the leader
+and the um and they will
+send updates to the to the api server
+via being the
+because they're the leader that's how we
+do things in contour because we're using
+um that um multi-reader
+writer is the leader pattern this
+means that all of the different
+instances can read
+from the api server and only the leader
+will actually write things back
+the the main package for actually using
+this
+is the client go tools leader election
+that's the actual one that has all of
+the calls to start the leader election
+to run it
+some helpers that sort of thing that's
+where i'd suggest you go
+to do the things you need now uh
+sorry actually i've forgotten something
+there um the there is
+there is another example of uh
+someone doing this but
+oh no sorry i'll put that in one place
+so
+anyway so let's get on to the usage
+guidelines this is this is the main
+thing that i need to tell you about
+um so my first guideline is
+don't try and clean up if your instance
+is deposed somehow use kubernetes
+instead
+what i mean by that is if your instance
+is deposed
+that means that for some reason your
+instance became the leader
+and then the stuff the properties of
+the object were edited by something else
+and made you not the leader anymore now
+uh
+so what we need to do in that case is
+you need to go around and restart the
+leadership again
+the leadership election again in order
+to be able to make sure that your
+that that you can rejoin as a new
+instance now you could do this in code
+by
+you know sending yourself back to the
+start starting some new go routines
+cleaning up after yourself
+doing all that sort of stuff but instead
+of doing that it's much quicker that if
+you
+do happen to get deposed as the leader
+you just close down and then kubernetes
+will restart you
+and you'll come up as a regular member
+and participate in leader elections
+maybe you'll be the leader maybe you
+won't
+um it's a much easier way and ensures a
+much cleaner
+flow through your program so i
+definitely strongly recommend it
+um secondly this is a human scale lock
+not a machine scale one what do i mean
+by that well
+the default timeouts for this uh
+there's two failed checks the the leader
+should be heart beating
+it's um the odd the shared object every
+ten seconds and if it misses two
+then all the other things say oh no uh
+it's time to do another later election
+and that leader election can take sort
+of five to ten seconds
+so the the total time for this from
+you the actual leader pod disappeared to
+when the
+pod a new part is elected leader is on
+the order of 30 seconds
+what that means is don't use it for
+stuff that sub 30 seconds
+so if you're if you need guaranteed
+leader operations happen and you can't
+have them disappear for 30 seconds
+this is not the distributed lock for you
+you should be using some other more
+advanced
+distributing locking function the thing
+that is great for is you're just running
+multiple pods
+it's okay if they if whatever it's doing
+doesn't run for 30 seconds
+and usually that's for you know you're
+running some controller that reconciles
+on
+object entry and you or and maybe
+reaches out and does something
+and it's okay if that gets delayed 30
+seconds
+thirdly be aware of what you're using to
+distribute a lot for i've mentioned a
+couple of the different patterns i'm
+about to go on and talk a little bit
+more about them in detail
+but the you know the key thing here is
+you just need to make sure that you're
+understanding what the
+your what's the key thing that you're
+trying to get out of using leader
+election maybe it's just
+hey i've got a simple controller and i
+want it to be aj
+that's fine you know you just got to
+make sure that you're aware of the
+trade-offs and the
+the pieces that you need in place to do
+that okay
+so let's talk a little bit more about
+specific patterns
+the most simple one is the basic
+controller or operator
+um i sort of alluded to this a little
+earlier
+this is one where it just watches
+kubernetes objects and does stuff based
+on it
+it doesn't pretend present its own
+endpoints for anything other than health
+checking or metrics
+and the stuff that it does could be in
+cluster or it could be
+reaching outside the cluster
+the trick is here just use the leader
+lock to block the code that actually
+does stuff
+so if you again if you're using cube
+builder then a lot of this stuff is
+handled for you because of the way the
+whole framework is designed
+but if you're doing something that you
+that you've written
+then that's the trick is if you're doing
+this sort of basic
+basic lock then just have the have the
+lock block
+the uh the area of the code that
+actually does the stuff that
+you want only the leader to do
+so yeah as i said before for queue
+builders the reconcile has a leader
+elected so only one instance will
+actually do anything
+if you haven't used qbuilder before the
+way it works is
+you add any crds you want to
+manage and then for each type of
+resource that you want to manage you
+have a reconcile
+method that will take the name of the
+thing that
+has changed or been added or deleted and
+it will
+figure out if it's been changed added or
+deleted do whatever it's got to do and
+then write any changes back to the api
+server
+so having those things be leader elected
+is great it means you can have as i said
+you can sprinkle that bit of ha on it by
+having
+lots of them running and only one of
+them will be actually trying to do this
+at once so you don't end up with races
+and loft and locking problems there
+with the informers the easiest way is
+actually just to block main on becoming
+the leader
+so you do a bunch of setup get
+everything running that needs to be
+running and then
+just start the leader election and then
+just select on that channel and wait
+until it's
+and wait until you become the leader to
+actually do anything or obviously until
+you receive a signal to stop
+so yeah so yeah sorry i said that the
+wrong way um
+the you can either shut down
+or you lose the leadership in which case
+you just shut down
+and that's why using kubernetes to
+restart you is
+sort of makes it super clean makes it
+really easy to understand
+there's no sort of complicated cleanup
+logic the complicated cleanup logic is
+just completely consumed into the fact
+that you
+shut down drop your state on the
+hi everyone sorry technical glitch there
+um so
+if you are going to uh lose leadership
+in uh
+if sorry if you are going to block your
+main
+um make sure that your health and
+metrics end points are initialized first
+um i know this because i created some up
+some outages by
+adding in uh leader election into a
+service and forgetting to initialize the
+health
+uh the healthcare endpoint first and
+so all of the non-uh leader
+processes just continually restarted
+because they never became healthy
+so top tip make sure you make sure you
+are pretty clear on all of the things
+you need initialized
+okay so another pattern is the malta
+read
+multi-read leader rights pattern this
+one watches kubernetes objects
+serves out endpoints of its own for some
+reason and the leader
+may it may take actions and update
+objects in response so that's what you
+want the leader to be the one that's
+actually taking any actions and updating
+objects so that again
+only the there's only one of them taking
+objects so you don't end up with race
+problems
+so contour is an example
+contour's whole purpose is to watch
+kubernetes objects and translate it
+to envoy xds endpoints that config that
+allows envoy
+machines to connect to those endpoints
+and configure themselves appropriately
+so for contour the every instance does
+that and then the leader is the one that
+actually writes status updates back to
+contours cids
+our cid is called http proxy and so if
+you create a http proxy
+contour will write some information back
+to that http proxy after it's
+done its parsing of it to just indicate
+if the http proxy
+is has been parsed correctly and that
+everything is okay
+if it hasn't then it can surface exact
+errors and all that sort of stuff
+um so it's a very simple example of the
+sort of information that you'd write
+back
+to um to an object but it's sort of so
+illustrate here um cue builders web
+hooks are another example of this
+pattern where
+the reconcilers as i said before are
+later elected only the leader actually
+does the reconciling
+but the but the um
+the non-leader instances can serve
+defaulting conversion and validation web
+hooks
+so um the and those those are the ones
+that
+allow your cid to use those features
+okay so and there's one more advanced
+pattern which i thought was pretty nifty
+which is a per cid leader election
+k-native does this and breaks out the
+leader election
+by the object type so i think k native
+has four or five different
+uh cids and so they actually have a per
+type uh crd a per type election sorry
+and so what that does is it um it allows
+you
+to spread the reconciliation so canadian
+breaks out to the
+leader election by object type so what
+that means is canada has four i think or
+five
+uh different cids and you can split up
+the actual reconciliation
+um and the of of each of those things
+across
+instances so if you if you're running
+five instances
+of your of your controller then you can
+have five different instances holding
+each one
+holding a the lock for a particular type
+of cid
+okay in summary we have
+leader election is great and you should
+use it for all your kubernetes
+controllers
+no matter what framework you're using
+a cube builder makes it really easy but
+it's not hard to diy um
+you just it's a little i'd say it's
+involved but not difficult
+let kubernetes handle the deposed case
+by restarting your app
+is my absolute number one top tip
+and lastly think carefully about what
+you're going to use your lock for
+make sure that the way that you're using
+your lock gives you the options that you
+need
+if you're using it in a simple way for a
+basic controller
+you it's much easier to just make it so
+that you only have one
+instance doing any changes at once if
+you're using more complicated things
+it'll have necessary necessity be more
+complicated
+anyway thanks very much and i'm looking
+forward to answering some questions
+hi everyone i believe we're live uh
+hopefully everyone can hear me
+um so um thanks very much uh there's
+been a few questions uh answered in the
+queue
+in the q a area please uh ask more we've
+got plenty of time
+uh and uh so i think there's only one
+that i haven't
+answered in the chat and that's um
+thanks alex for your question about uh
+what i mean by human scale vs machines
+car locks
+um i think that's just about how long
+the lock lasts for
+um the um the
+the key the key thing a machine's car
+lock is intended for sort of
+second or sub-second resolution where
+you know you might have a file that you
+want to open and
+you only want one thing or something
+like that or you want to you know grab a
+lock for some i o that you want to do
+outside of your cluster
+um i would not use leader election for
+that um it's as i said
+earlier um it's intended for times when
+you've got like three or
+three three or more pods running or
+something like that and you want one of
+them to become the leader in
+some sort of 30 seconds or so time scale
+so and the key part is that with the
+default settings um
+the leader election will only sort of
+realize that the that a leader has gone
+away after
+15 seconds or so and then it will take
+another 15 seconds or so to actually
+finish a leader election
+hopefully um sorry i'll put
+that one in there yep um and so
+there's another one there from ricardo
+uh distributed leader election between
+clusters oh that's a great idea that's
+an interesting idea
+um yeah um for that one you would
+definitely need to do
+um some sort of you you need to you need
+to maintain your unlock
+outside somehow you could probably do
+something similar to what the leader
+election code actually does
+um the leader of election code actually
+just attempts to write an annotation to
+the conflict map
+or to update the lease object and the
+first person to
+be able to update successfully with
+their update they get the
+um uh they get the
+little lock so
+yeah um so i would say for that um
+that you you could implement something
+similar yourself
+um i'm i think that by default uh the
+leader election code expects to be
+running in the same cluster that you're
+working in so you would have to
+basically
+copy uh the existing letter election
+code
+um yeah so
+yeah i think i think that's one does
+anyone else have anything um
+yeah i think um for me the thing that uh
+that i have found the most useful about
+this thing is just that it is once you
+get it working
+it's pretty straightforward um you know
+especially if you're using one of the
+frameworks some i
+only went into queue builder in this
+talk but um most of the frameworks have
+some support for helping you
+make this a bit easier uh and but even
+if you don't um
+it's it's not too hard to get it running
+and once you do
+it do it does just let you make things a
+lot easier
+well uh seems like there's a
+no the question's coming in um i
+i guess we can i will be uh online in
+the uh
+in the custom extendicates uh
+list uh channel on the the cncf slack uh
+ready to answer any other questions you
+might have um uh thanks mike
+um that's uh that's really nice i
+um might just thank me for the useful
+talk
+um so yeah uh yeah and uh please feel
+free to hit me up uh either on the cncf
+slack
+i'm young nick there um you can hit me
+up on twitter at youngnick
+or on the uh kubernetes slack or i'm
+also young nick
+so with that uh i think we're done
+thanks very much everybody uh and uh
+look forward to seeing you around the
+traps

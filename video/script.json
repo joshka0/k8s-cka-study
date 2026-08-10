@@ -1,0 +1,279 @@
+{
+  "title": "Intent to Packet",
+  "subtitle": "What actually happens between kubectl apply and a request reaching your app",
+  "meta": {
+    "targetWpm": 112,
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Narration is the timing authority — every beat's duration comes from its synthesised audio, never hardcoded. estSeconds is a planning estimate only. Canonical narration: speed 1.0 (~180 wpm); a 0.7 variant is archived under narration/variants/ and restorable with scripts/use-speed.sh.",
+    "palette": {
+      "ink": "#e9eef9",
+      "muted": "#a6b2c8",
+      "bg": "#0b111d",
+      "panel": "#151e2e",
+      "line": "#2c3a50",
+      "blue": "#326ce5",
+      "cyan": "#22d3ee",
+      "good": "#22c55e",
+      "amber": "#f59e0b",
+      "bad": "#ef4444",
+      "violet": "#a78bfa"
+    },
+    "lanes": [
+      {
+        "id": "control",
+        "label": "Control plane",
+        "color": "blue"
+      },
+      {
+        "id": "node",
+        "label": "Node",
+        "color": "violet"
+      },
+      {
+        "id": "pod",
+        "label": "Pod",
+        "color": "cyan"
+      }
+    ],
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f"
+  },
+  "beats": [
+    {
+      "id": "cold-open",
+      "n": 0,
+      "title": "Six things have to go right",
+      "lane": null,
+      "estSeconds": 52,
+      "narration": "You type kubectl apply. A few seconds later, traffic reaches your application. In between, at least six independent systems have to agree — and each one can fail in a way that looks exactly like the others. A pod stuck Pending. A pod Running but getting no traffic. A service that resolves but times out. Every one of those is a different subsystem, and telling them apart is most of what senior Kubernetes work actually is. So let's follow one declaration all the way down: from a line of YAML, to a packet arriving at your process.",
+      "visual": {
+        "type": "coldOpen",
+        "spec": "Black. The three symptom phrases fade in one at a time as they are spoken — 'Pending', 'Running, no traffic', 'DNS resolves, connection times out' — small, monospace, scattered. On 'follow one declaration', they all sweep away into a single bright line that becomes the spine running left to right. End holding the title card: INTENT TO PACKET."
+      },
+      "stage": null
+    },
+    {
+      "id": "three-lanes",
+      "n": 1,
+      "title": "Three lanes",
+      "lane": null,
+      "estSeconds": 58,
+      "narration": "Hold three lanes. The top lane is the control plane: the API server, etcd, the controllers, the scheduler. It decides what should exist. The middle lane is the node: the kubelet, the container runtime, the network and storage plugins. It makes things real. The bottom lane is the pod itself: its sandbox, its containers, its readiness. These lanes are not a pipeline. They are independent loops that watch each other and retry. No single component drives your deployment from start to finish, so any one of them can stall while the others look healthy.",
+      "visual": {
+        "type": "laneIntro",
+        "spec": "Three horizontal lanes draw in top to bottom, each labelled, each with its component chips appearing as named. On 'not a pipeline', the straight connecting arrows dissolve and each lane instead gets a small circular arrow, looping independently, at slightly different rates. Emphasise the desynchronisation."
+      },
+      "stage": null
+    },
+    {
+      "id": "apply",
+      "n": 2,
+      "title": "Stage 1 — The request",
+      "lane": "control",
+      "estSeconds": 55,
+      "narration": "Stage one. You write a spec. It declares what you want, not a set of instructions. kubectl serialises it and sends an HTTP request over TLS to the API server. The API server is the only component that talks to storage. Controllers, the scheduler, the kubelet: none of them read etcd. They all coordinate through this one HTTP contract, which is what lets the API server enforce policy on every write. A controller that reads etcd directly skips authentication, authorisation, admission, validation, conversion and audit in one go.",
+      "visual": {
+        "type": "requestArrives",
+        "spec": "A YAML document glides in from the left and lands at a kubectl chip, which fires a labelled packet 'HTTPS POST' into the API server node. Then briefly show four other components (scheduler, controller, kubelet, kube-proxy) all drawing arrows to the API server — and a dashed red arrow from a controller directly to etcd that gets struck through."
+      },
+      "stage": 1
+    },
+    {
+      "id": "gates",
+      "n": 3,
+      "title": "Stage 2 — Five gates",
+      "lane": "control",
+      "estSeconds": 68,
+      "narration": "Stage two: the gauntlet. The request is authenticated — who is this? Then authorised — may they do this? RBAC lives here, and it only grants permissions; it never establishes identity. Then mutating admission, which may change your object: injecting a sidecar, adding a default. Then validating admission, which may reject it. Mutation runs first, so what gets validated is the final object. Only then is it written to etcd and watchers notified. Every gate is a separate reason your apply can fail, and they fail with different messages. When RBAC allows something and it is still rejected, think admission webhooks, schema validation, quota, immutable fields.",
+      "visual": {
+        "type": "gateSequence",
+        "spec": "Five gates in a row. The request token advances through each; each gate flashes green as it passes. Label under each: who? / may they? / mutate / validate / persist. On the mutation gate, show the object visibly gaining an extra container block. At the end, briefly replay with the token bouncing off gate 3 in red to show a rejection, with 'webhook timeout' as the label."
+      },
+      "stage": 2
+    },
+    {
+      "id": "etcd",
+      "n": 4,
+      "title": "Stage 3 — Durable, and only then",
+      "lane": "control",
+      "estSeconds": 54,
+      "narration": "Stage three. The API server writes the object to etcd. A write is not durable the moment the leader receives it. etcd is a Raft consensus group. A majority of members must commit the entry before the write is acknowledged. Floor of N over two, plus one. Three members tolerate one failure, and adding a fourth buys nothing — quorum rises with it. Five is the next size that helps. Your pod now exists only as a record in a database. Nothing is running. Nothing has been scheduled. You have declared intent, and that is all.",
+      "visual": {
+        "type": "quorum",
+        "spec": "Three etcd members in a triangle. The leader receives the entry, replicates to followers, two acks light up, then 'committed' pulses and the response returns. Then a fourth member fades in and the quorum counter visibly ticks 2-of-3 to 3-of-4 with the tolerance number staying at 1. End on the object sitting alone in the database, greyed, with the caption 'desired state — nothing is running'."
+      },
+      "stage": 3
+    },
+    {
+      "id": "controllers",
+      "n": 5,
+      "title": "Stage 4 — Controllers, plural",
+      "lane": "control",
+      "estSeconds": 62,
+      "narration": "Stage four. Controllers notice — not one controller, several, chained. The Deployment controller sees a Deployment with no matching ReplicaSet and creates one. The ReplicaSet controller sees a ReplicaSet with fewer pods than it wants and creates pods. Each watches the API, compares what exists against what was declared, and takes one idempotent step to close the gap. That comparison is level-based: it asks what should be true now rather than replaying a history of events. So a dropped watch event costs latency, never correctness — the next reconcile recomputes from current state and gets the same answer.",
+      "visual": {
+        "type": "controllerChain",
+        "spec": "Deployment object → Deployment controller loop icon → ReplicaSet object appears → ReplicaSet controller loop → three Pod objects appear. Then show the observe/compare/act cycle spinning on one controller. Finally, animate a watch event visibly being dropped mid-flight, a beat of nothing, then a resync tick firing and the same correct result being produced."
+      },
+      "stage": 4
+    },
+    {
+      "id": "scheduler",
+      "n": 6,
+      "title": "Stage 5 — Filter, then score",
+      "lane": "control",
+      "estSeconds": 66,
+      "narration": "Stage five. The pods exist, but no node is assigned. The scheduler runs two distinct phases. Filtering: which nodes could run this at all? Requests against allocatable capacity, taints, node affinity, topology constraints, volume topology, free host ports. Nodes that fail are eliminated outright. Then scoring: of the survivors, which is best? Spread, resource balance, preferences. Filtering uses your declared requests, not what your pods are actually using. A cluster can sit at fifteen percent measured CPU and still refuse to schedule, because every pod requested far more than it needs. When a pod is Pending, dashboards showing free capacity are not evidence.",
+      "visual": {
+        "type": "schedulerCycle",
+        "spec": "A grid of eight nodes. Filtering: nodes grey out one by one, each with the reason that killed it ('taint', 'insufficient cpu request', 'no matching zone'). Three survive. Scoring: the three get numeric scores counting up, highest wins with a highlight ring. Then a split panel: left shows a CPU gauge at 15% actual, right shows requests bar at 100% allocated, with 'the scheduler reads the right-hand one'."
+      },
+      "stage": 5
+    },
+    {
+      "id": "binding",
+      "n": 7,
+      "title": "Stage 6 — A name, written down",
+      "lane": "control",
+      "estSeconds": 48,
+      "narration": "Stage six, and it is smaller than it sounds. The scheduler does not place the pod on the node. It does not contact the node. It does not start anything. Its entire output is a binding — one API write that sets the pod's nodeName field. The decision is now a fact in the database, and the scheduler moves to the next pod. Everything that follows is somebody else's job, triggered only because a kubelet was watching for pods with its own name on them.",
+      "visual": {
+        "type": "binding",
+        "spec": "The scheduler chip emits a small object labelled 'Binding' into the API server; the Pod object's nodeName field fills in with the chosen node name, highlighted. The scheduler then visibly turns away to the next queued pod. Deliberately no arrow from scheduler to node — make the absence noticeable."
+      },
+      "stage": 6
+    },
+    {
+      "id": "kubelet-picks-up",
+      "n": 8,
+      "title": "Stage 7 — The node notices",
+      "lane": "node",
+      "estSeconds": 52,
+      "narration": "Stage seven. Control crosses from the control plane to the node. On the chosen machine, the kubelet has a watch open for pods assigned to it. Your pod's nodeName now matches, so it appears. Nobody sent the kubelet a command — it is a sync loop, not a command receiver, and that difference matters when you are debugging. From here it keeps driving this pod toward its declared state. It coordinates the runtime, the network, storage, secrets and probes, and reports status back.",
+      "visual": {
+        "type": "handoff",
+        "spec": "Camera pans down from the control-plane lane to the node lane. The kubelet chip has a pulsing 'watch' line up to the API server. The Pod object slides down that line and lands on the node. Emphasise pull, not push — the arrow direction should read as the kubelet reaching up."
+      },
+      "stage": 7
+    },
+    {
+      "id": "sandbox",
+      "n": 9,
+      "title": "Stage 8 — The sandbox",
+      "lane": "pod",
+      "estSeconds": 60,
+      "narration": "Stage eight. The kubelet calls the container runtime over CRI, a gRPC contract, and the boundary the kubelet actually speaks across. The runtime creates the pod sandbox first, before any of your containers. The sandbox holds the namespaces your containers will share — network, IPC — anchored by a tiny pause container that runs no application code. The network has to belong to something before a container can join it. So you can have a healthy runtime and a pod with no networking.",
+      "visual": {
+        "type": "sandbox",
+        "spec": "kubelet → CRI (gRPC label) → containerd. containerd creates a rounded container labelled 'sandbox' containing an empty namespace box and a tiny 'pause' chip as PID 1. App containers are shown greyed out, waiting outside, not yet created."
+      },
+      "stage": 8
+    },
+    {
+      "id": "cni",
+      "n": 10,
+      "title": "Stage 9 — CNI wires it up",
+      "lane": "pod",
+      "estSeconds": 72,
+      "narration": "Stage nine. The runtime — not the kubelet — sets up networking. It reads CNI configuration from disk on that node and executes a plugin. A CNI plugin is not a daemon. It is a binary the runtime runs: the operation arrives in an environment variable, CNI underscore COMMAND, set to ADD. The configuration arrives on standard input. The plugin creates and wires the interface inside the sandbox's namespace and returns a JSON result on standard output. Address allocation is delegated further, to an IPAM plugin, which hands back the IP, the gateway and the routes for the main plugin to apply. So a pod's IP comes from an IPAM plugin, invoked by a CNI plugin, invoked by the runtime. Not the kubelet, and not the API server.",
+      "visual": {
+        "type": "cniExec",
+        "spec": "Show it as an actual exec. A terminal-styled card: env vars CNI_COMMAND=ADD, CNI_NETNS, CNI_IFNAME on the left; a JSON config piped into stdin; the plugin binary as a box that runs and exits; JSON result out of stdout carrying ip, routes, dns. Then a second smaller exec nested inside it labelled 'ipam' returning just the address. Finally the veth interface appears inside the sandbox with the IP attached."
+      },
+      "stage": 9
+    },
+    {
+      "id": "images-containers",
+      "n": 11,
+      "title": "Stage 10 — Images and processes",
+      "lane": "pod",
+      "estSeconds": 50,
+      "narration": "Stage ten. Now the images. If a layer is already on the node it is reused; otherwise it is pulled from the registry. The containers are created inside the sandbox that already exists, joining its namespaces. Below CRI, containerd calls a lower-level runtime called runc. This is where OCI lives. OCI specifies the image format, and how namespaces and cgroups are created around a process. The kubelet speaks CRI, containerd speaks OCI downward, and CNI attached the network. Three contracts, three places to look.",
+      "visual": {
+        "type": "layers",
+        "spec": "Vertical stack: kubelet —CRI→ containerd —OCI→ runc → Linux (namespaces, cgroups). Each boundary labelled with its acronym in a distinct colour. Image layers slide in from a registry chip and stack up. App container materialises inside the sandbox alongside pause."
+      },
+      "stage": 10
+    },
+    {
+      "id": "running-not-ready",
+      "n": 12,
+      "title": "Stage 11 — Running is not ready",
+      "lane": "pod",
+      "estSeconds": 58,
+      "narration": "Stage eleven. The process is alive, and the pod's phase becomes Running. Running is not ready. Running means the process started. Ready means the application will accept traffic — and those are separated on purpose. The startup probe gates the others while a slow application boots. The liveness probe restarts the container if it wedges. The readiness probe does something different: it does not restart anything, it controls whether you receive traffic at all. Getting these confused is how a slightly slow dependency turns into an endless restart loop.",
+      "visual": {
+        "type": "probes",
+        "spec": "Pod chip flips to phase Running with a green dot, then a large caption '≠ Ready' stamps over it. Three probe rows animate: startup (holding the other two back with a barrier that then lifts), liveness (failing → container restart animation), readiness (failing → the pod stays up but a traffic arrow gets cut). Keep the restart vs no-restart contrast very explicit."
+      },
+      "stage": 11
+    },
+    {
+      "id": "endpointslice",
+      "n": 13,
+      "title": "Stage 12 — Becoming an endpoint",
+      "lane": "control",
+      "estSeconds": 56,
+      "narration": "Stage twelve, and we go back up to the control plane. The readiness probe passes, the kubelet reports ready, and the EndpointSlice controller notices. It adds your pod's IP to the Service's EndpointSlice — the object that lists which backends are currently able to serve. This is the mechanical reason a readiness probe controls traffic. It is not magic and it is not local: readiness changes an API object, and that object is what every node's data plane reads. So if your service has no ready backends, the EndpointSlice is empty. That single fact explains the outage faster than any packet capture will.",
+      "visual": {
+        "type": "endpoints",
+        "spec": "Pod flips to Ready; a signal travels up to the EndpointSlice controller; the EndpointSlice object visibly gains a row with the pod IP. Then show three nodes each pulling that object down. Briefly show the empty-EndpointSlice case with a service box and zero rows, flagged amber."
+      },
+      "stage": 12
+    },
+    {
+      "id": "dataplane",
+      "n": 14,
+      "title": "Stage 13 — The data plane",
+      "lane": "node",
+      "estSeconds": 64,
+      "narration": "Stage thirteen. On every node, something watches that EndpointSlice and programs the local data plane so traffic to the Service's virtual address reaches a real pod IP. Classically that is kube-proxy, writing iptables or IPVS or, in current clusters, nftables rules. An eBPF data plane does the same job differently. It translates the address at the socket layer, before packets are built. It keeps connection state in its own maps rather than netfilter's. eBPF does not remove connection tracking. It moves where the state lives. And the Service contract does not change when the backend does. These are implementations, not APIs.",
+      "visual": {
+        "type": "dataPlane",
+        "spec": "Split screen. Left: kube-proxy writing a rule table, packet enters with ClusterIP dest and gets DNAT'd to a pod IP. Right: eBPF, translation happening at a 'socket' layer marker before the packet is constructed, with a BPF map holding conntrack entries. A shared banner above both: 'same Service API'."
+      },
+      "stage": 13
+    },
+    {
+      "id": "packet",
+      "n": 15,
+      "title": "Stage 14 — The packet",
+      "lane": "pod",
+      "estSeconds": 54,
+      "narration": "Stage fourteen. A client resolves your service name. Even that has a subtlety. Search domains and the ndots setting decide how many queries actually leave the pod before the right one does. CoreDNS answers from Service and EndpointSlice state it watches from the API. The client opens a connection to the cluster IP. The node's data plane rewrites the destination to one of the ready pod IPs. The packet crosses the interface that CNI created, into the namespace the sandbox anchors. It arrives at your process, which has been listening since stage eleven.",
+      "visual": {
+        "type": "packetJourney",
+        "spec": "One continuous camera move following a single packet: DNS query and answer, then the packet leaving the client pod, hitting the data plane where its destination address visibly rewrites, traversing the veth, entering the sandbox namespace, and landing on the app container's listening port. This should feel like the payoff — longest single continuous motion in the video."
+      },
+      "stage": 14
+    },
+    {
+      "id": "what-breaks",
+      "n": 16,
+      "title": "Where each failure actually lives",
+      "lane": null,
+      "estSeconds": 70,
+      "narration": "This is why the spine is worth memorising. Pod Pending? You never got past stage five — filtering. Compare requests against allocatable, and read the scheduler's events, which usually name the predicate that failed. Stuck in ContainerCreating with a network error? Stages eight to nine. Check the runtime's logs, not the kubelet's, because the runtime executes the plugin. Then check whether IPAM has run out of addresses. Running but no traffic? Stages eleven to twelve — readiness, then EndpointSlice membership, then the service selector. DNS resolves but the connection times out? Stages twelve to thirteen — check for ready backends first, then hit a pod IP directly to separate Service translation from the workload. Same symptom class, four different subsystems.",
+      "visual": {
+        "type": "failureMap",
+        "spec": "The full spine redraws small along the top. Four symptom cards appear in sequence; as each is spoken, a bracket highlights the exact stage range on the spine that owns it, and the other stages dim. End with all four brackets visible at once over the complete spine."
+      },
+      "stage": null
+    },
+    {
+      "id": "recap",
+      "n": 17,
+      "title": "The spine",
+      "lane": null,
+      "estSeconds": 56,
+      "narration": "So: desired object, admission and storage, watch and cache, controller queue, scheduler queue and binding, kubelet, CRI, CNI, CSI, EndpointSlice, service, DNS, data plane, application. Every stage asynchronous. Every stage observable. Every stage retryable. And no stage in charge of the one after it. Walk that spine out loud and you can place almost any Kubernetes failure on it in about thirty seconds. That is the skill being tested when someone asks how Kubernetes works.",
+      "visual": {
+        "type": "spineRecap",
+        "spec": "The complete spine assembles left to right, each segment landing as it is named, colour-coded by lane. Once complete, the three lane loop-arrows from beat 1 reappear over it. Hold on the finished diagram for the final sentence, then fade to the course title card and URL."
+      },
+      "stage": null
+    }
+  ]
+}

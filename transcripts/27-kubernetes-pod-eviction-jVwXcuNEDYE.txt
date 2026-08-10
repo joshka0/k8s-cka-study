@@ -1,0 +1,836 @@
+Hello everyone. Thanks for joining me in
+the last day of CubeCon. In the next 30
+minutes, uh we're going to explore
+internals of Kubernetes to better
+understand how each Kubernetes component
+is coming after your pods and how they
+potentially pose a risk to your
+availability. Um a lot of what you're
+going to hear today is either hard
+lessons from operating Kubernetes or we
+proactively surveyed the codebase to
+enumerate all the different ways Koreans
+can evict your pods. A little bit about
+myself. My name is Amad Al Palkin. I've
+been operating in Korean's open source
+space and container space since the
+early days of Docker. Um I contributed
+to Docker in its early um versions and
+nowadays I'm leading the Korean
+infrastructure at LinkedIn. But probably
+if you know me at all, it's probably
+because of QCTX or Cuban or something
+like that. Can we get a quick show of
+hands actually who uses QCTX QS? Good
+stuff. Okay. Um yes, this is my sixth
+time presenting CubeCon. So I want to
+talk about my employer and how I got
+into this rabbit hole. Uh so at LinkedIn
+we use Kubernetes to run our mission
+critical services. Uh we serve the
+LinkedIn website that you all see and
+use and we run thousands of
+microservices and largecale databases on
+top of Kubernetes. And our fleet is
+pretty large. We have half a million
+servers in our bare metal data centers.
+And a significant portion of this is
+already on Kubernetes. And the rest is
+soon going to be all on Kubernetes as
+well. And I think this makes LinkedIn uh
+one of the largest Kubernetes
+installations in terms of compute
+footprint. And this is not our first
+CubeCon. We presented at CubeCon before.
+Six months ago we were at London. We
+presented our Kubernetes-based compute
+platform. Um how we actually use
+Kubernetes, how we uh deploy Kubernetes
+itself and how we build a platform on
+top of it and offer it to thousands of
+engineers at LinkedIn. And year before
+we were at Salt Lake City and we talked
+about how we treat Kubernetes uh how we
+treat stateful systems on Kubernetes as
+a first class citizen and how we run
+stateful systems with local discs. So
+we're pretty invested in Kubernetes at
+this point and we deeply care about the
+reliability of our compute stack.
+Okay, coming back to the topic.
+Um so a harsh reality that we came to
+realize over time is that Kubernetes is
+your enemy if you care about your pod
+availability and evictions. Um every
+single component in Kubernetes is trying
+to kill your pods maybe except for HCD
+actually I have we'll come back to it
+later. Um, so these eviction features uh
+might not be the right thing to do for
+your workloads. And we'll go through
+these components and see how each of
+these components actually poss.
+So here are all the ways Koreans can
+kill your pods. But before we get lost
+in the sauce, I want to define what is
+an eviction. What do I mean by an
+eviction? So if an application stops on
+its own, if it says, you know, I'm just
+going to exit crash because of a panic
+or an exception in my code, that's fine.
+That's just an application crash. But if
+it if it's Kubernetes stopping that
+application, I think that's an eviction,
+right? Uh so if an app exits on its own,
+that's fine. We don't have a problem
+with that. But anything else killing our
+pods poses a risk to our application
+availability. And this is the list to my
+knowledge. And that tells you all you
+need to know. Actually, I was just in a
+talk and I just learned one more thing
+that I could add here potentially in six
+months. So, we'll see about that. Okay.
+So, a while ago, we asked ourselves,
+what is the most important Kubernetes
+component that we are operating in our
+fleet? Is it the API server? I don't
+think so because API server can go down
+and your workloads are still going to
+keep running, right? Is it core DNS? Not
+really. We don't really use core DNS. We
+have our own like service discovery
+system, whatever, right? Is it cublet?
+Like what happens if cub goes down? Like
+nothing truly happens. Like your
+workloads still keep running or like
+containerd can go down like your
+processes that you started as a
+container, they're going to keep
+running, right? These don't really pose
+a big risk to the application
+availability that we have like you're
+still going to be able to type
+linkedin.com and go to the website.
+Well, turns out yeah, it's none of them.
+It's none of the components, but it's
+rather a property which is keep running
+what's been running. Objects in motion
+should stay in motion, right? We don't
+want Kubernetes to bring down
+linkedin.com and this this is what the
+talk is about and I don't think
+Kubernetes should bring your websites
+down either. Um so if Kubernetes messes
+with our workloads we have a problem.
+So naturally we care about potions and
+why do they happen and ideally we want
+all this to be in our control as much as
+we can. So, first and foremost, uh,
+evictions are a risk to availability,
+right? We don't want the website to go
+down just because some component decided
+this is a good idea to kill a pod. I'm
+just going to kill the pod. No, we don't
+want that. And the second thing that we
+want is to maximize graceful
+terminations. You start a request,
+suddenly you get like Chrome failed to
+load or whatever. That kind of sucks,
+right? We don't want that. We want the
+applications to terminate gracefully as
+much as possible even during during the
+evictions. Um, you know, you get to
+handle the termination signaling. You do
+want to do your shutdown. you want to
+drain your requests that are in flight
+and stop accepting the requests
+unannounce yourself from service
+discovery do whatever you know fancy
+thing you want to do but if you have an
+option to gracefully terminate let's do
+that right um and then the third thing
+is as I mentioned earlier we run
+stateful apps on Kubernetes and we are
+running them on bare metal like we're
+running them on actual servers no VMs
+like directly there's data on the local
+disk like I got to be on that machine to
+run that database I can't just be moving
+around right and stateful apps are not
+like stateless apps It is I think pretty
+much true that Kubernetes is not really
+designed with stateful systems in mind,
+right? Like we're going to come to that
+shortly. I'm going to show you an
+example. But um like if Kubernetes just
+decides to kill the own last healthy
+replica of a database instance that has
+the healthy shard, we have a problem,
+right? And lastly, we have a lot of
+applications at LinkedIn. Um because
+we're coming from a legacy world where
+people were used to, you know, running
+on the same machine for weeks and
+months. uh we ended up in a situation
+where we have a lot of applications that
+don't want to be moved around too much
+like you know machine learning training
+jobs or you can think of for example
+search application that downloads a you
+know large 30 GB or maybe 300 GB search
+index from somewhere and they want to
+stay there and they don't want to get
+randomly keep you know getting moving
+moved around right so we want to
+minimize the movement as much as we can
+so again why do we care about like the
+node disruptions to begin with again
+this comes down to the fact that we run
+on the bare metal. When you're in a
+cloud provider, they they move you
+around. You never realize, right? They
+move you from one hypervisor to another
+hypervisor before even the TCP
+connection window closes. They're pretty
+good at that. They're they're just going
+to detach your discs. They're going to
+mount your block storage to another
+machine. It all works really well. But
+when you when you're on bare metal, you
+literally see every single failure that
+happened. And if you're running
+stateful, this suddenly becomes a
+problem. So, we want eviction controls.
+We want to see exactly like who's going
+to disrupt our apps and when. So what
+does Kubernetes give you then? What are
+the eviction controls in Kubernetes?
+Well, there are very few knobs. Um it's
+mostly on and off knobs. There are some
+threshold knobs. We're going to talk
+about them. But the extensibility is
+limited. I can't say, "Hey, I have a
+stateful application and I want to
+manage its evictions in a different way.
+I can't tell that to Kubernetes." So P
+disruption budgets offered limited
+expressivity, right? And they're
+thinking that you're just developing a
+stateless application where every
+instance is just a replica of each
+other. But when you come to the stateful
+world, that's just not going to work.
+Like here I have an example where a
+bunch of database pods are running and
+if I kill the DB1 pod which has the only
+available shard of the red triangle
+right that data is going to be gone
+that's we're not going to be able to
+serve the database maybe the queries are
+going to start failing whatever happens
+right so PDBs can't capture that as a
+requirement okay so the first area that
+I want to dig into is the API server
+initiated evictions you all know the API
+server is Kubernetes control plane and
+the most obvious example example that we
+can think of is the pod delete API. I
+assume you all ran a cube control delete
+pod once. That's like one of the
+tutorials. I'm sure it's all in there.
+This is the most basic way you terminate
+a pod on Kubri's API. Again, pod didn't
+terminate itself. You terminated the
+pod, right? U so the most interesting
+thing about the pod delete API is that
+like the controllers that you use to run
+your workloads, replica set, deployment,
+stateful set controller, right? or
+whatever open source controller you
+brought into your ecosystem. This is the
+API they use to terminate your pods
+during a rolling update. If you're
+rolling a new version, your pods are
+just going to get deleted, right? Um,
+this doesn't do PDB checks. There is no
+like availability check to verify this
+is, you know, this pod is under
+replicated. Let's not delete that. So,
+it's all up to the controller to decide
+what to do. You're at the mercy of the
+controller and not at the mercy of the
+API. So, by the way, I'm going to have
+demos. So, you know, eyes on the prize.
+Stay tuned. Um, pod eviction API. This
+is the second API that API server offers
+to remove a pod from the system. So,
+this is a nicer cube control delete pod.
+It's a pod delete API still exists, but
+this is a wrapper on top. Basically,
+that checks the pod disruption budget.
+All it does is literally goes to pod
+disruption budget, sees if there's, you
+know, can I disrupt this application? If
+it says yes, it borrows one replica for
+disrupting it and it goes and deletes
+the pod and that's kind of the end of
+the story. Who uses this? Um, well, keep
+cube control drain command uses this.
+I'm hoping that most of you are not
+manually draining your pods, right? So,
+when you use a cloud provider, they use
+this API as well when you like scale
+down your uh, you know, virtual machine
+pools or stuff like that. If you're
+using cluster API, similarly, CAP uses
+this as well. Well, this is going to be
+the last time you hear about the
+eviction API. Unfortunately, this is a
+really nice mode of eviction. I wish
+everything worked like this, but this is
+the last time in this talk you're going
+to be hearing about this. Most paths
+most eviction paths on grains don't use
+this at all. And how does this API work?
+Well, the way this API works is
+basically you just, you know, you have a
+rest API call. You submit a just like
+you submit a pod object, you submit an
+eviction object. It just looks like a
+real Kubernetes object. It has API
+version kind metadata that matches the
+pod that you're trying to evict and
+you're submitting it to the eviction sub
+resource. Pretty straightforward stuff,
+right?
+This brings up a question. Can I write a
+web hook for this?
+We're going to come back to that. So,
+the first demo that I'm going to show
+you is we're just going to evict the
+pod. See what happens. So, I'm going to
+do a pre-recorded um playing of a demo.
+So, I have a pod. As you can see, the
+pod is running, right? And I started a
+watch in the terminal at the bottom. And
+now I'm just going to use a plugin
+called cube control edict pod and I'm
+evicting the pod. You see bunch of
+events came to the watch screen that I
+had at the bottom. And I'm just going to
+scroll up to see what happened to the
+pod, right? And one thing I'm going to
+see that the in the pod conditions
+there's an eviction type disruption
+target. This is a feature that was added
+in 129. We're going to talk about it and
+the reason is this is evicted by the
+eviction API and you know you get some
+details about it. So this is a very nice
+way to evict a pod. You could just
+delete it but hey here's a nice way and
+it tells you why it was evicted right?
+Uh so that's kind of the demo. So let's
+talk about the cublet initiated
+evictions. This is interesting. Um so
+cublet is as you know is the agent
+running on the node and what it's trying
+to do actually is to protect the node
+right it's trying to make sure the node
+itself is at a good state and it's not
+going crazy and cublet is trying to
+protect its own integrity as well and
+that's why cublet is actually evicting
+pods and there are quite a few ways
+cublet actually can do that so the first
+thing that we're going to talk about is
+the node pressure evictions um basically
+the cublet here acts as a proactive
+remediation agent on the node like it's
+trying to get ahead of things and act on
+stuff before the node actually gets in
+gets in a bad place. So if you have
+resources on the node, right? You have
+memory, you have CPU, you have disk
+here, there's like there's iodes,
+process ids and stuff like that. And you
+can run out of these things. And so
+before you run out of these things,
+cublet basically says, well, if the
+memory is memory available is less than
+200 megs, I'm going to start killing
+some pods, right? I'm going to start
+killing lower priority pods first. Uh
+the problem here is that it doesn't care
+about your PTB. You have an application
+it PTB is already violated and if
+evicting that pod is going to make the
+situation worse um it's going to evict
+that part. It doesn't care, right? So
+the problem here is another problem here
+is that there are different thresholds
+to do not pressure eviction. Like
+there's hard thresholds and soft
+thresholds. If you hit a hard threshold
+right away, your pods are going to get
+killed violently and right away, right?
+Uh funny enough, this feature has so
+many knobs that you can turn. It's a fun
+feature to play with. Uh we disable this
+because we do our own node health
+management in a different way. So we
+don't need this going around killing
+pods randomly. And again like we get to
+keep control about who's killing our
+pods. And we just don't like this
+feature. So we just disable it. Uh but
+you know what it's trying to do is
+protect the node so that the kernel
+stops killing your pods randomly, right?
+Um okay, here's a demo. Uh, so what I'm
+going to show you here is that I have a
+pod that's already running and I'm going
+to create a pod that just um allocates a
+lot of memory. So as you can see the pod
+exists already. I created the pod. So
+the second pod that I'm going to create
+is basically a memory hog. It's just
+going to start allocating memory and
+let's see what's going to happen. So
+here's the memory hog container. You
+know there's a stress image I randomly
+asked GP to generate. I didn't really
+write this. I don't think I could write
+it. But um one thing to note here is
+that it's running at a higher priority
+class. The last line you see that it's
+like system cluster critical. So it's
+running at a higher priority. So it's
+not going to be the pod that's going to
+get bumped out. So as soon as I run
+this, right, what's going to happen is
+that the cublet's going to start
+monitoring the memory of the node, which
+it's already being doing that. And I see
+that the other pod just finished. It got
+into the completed state. So it got
+terminated by the cublet, right? So
+let's look at what happened. I was
+watching this node watching this pod and
+scroll up and I see again the same
+condition disruption target condition
+flip to the reason termination by cublet
+and there's a message telling me that
+this pod got deleted or terminated
+because we were low on memory. So one
+thing to understand here is that this is
+a terminal state when pods get completed
+or error state or whatever like nobody's
+going to restart your pod. Okay, like
+you you're stuck there unless you're
+using a replica set controller,
+deployment controller, something like
+that, maybe they will restart your pod
+or they create a replacement pod.
+Actually, they're not going to restart
+your pod. So anyway, uh we'll come back
+and talk about completed pods later. So
+the next topic that I'm going to touch
+is cublet admission. This is a lesser
+known eviction mode. I don't think many
+people hit this uh because this is when
+you do weird things and you are you
+suddenly realize that your pods are
+terminated and this is one of the
+reasons why that can happen. So, cublet
+has its own built-in admission checks.
+You know how the API server has, you
+know, various admission checks. You
+can't just provide invalid values on the
+API, right? Uh, cublet has the same
+thing like if I directly submit a pod to
+a node directly, if I say spec.node name
+is this node, cublet's going to check,
+do I have enough CPU on this node? Do I
+have enough memory on this node that is
+available? If not, it's just going to
+refuse to run the pod and transition it
+to that failed state again, that
+terminal state, right? Um so this can
+happen many other ways like couple I
+noted here that there's there's a node
+affinity check you specified an affinity
+role affinity spec affinity spec right
+and then you land it to this node but if
+the node changed and if you restart the
+cublet well cublet's going to scan the
+pods and it's going to see that well
+this node this pod shouldn't be here and
+it's going to just kill that pod right
+so what we found out again one time
+again the hard way is that restarting
+cublets in place is not safe you should
+always try to drain before you upgrade
+your cube cublet it's not strictly
+necessary actually but uh you should try
+to drain your nodes um but cublet can
+get restarted other ways right cublet
+can crash itself you don't have any
+control over it so one of the ways that
+we got into this situation was that we
+were using node feature discovery which
+is a open source component that goes and
+labels your nodes but if you're using
+those labels for scheduling and the
+labels change later and the cublet
+restarts well those pods are just going
+to terminate so this is one way to bring
+your website down so here's This is
+another demo. Uh, this is going to be
+fairly simple. So, what you're going to
+see here is that um I have a I have the
+same pod, just a pod object. I have a
+node selector this time. I said roll
+equals worker. So, what we're going to
+query next is that let's take a look at
+what nodes we have available. So, I type
+cube control get nodes show labels. Rest
+assured, here's a worker node. It has
+the label um ro equals worker, right?
+So, as you can see, you know, as you can
+guess, what I'm going to do next is that
+I'm going to create this pod. I'm gonna
+just wait for that part to come up. It
+came up correctly, right? And what I'm
+going to do is I'm gonna delete the
+label on the node. Let's see if I
+actually do that. There we go. Cube
+control labeled node. And then I do roll
+minus, which is going to unlabel that
+node. So now I'm going to restart the
+cublet and see if that pod at the bottom
+keeps running. So we restarted the
+cublet. Cublet came up and the pod is
+completed now. It was supposed to
+complete. Cublet was supposed to just
+pick up that pod and run it, right? But
+no, so if you describe the pod, what
+you're going to see is that there's a
+warning saying that the node affinity no
+longer matches. Again, nobody's really
+going to fix this pod. Okay? Like you
+have to test these scenarios to see what
+happens in this case. Does my controller
+like does the controller that I use is
+it actually going to fix that? Like does
+the stateful set controller fix that? I
+don't think so. Okay.
+So the next mod that we're going to talk
+about is the local storage evictions.
+This is also a rather new feature in
+Kubernetes. You can set your pod spec in
+a way that if you use an empty volume,
+you can say I want I want this volume to
+only get one gig, not more than that,
+maybe like 100 megs. Similarly, you can
+set podwide ephemeral storage limits.
+You can say that well if I'm emitting
+too many logs, maybe I shouldn't be
+doing that. So you can say my customers
+can only emit 100 megabytes of logs,
+right? So because the logs count towards
+your ephemeral storage, if you hit these
+things again, your pod is going to get
+evicted. Let's see a quick demo of that.
+So I have a U example here. So the pod
+that I'm going to use is just going to
+start writing files to the scratch space
+of the container. I'm just writing
+things to the local file system, temp
+file system, right? And I specified an
+ephemeral storage limit of, you know,
+how much did I specify? 20 megs or
+something like that. So we're going to
+reach it pretty quickly. So as you can
+see, I just created the pod. Pod is
+running in the middle. And soon enough,
+there we go. The pod just transitioned
+into the error state. I think it just
+exited with an exit code one or
+something like that. That's when when
+the error happens. But let's take a look
+at what happens in the watch screen. Um
+so I'm just zooming into that one and I
+see a message saying that the reason is
+evicted on the pod and the message is
+that well the local storage quota is
+exceeded right. Um in this case that's
+there's no condition on this pod.
+Actually we're talking about conditions,
+right? Like there's a particular
+condition that got added. In this case
+it doesn't get added. That's kind of
+interesting. Maybe that's a bug.
+Actually didn't look into this. Maybe I
+should. Anyway, so let's move on. Let's
+talk about cube scheduler. You wouldn't
+expect cubeuler to maybe evict pods, but
+it does. And it's a fairly well
+doumented mode, right? It's the pod
+preeemption. Well, when we run out of
+space in the cluster, theuler tries to
+make space for a higher priority pod.
+Uh, and how does it do that? Right? It
+tries to evict the pod. So, there's
+another path eviction eviction path in
+the cubeuler.
+And it honors the PTBs but it honors
+them in a you know best effort basis
+right any node where the if it basically
+scans all the nodes and it tries to find
+candidates where there's no PTB
+violations right it tries to go into
+that node evict that pod find that's
+fine and it try if it can't find that it
+tries to go to another node where least
+PDB violations exist and it tries to
+pick an pod there and it tries to pick
+the pod with with least PTB violations
+but it'll violate your PDBs and I think
+this is a critical thing to think about
+and it you know gracefully terminates
+your pods. So again very quick demo. I'm
+just going to create a pod. Pod is
+created and I'm going to create a higher
+priority pod. Let's just do that real
+quick.
+There we go. The higher priority pod is
+created and as soon as that happened the
+as you can see at the bottom the
+original pod is deleted. So basically
+that's how preeemption works right and
+if I go ahead and describe the
+conditions I'm going to see that the
+condition was set. The disruption target
+condition shows me it was the reason is
+preeemption by theuler. So that's pretty
+straightforward. Okay, we're coming to a
+juicy topic. Cube controller manager.
+It's that thing that keeps running in
+the background has 40 different
+controllers running in the process,
+right? So it is also evicting your pods
+and I think some of these ways that you
+already know. Uh the first one is
+taintbased eviction. The no execute
+taint the dreadful no execute taint,
+right? The nodes can get the no execute
+taint for various reasons. If I'm
+cublet, if I start stop reporting
+heartbeats, I'm going to go into the
+unreachable taint. That basically means
+it's a weird name because like the node
+actually might be reachable. It's just
+the node is unable to report heartbeats.
+There could be a permission issue. There
+could be like you know variety of issues
+where I where I'm unable to report
+heartbeat, right? And there's a not
+ready taint and kubble check it checks
+its own health like kubble checks
+containerd. if you will check CNI and it
+tries to validate if all these things
+are functioning correctly and if not
+it's going to add the not not ready
+taint with a no execute effect. So, you
+know, pods tolerate these things.
+Typically, 5 minutes is the default. Um,
+but I'm going to for the demo, I'm going
+to use a much shorter time frame. But
+the problem here is that like sometimes
+the cublet might be telling you a false
+signal, right? Like containerd down. I
+don't think that should evict a pod.
+Like I I want my pods to run if
+containerd is down. Okay? Like I I'll
+find a way to remediate it myself. Leave
+it to me. So if you roll your own
+taints, um, degraded node state might be
+okay actually like for some
+applications, right? So again, quick
+demo. So what I have here is that I'm
+going to just run the regular pod that
+I've been running this whole time. It
+came up correctly, right? So I'm going
+to run a script to freeze the cublet in
+my kind cluster. So the cublet is
+frozen. I just sent a sig stop, right?
+I'm going to wait for a while after
+missing a few heartbeats. By the way, I
+have a modified kind cluster here.
+Everything happens very fast. As you can
+see, the worker went to the not ready
+state and the pod got into the
+terminating state. Obviously, it can't
+terminate because cublet is down like
+this. Just going to stuck there, get
+stuck there forever. But eventually,
+I'll unfreeze the cublet. And as you can
+see, like that little blip, that little
+cublet freezing in place caused my pot
+to terminate. I don't like that. I don't
+want that. Okay, so basically what
+happened is that the taint manager um
+went ahead and deleted the pot because
+of the no execute taint. Okay, this is
+interesting because you can actually do
+something about it. So thanks to Apple
+as of 129 and 134 in G. Now there's a
+separate controller that manages the
+adding the taints and executing you know
+evicting pods based on those taints. So
+those those two things are separate. You
+can disable one of them. That's great.
+We like that. Okay, this is the funniest
+thing. Um pod GC controller. I bet you
+never heard of that one before. Um have
+you ever wondered what happens if you
+delete all your node objects?
+Who has ever done that? Look at here.
+Oh. Um, so think about who you were
+giving access to in your API, right?
+Like I one time I wrote a controller
+that manages the nodes and I
+accidentally pointed it to production
+and there's a there's something that
+happened and I call it the mass DCuling
+event. Um, so the podc controller
+anytime the node is gone those pods are
+now orphan. It's going to wait 60
+seconds and if the node doesn't come
+back, goodbye. So if you're managing
+your own nodes, which we do in our bare
+metals installation, we have a node life
+cycle controller. You should implement
+guardrails. You should throttle how fast
+the nodes can get deleted and things
+like that. So so that the node objects
+don't get nuked. By the way, like if
+someone goes to HCD and deletes the
+nodes, the same thing is going to
+happen. So you know, be careful. So
+let's just see that. Obviously, this
+demo is going to take 60 seconds, but
+I'm just going to speed it up for the
+sake of time. We deleted the worker
+node. Here we go. The node is gone. Um,
+but the pod is still there. It shows
+running. Actually, the cublet can't do
+anything anymore because the time like
+the cublet's credentials are revoked at
+this point. So like whatever we're going
+to see is like not the can't do anything
+at this point. It's never going to
+terminate that. But if you wait long
+enough um see what happens. The pod's
+still running running and then it's
+deleted. You see it wasn't even
+terminated. It just got deleted like
+right away. So anyway, so what can you
+do about these? Here's the interesting
+part. Number one, eviction inter
+interception. So you can write a web
+hook for your eviction calls. This is a
+slippery slope. You know, we don't
+recommend this to everyone. We found use
+cases for it because PDBs are
+insufficient. People want to have custom
+eviction policies. Some customers
+actually want to use eviction signal and
+they want to start moving the data out
+and eventually approve the eviction
+request. You can actually use eviction
+request as a signal, right? So anyway,
+whatever you do, just make sure to don't
+intercept all objects because the
+eviction object doesn't have labels or
+anything. So it's going to evict like
+it's going to inter you can't use object
+selectors on it. You can't say I want
+like only these type of pods to be
+intercepted. So you'll figure it out,
+I'm sure. Anyway, this is something new
+that's coming up in the node life cycle
+working group. There's a cap. It's going
+to go off in 135. You can specify
+eviction interceptors on the pod. You
+can say here are three eviction
+interceptors. go through them, see which
+one is interested in the pod, and let
+that thing evict the pod instead of you
+evicting the pod. And eventually, the
+pod will just disappear if one of them
+actually gives a thumbs up and evicts
+the pod. This is a long cap. I recommend
+reading if you're actually interested.
+So, we talked about pod disruption
+conditions. Funny enough, these
+conditions get added to the pod right
+before the pod gets deleted. So, you
+can't really like observe it by your
+eye. What we do and like something
+that's been an indispensable tool
+operating cranes in production is to
+collect audit logs and events. Collect
+these things. Log all the pod pod
+response bodies, request bodies. It's
+worth the storage money that you're
+going to pay on them. You can actually
+debug things. And lastly, this is the
+picture slide coming up. If I'm going to
+leave you with this cheat sheet. Uh if
+you're going to take a picture again,
+this is the one to take picture of. Uh,
+this tells you, you know, who honors
+PTBS, who doesn't, is it a graceful
+termination? Is it sometimes graceful
+termination? So, this is all the stuff
+that we just talked about. Um, and
+lastly, I'm going to come back. There
+you go. Get it in. All right. All right.
+So, let's talk about the eviction
+threshold settings. Uh, adjust them if
+you care about them. Do disaster
+recovery drills. Take down your control
+plane. See what happens. Just bring it
+down. See if your pods keep running. Uh
+if you're running stateful, see if your
+toleration settings are correct, if
+you're tolerating long enough, the right
+taints, what not. Uh if PTBs are not
+enough, maybe like write your own PDB
+controller. It's not rocket science. And
+understand what happens when a single
+pod goes to a terminal state and stays
+there for a long time. You can end up
+with 10,000 finished pods. Nobody might
+be cleaning up, but there's a controller
+that does that. Actually, learn about
+it. So, thanks for coming. Hopefully, it
+was useful. So, I'm going to leave you
+with two things. One of them is the same
+thing I just talked to talked to you
+about. It's in a blog post format. It's
+actually it doesn't have all the details
+that I just talked about here actually,
+but it's long enough. So that's the QR
+code for that. Second thing is we're
+operating Kubernetes and it's a hard
+deal to you know deal with all these
+interesting problems. So if you're
+interested in going really deep on
+Kubernetes, uh if you want to join us at
+Kubernetes info team at LinkedIn, scan
+the QR code. We have a job opening. Uh
+yeah, thanks for coming.

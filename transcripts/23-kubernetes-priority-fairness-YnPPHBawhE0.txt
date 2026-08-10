@@ -1,0 +1,1487 @@
+foreign
+[Music]
+[Music]
+here we go
+here we go
+here we go here we go here we go
+here we go
+[Music]
+hello and welcome to another episode of
+containers from the couch I am Justin
+Garrison and joining to me today is Psy
+Shane and Nathan we're gonna go into
+intros in just a second but today we're
+talking all about kubernetes API
+priority and fairness and I made a quick
+short to give you an introduction into
+what how that works and so let's go
+ahead and kick off with that and then
+we're gonna dive deep into it
+once I find it hold on where'd it go
+there it is
+priority In fairness is how the
+kubernetes API protects itself from
+being overloaded from too many requests
+so when the kubernetes request comes in
+yeah
+oh sure here you go here have a step can
+you tell me all the United States okay
+um
+all right here you go
+all right so as I was saying when the
+request comes in
+it's blue can you can you show me all
+the state capitals okay hold on all
+right ammo you asked really short
+questions so you can have you can ask
+two at a time okay put them in here and
+I'll get to it as soon as I can
+Ernie your questions are kind of long so
+you're just gonna ask one okay so put it
+in here now priority In fairness great
+this is great thanks so much the toilet
+is flooded
+okay so I understand it's hard with all
+these buckets okay but we're gonna add
+one more okay this is the high priority
+okay if anything comes in it's an
+emergency put it in here this is flow
+give her the questions and she's gonna
+put it in the right bucket okay I don't
+think we're gonna have time to talk
+about
+thank you
+amazing blow joke because there's levels
+to it I know there is it's deep let's
+get into it so uh Psy thank you so much
+for joining me today Shane why don't you
+kick it off introduce yourself what do
+you do with Amazon awesome hey gang my
+name is Shane and I work on the
+operational side so like uh you know
+While others will be explaining kind of
+how API and priority unfairness I'll
+give you some tools I've wrote A Blog
+for you that you can understand and how
+to monitor to see if you're going to
+have the problem in the first place
+and Nathan how about you
+okay uh I'm Nathan I'm uh from the ucas
+scalability team I'm a software engineer
+there uh so our team deals with issues
+with running kubernetes at scale running
+very large clusters
+um we deal with issues related to
+availability uh latency and of course
+API priority and fairness which we'll
+get into today and and just so everyone
+knows is Elmo in any part of this chain
+of API priority and fairness I mean it
+kind of sold our Thunder you explained
+it already
+um so you know but in that like that
+scratches the surface so Nathan can you
+give us like an overview of what it
+actually does and why it's needed
+uh yeah yeah so the API priority and
+fairness feature was added in kubernetes
+120 and it's a mechanism to uh split up
+uh a Kai server request between
+different users so before 120 we're in
+this mode where there's a total number
+of API server requests that could be
+handled at a certain time uh the default
+was 600 and anyone could use that share
+of requests uh and the problem was there
+would be noisy neighbors you wouldn't be
+able to allocate which kinds of requests
+uh you you could serve at a given time
+so this new feature APF uh gave us a
+mechanism to divide requests
+um or to allocate certain shares of
+requests
+um to those seats
+um
+so with um with 120 for example like if
+you had one of the high priority
+requests you could set aside of a share
+of requests for those to be served
+so so just referring back to the short
+really quickly we got multiple types of
+requests there right Nathan so one of
+the requests was really straightforward
+from Elmo uh I'm guessing that's just
+like a get request but then the other
+request from Ernie he's he's got longer
+requests so those are list requests I I
+think that's the best way of putting it
+there they're getting multiple requests
+back and so requests like that will take
+more uh priority right they they just
+they just take up more of the the
+bandwidth the throughput uh and and that
+that probably adds to the issue right so
+what what sort of issues were people
+saying before API priority and fairness
+was implemented
+yeah so yeah so there's multiple parts
+to it where the
+um the number of uh seats that a request
+use varies by how expensive the request
+is so like a get request for example
+will just occupy uh one and flight
+request uh for that duration where a
+list request
+um it typically has higher latency like
+it's operating on uh multiple objects
+and it's gonna hold those seats for that
+entire request so like a git pod request
+for example might just take uh 500
+milliseconds or less whereas listing all
+pods across your cluster could be close
+to 60 seconds or the API server uh
+timeout
+um so part of the problem is these more
+expensive requests have a higher load on
+uh the API server and FCD so that that's
+really the purpose of this feature is to
+protect the server during periods of
+high load
+um so when APF rejects your request what
+the client sees is a 429 Response Code
+indicating that they need to retry their
+requests later so it's really a
+mechanism for the server to protect
+itself and for high priority requests to
+get through during those times so I
+think you answered the cusp of uh who
+would care about this feature and and
+you know most people should care but you
+probably care more as soon as you start
+seeing 429s right
+yeah yeah so kind of the the two like
+the two side effects of this feature are
+your request could fail with um with the
+429 and you'd have to try again later
+um but you could also experience uh
+higher latency like this this feature
+introduces queuing and queuing is really
+a trade-off between uh I'm fine with
+adding latency onto my request if it
+could eventually get served but that's
+another side effect of this feature
+yeah I know as Shane's going to explain
+to us like qing's a good thing for like
+General API safety and and latency isn't
+always and drop calls aren't always like
+oh no something's wrong like that's yeah
+that's how the system should work and
+just to suck you into the problem for a
+minute let me frame this up a really
+common one that happens a lot of times
+is you're running a batch job maybe like
+an ML and you need to check the statuses
+on those pods there's two ways to do
+that you could either hey could CTL get
+inside of a pod right which is going to
+be an absolute disaster and send
+millions of list calls or do like
+Nathan's going to show you and do
+something like a watch where it's a
+little less but sometimes your one Helm
+deploy away from something that doesn't
+do that well like you know some logging
+agents try to go get metadata for every
+single look and it's going to be you
+know not so good so if you get into a
+situation where you're not in control of
+that application maybe it's someone
+else's Helm chart Nathan's going to kind
+of show you like you know some tools
+that we can use as kind of like a plan B
+almost of protecting itself if that
+makes sense
+yeah let's jump into it let's let's go
+ahead and see
+um how this works visually and then do
+some demos here and I know there was one
+question on is it AFP APF or kpf APF API
+priority and fairness
+there we go all right Nathan you ready
+for the demo
+uh yeah yeah I think I'll I'll kick it
+off but just showing a demo or a a
+diagram from the from the best practices
+guide nice let's see it
+uh can you guys see this yep
+like don't worry this is over your head
+like we're if you have questions that's
+what we're here for thank you for
+joining the live stream we want to
+answer the questions as we go through it
+so if we're talking over your head
+please ask questions we're going to go
+ahead and try to explain these things
+yeah yeah absolutely
+um yeah so so this is this is a diagram
+kind of showing the high level flow
+um of of the feature
+um and uh there's kind of two objects
+within kubernetes that uh Define how APF
+works so the first one is is a flow
+schema uh and from Justin's video that
+was like it literally flow
+um and bit like a flow schema maps are
+uh a given request will map to exactly
+one flow schema
+um so like a git pod request will map to
+a flow schema a watch request we'll map
+to one of the flow schemas and there's
+kind of two important parts of a flow
+schema it's what what the request is so
+like whether that's a get request uh for
+pods or a watch request for pods and
+then the other part of it is who is
+making that request so is it a pod who
+is uh asking for this resource or is it
+it might be an external user or
+um it might be like a a cluster
+administrator those are kind of the two
+things that determine which flow you you
+end up in
+um so we can just go through the the
+first
+um the first flow scheme I hear for
+service accounts so this is capturing
+um uh really any requests that
+authenticates as a service as a service
+account and this will be your pods
+because pods are using a service account
+token
+um if if your pods
+um are making requests to the API server
+they're going to be mapping to this uh
+first flow schema and then a flow schema
+once once a request is a flow aside to a
+float schema it then goes to a uh the
+next kind of kubernetes object which is
+a priority level configuration so this
+second class of objects is this is how
+the actual requests are uh divided up
+um so but by default uh kubernetes gives
+uh 600 in-flight requests at a given
+time uh those 600 in-flight requests are
+divided among these priority levels so
+workload low for example might get
+somewhere around 250 out of those 600
+requests so whenever uh pods are making
+requests the API server they're going to
+be using this bucket and they're not
+going to be able to go above that 250
+limit
+um other other uh buckets those are
+going to be used by other users and
+other types types of uh other types of
+requests
+uh did you guys have anything you wanted
+to jump in or add to that
+so uh Nathan when we're looking at these
+flow schemas that's kind of your this
+graphic is showing us a few but these
+are all very customizable right based on
+the type of request and and that kind of
+thing it's basically almost infinite
+amount of um being able to set
+precedence for which which uh requests
+flow through which schema and priority
+level right yes yeah yes so when you
+when you create a new ecast cluster
+you'll get the Upstream defaults for
+these objects and I think there's
+somewhere between five to ten of each of
+flow schemas and then priority level
+configurations
+um and beyond that you can add your own
+flow schemas or your own priority level
+configurations to make it customizable
+for uh for your workload
+um so if I if I had a um like if I had
+one type of pod that I would really
+wanted to prioritize what I could do is
+I could add a new flow schema here that
+shares all those requests from that
+specific service account and then I
+could give it its own share of requests
+as well
+um so I if my pods always require say a
+hundred uh requests I could create a new
+priority level uh that was custom and
+then give that all to my custom requests
+and the demo will kind of go into an
+example of how you can use flow schemas
+uh to kind of tailor uh tailor to your
+workload
+quick point on size topic just before we
+leave this you can go way way overboard
+with this cutting up those buckets too
+many of them I want you to think of
+shares in a company there's only a
+hundred shares in that company and if
+you start giving every single person a
+share something important you have to
+take shares from that some of these
+buckets are held like the control
+components of kubernetes talk to each
+other and if you start stealing and
+making too many interestingly enough
+side going a little too overboard with
+that feature exactly like you talked
+about is one way to get into a lot of
+trouble in this stuff so just be mindful
+as you're doing that thanks guys and and
+you know I I'll be honest this is a lot
+of this is new to me and I was reading
+the docs earlier and and one of the
+things that I saw was there's a way to
+set at least a minimum amount of
+requests per each priority level right
+so even if there was a pod sending
+thousands of requests and it's workload
+High that's not going to prevent system
+calls from getting through because
+there's a set amount of bandwidth or you
+know precedence for uh system level
+calls right
+yeah absolutely but ironically right
+since the buckets there's only so many
+now whereas before it was a little bit
+open you kind of got to watch those
+buckets a little bit more now whereas
+before you kind of didn't because it was
+kind of a wide open field so there's
+some great things and it's really
+important but it's a little bit more to
+take care of now because you know more
+features more things to look at right
+got it you know it'd be really cool to
+to see this Hands-On because I feel like
+99 of people are going to say look the
+defaults sound great but for the few
+that that may need to to change this
+it's probably more than one percent uh
+it'll be good to understand where they
+should start messing around so they
+don't get themselves into a bad
+situation
+yes
+yeah and and there's there's kind of
+um there's kind of two approaches uh
+like to solve this issue so like just
+looking at workload low
+um like if we if we exceed uh say we
+have 250 requests if if we exceed that
+um what ends up happening is we start
+queuing requests so this is where we'll
+see kind of the two trade-offs of the
+feature where we'll start recruiting
+requests and uh once we exceed the 250
+but we're not going to reject them right
+away
+um eventually these could time out
+within these queues or the cues could
+get all and at that point the client
+would see a 429
+um so that's what we're trying to avoid
+here is how do you make sure that your
+high priority requests get through
+without queuing and then
+um also without added added latency and
+the first way you could do that is you
+could modify your workload and that's
+usually what we recommend is uh try to
+make these settings work with the
+defaults and if you could modify your
+workload so such that your uh request
+requirements are satisfied
+um within that 200 existing say 250
+limit then you should do that otherwise
+we could look into these more specific
+um tweaks with like adding new priority
+levels
+um because ideally if we modified our
+workload to use less than 250 that would
+be a more uh straightforward change
+so I I think maybe we could jump into
+the demo um unless anyone had more
+questions about the uh about this
+diagram
+let's see it here on containers from the
+couch I think if our viewers have seen
+our episodes before we love seeing
+Hands-On we love seeing demos so let's
+get into it Nathan okay cool
+um so yeah yeah I'll just kind of uh it
+came up with an example situation
+um it's just like a hypothetical of how
+if we're running into 429s how can we
+avoid that so the situation is set up is
+suppose we have two users uh both using
+the same uh share requests so in this in
+this case we're going to be using the
+global default bucket
+um that that's not on the diagram but
+that is one of the the defaults that
+come installed on your cluster
+um so that's a share of uh it's
+allocated 49 out of those 600 uh
+requests so we have two users they're
+both competing for it
+um and in this example one of the agents
+is making uh expensive list secret calls
+um so the the cluster the eks cluster I
+have set up uh has 50 000 secrets and
+installed so each one of those requests
+is going to be trying to list all those
+secrets and then the other agent is just
+trying to create a pod and because we're
+we have 10 of these uh list secret
+requests all listing 50
+000 secrets that's going to use up all
+of our uh concurrency for that bucket
+and what we're going to see is when we
+try to create the Pod it's going to be
+rejected with a with a 429 and we're not
+going to be able uh to create the Pod
+object or get it scheduled and Depend
+and if that's a critical workloader if
+that's some kind of critical function
+that that could cause some like an
+outage on your on your cluster
+um and then just just one thing to note
+I'm I'm running this test on a cluster
+with just one API server so that we
+don't have to worry about our requests
+being routed between two
+um so whenever I'm issuing a cube color
+command it's hitting the same API server
+and we'll be able to see the API or the
+APF State um across that
+um so uh if you guys have any questions
+about that about like okay that is an
+important thing to call out here you
+have one API server eks clusters by
+default usually have at least two and so
+you are going to share those buckets
+between your load balance and those
+buckets are basically being transacted
+by two servers so
+um depending on how many API servers you
+have you increase the amount of
+processing you can do on those buckets
+the same amount of buckets can handle
+twice as much as long as it's well
+balanced as long as each API server is
+getting those right amount of requests
+so it's really good like simplify it to
+understand it here with one API server
+but as you go to production with this be
+mindful of how many API servers are are
+handling those requests and working on
+those cues
+yes yeah great great call out so like
+with the previous example of the pods
+having 250 in reality it's going to be
+500 total um and as long as you're
+properly load balancing your requests
+um you you'll have that 500 total to
+work with with a with a default cluster
+cool
+sweet
+um yeah so I um we pulled my terminal
+um so I I have a couple uh scripts
+prepared to kind of run through that
+situation
+um so I'll show the first one
+um
+this is a a script I put together to do
+that list Secrets called
+um so this is just a loop
+um that executes 10 times and it's going
+to be listing uh all secrets uh at
+Global scope
+um so I'm using Cube cuddle get raw and
+equivalent command would be uh Cube
+cuddle get Secrets uh Dash a to get them
+across all namespaces
+um something to keep in mind uh with uh
+default Cube cuddle behavior is it uses
+pagination by default which is which is
+what we want
+um so if if I would have uh just did you
+color look at Secrets Dash a it would
+have uh just been batching my secrets uh
+500 at a time where I I'm just for the
+sake of the demo I'm trying to make an
+expensive request so I'm listing all 50
+000 out once well sure because no one
+would do that in production yeah
+yeah I think hell I can tell off the bat
+this is not a production bash script
+because there's no sleep one second in
+it because that's how all production
+bash grips end up with a sleep one
+second in that Loop and then you know it
+ships to prod but I love I love this
+example here yeah yeah yeah I mean this
+this does it so it does wait for it this
+kicks off uh 10 sub shells and then
+waits for each shell to finish
+um so it might be a little better than a
+sleep but yeah this is by no mean meant
+for uh meant for production
+um so what I can do here is I can let me
+start this script and this will be list
+this will kick off
+um the 10 list secret requests all at
+the same time and
+um one thing uh to keep an eye out for
+is we were talking about list requests
+are more expensive than other kinds of
+requests
+um so each one of these list requests is
+going to be fetching 50 000 Secrets
+um the number of uh seats or the number
+of requests from our bucket it's going
+to use is actually 10.
+um whereas cheaper requests are just
+going to be using one so this this kind
+of compounds the issue with we're
+kicking off 10 list secret requests but
+the the total concurrency we need is
+actually going to be not 10 but 100
+requests and the the global default
+bucket we set up only has around 50. so
+we're going to be only able to serve
+around half of these requests and then
+on top of that when we try to create our
+pod it should be rejected because all of
+our concurrency is in use until these
+requests uh succeed or or uh end up
+timing out
+so let me kick off that request and then
+uh up here at the top I can um
+I have this other batch script to uh
+create a pod and I'm just creating this
+simple nginx pod and we can see that
+it's it's hanging on the cue puddle uh
+request
+um
+[Music]
+I'll just show that uh script real quick
+I see your record your other lists
+returned
+yeah so I I at the bottom uh I kicked
+off the 10 requests I I just stopped the
+script from running because it's going
+to keep issuing the 10 requests uh as
+soon as the previous 10 complete
+um so those sub shells are now
+completing these requests either
+succeeded or got a 429
+um but on the top terminal here you can
+see that uh it was hanging on trying to
+create the Pod so what happened when I
+issued this was it went to the bucket
+and then we used all of our concurrency
+up and then uh this request uh if I if I
+didn't kill it it would have timed out
+after uh
+after 15 seconds in the queue and it
+would have uh failed so all I was
+running in that script was this uh
+cratepod uh command so so Nathan you
+mentioned it it does get inserted into a
+queue but it'll fail after 15 seconds is
+there a reason for that is that the
+default can that be changed for how long
+requests can can time out for
+yeah yeah so so there's kind of two two
+timeouts uh working right here so
+there's the default uh API server
+timeout
+um so by default an API server request
+will time out after 60 seconds
+um there's a further timeout enforced
+when it gets to an APF queue so if we
+exceed our concurrency it ends up in a
+queue it can actually only be in a queue
+for 15 seconds
+um and then it will time out at that
+shorter duration
+um so if it didn't end up queuing then
+it would have respected the full one
+minute timeout does that make sense
+gotcha yeah and and APF is enabled here
+right and and is it is it using the
+default configuration that all you know
+eks clusters have today for APF yeah
+yeah yeah so this this is using the
+defaults um the global default bucket
+has uh 49 seats and that was the next
+thing I was going to show is when I'm
+going to kick off these these 10 list
+secret requests and I'll dump some APF
+metrics that show uh what what's the
+state of the queues and what's going on
+with those requests so let me run that
+again
+and then um I'm just gonna print off
+some some ROM metrics from uh from the
+API server endpoint
+and I'll go up to those
+um
+so these metrics are just uh scraped
+from running uh from the slash metrics
+endpoint on API server this is the same
+thing that can be scraped with uh
+Prometheus I'm just getting the raw raw
+dump here
+um so I I think that the the two two we
+could talk about here are uh the
+concurrency and use versus the
+concurrency limit so this is showing how
+much we're using versus how much uh this
+given bucket has so what our Global
+default bucket has is we're allocated
+out of the 600 requests we have 49 of
+those
+um so because the list requests are
+taking 10 seats each we're actually only
+able to get four of those list requests
+executed
+um so concurrency limit 49 if we go up
+to current executing requests we can see
+that's four because the the four times
+ten is 40.
+um that's all we're able to use if we
+wanted to get five executing that would
+require 50 seats which which we don't
+have out of that limit
+um and then to see how much these four
+requests are actually using the four
+times ten that says other metric here uh
+called concurrency in use so
+one really good measure to see if you're
+seeing issues with APF is to compare
+these two uh concurrency and use versus
+concurrency limit this will give you how
+how utilized is your bucket or like how
+much Headroom do you have before you
+might start running into issues
+um
+okay so Nathan I have to ask even though
+you were running that job to get all the
+secrets you were able to get the APF
+metrics so there's something going on
+here where we couldn't deploy a pod but
+we can get other apis responding how
+does that work yeah yeah good great
+great question
+um so the reason for that is I'm I'm
+scraping the the endpoint with a
+different user that's going to a
+different bucket
+um so if if I look at that script where
+I was like uh get APF metrics
+um you can see that I'm using this
+cubeconfig here
+um this cubeconfig has a system Masters
+permissions and this user is actually
+exempt from from any APF bucket so this
+is primarily for uh administrators
+um uh to have a way to get out of issues
+like this because
+like you don't want to completely lose
+access to your cluster so if you have a
+user with system Masters permissions you
+can use that cubeconfig to help
+troubleshoot or try to uh fix your issue
+um and when you create a new eks cluster
+the cluster Creator IM role gets this
+permission granted automatically so each
+ecast cluster actually has at least one
+user with this kind of elevated
+permissions
+hey that makes sense
+and is there another way to Route like
+you mentioned uh service accounts and
+Cube control like as a different user
+how do you route those uh with the
+schema like which bucket you're going to
+be directed to is that's based on just
+my ID of how I'm calling that or is that
+based on what action I'm doing or what
+API endpoint I'm doing
+yeah so when you when you get mapped to
+a flow schema it it's two things it's
+what what am I requesting and then also
+who I am
+um so if I wanted to create a new a new
+user
+um I could add that new user to my AWS
+auth config map assign them I an
+identity and now I can refer to that
+identity in a flow schema object so I
+could do something where I'd say any
+request from this user is going to be
+going to this new uh this new pocket
+does that answer your question yeah yeah
+that was what I wanted to call and one
+other question from DJs here DJs here uh
+how do you get more more space more
+buckets bigger buckets is that just a
+matter of adding more apis servers or is
+there something else to do
+yes so with with a default cluster like
+you are stuck with the it's the sum of
+two flags it's the max in Flight plus
+your Max mutating and flight and by
+default that 600 request so you're gonna
+have to work around those 600 uh
+in-flight requests
+um to to increase that um you yeah one
+option would be to horizontally scale
+number of API servers each additional
+instance you get that's going to
+increase your overall concurrency by 600
+um alternatively you could scale those
+two flag values
+um and this is handled by uh eks Auto
+scaling automatically so as you increase
+the size of your your cluster you will
+see more um in-flight concurrency uh to
+handle your requests right so in eks we
+can't change those you can't change
+those API Flags but as your cluster
+grows in size based on nodes and based
+on some other metrics we will scale your
+API service for you to increase some of
+those limits exactly yeah and it's um
+like how priority levels work is it's
+you get a fraction of whatever's
+available so it's not like you need to
+change your
+um priority level objects when you get
+more in Flight it's going to be
+allocated across all buckets according
+to what proportion you you want so even
+if when you come up with more in Flight
+it the the relative number of seats
+between each level will be consistent
+again I just want to caution on one
+thing right hey I can only do a total of
+like 500 and I want to set that to a
+thousand so you just remember that this
+is a protection mechanism for everything
+else so
+um you don't want to infinitely scale
+this it's at that limit for a particular
+reason and again what Nathan's showing
+you is kind of how to Divine those
+buckets so just keep that in the back of
+mind I get that request quite a bit
+yeah yeah exactly and and that's why we
+have these limits on like that's why
+like smaller clusters are not going to
+be able to handle the same number of
+in-flight and this is a protection
+mechanism like in a world without APF
+um like there like we would be risking
+uh a complete unavailability like
+um having requests have slightly higher
+latency or having to try again later is
+preferable to
+um not having an endpoint to reach out
+to for for example right yeah thanks for
+bringing that up Shane yeah part of me
+was thinking this is a security feature
+to it this is a a limit against denial
+of service
+kubernetes is literally a denial of
+service like as a service right like
+that's distributed system with an API
+and every single component in that
+distributed system is calling that API
+for various things
+so yeah yeah into John's question yes
+eks does automatically scale the control
+plane for you that's part of the service
+that we offer
+yeah yeah
+um so
+um I'll keep going with with the demo um
+so I think we got an overview of what
+what problem we're trying to solve with
+how do we get our create requests to go
+through when we're trying to compete
+with uh with these list Secrets
+um so there there's kind of the two
+approaches where we can modify our
+workload or we could modify APS settings
+the first thing we should do is try to
+see if we can optimize our list secret
+calls or is there some kind of
+equivalent call we could make
+um that's that's cheaper or uses less
+seats and
+uh uh typically one of the first things
+we we look at is can we replace periodic
+list calls with with a more efficient
+watch
+um so what watch is uh a much more
+efficient way to get uh changes to
+collections over time so we could issue
+a watch against these secrets
+um get the initial State and then we'll
+be notified whenever something changes
+that's a lot more efficient than
+re-listing the complete uh collection of
+50 000 especially if it's like a static
+selection like now where they're not
+changing very often
+um so we we can do that actually so I I
+have another script here
+um where instead of listing the secrets
+um we have this Loop here uh that is
+issuing 10 concurrent watch requests
+um same thing here I'm doing a cube
+cuddle get raw command uh a more uh a
+better way to do this a cube cuddle
+would be Cube cuddle uh get secrets and
+then dash dash watch and that will
+prevent you from heading to manually
+construct this URL uh but this just
+makes it a little more explicit what
+we're doing is we want a global watching
+and secrets
+um so I'll kick off this request and
+then
+um I'll I'll try to create the Pod and
+then uh that that should uh be able to
+get through because uh each one of these
+watch requests will only be using one
+seat or one uh to share compared to the
+list requests that we're using 10 each
+so
+in the previous example we're trying to
+use a hundred in this case we should be
+only using 10 Which is less than our
+limit of of 49 for This Global default
+bucket
+um cool so let me kick off watch secrets
+we kicked off all 10 and then up here
+I'll try to create my pod
+um and then it looks like I had already
+had it created
+um but this shows that it went through
+like this got rejected with the 404
+because I um
+had left it existing but if I recreate
+it here we could see that the request
+went through
+um so because we optimize our requests
+now we're able to get those served and
+in this case we're still getting the
+same information like if this client
+needed a global view of the secrets
+across the cluster it's still able to
+get that with the watch request but it's
+able to do so at a much less uh server
+intensive uh manner
+um
+maybe just because not everyone might
+understand the nuances of a watch I want
+you just to watch for this one simple
+thing right if you see somebody inside
+of a pod right that's the point in our
+cluster doing syntax like get CTL get
+pods right inside that pod getting all
+the other pods that is one of the most
+common ways to cause this problem and
+there's something called a controller
+and there's you know uh Nathan you
+probably have a couple of preferences uh
+Justin everybody on you know there's
+templates that you can use these
+controllers that turn those kind of
+requests into a watch like crew Builder
+and stuff like that so if you see that
+behavior try to point that developer in
+that direction Nathan would you say
+that's kind of your experience as well
+yeah yeah absolutely and most of the
+time when we're seeing these issues yeah
+it's it's with a client go it's not like
+with a bash script like this it's it
+might be some kind of third-party
+Plug-In or something that's being
+installed on clusters uh and a lot of
+times like these might be open stream
+components where someone doesn't have
+Direct Control
+um so this is really like if you're
+working on your own controllers or
+working with client go these are these
+are the best practices to keep an eye
+out for foreign
+yeah so that that's that that's that's a
+good um like for the next part of the
+demo I think that's a good point to
+bring up Shane
+um because sometimes like we might not
+have control over what's necessarily
+making these list requests like if it is
+a component we don't directly own or
+it's like an add-on that we're just
+installing on our cluster we might be
+stuck with uh either uh turning off that
+component completely or if if we need to
+have that component run and it's still
+going to be issuing these list requests
+what we could do is move those list
+requests to a different bucket so now
+it's going to be going to its own share
+of requests
+um in this example I'll uh I'll move the
+list Secrets requests over from the
+global default bucket to the catch-all
+bucket
+um the catch-all bucket actually has
+fewer shares than Global default
+um so it's still going to run into 429s
+and only a subset of our list secret
+requests are going to get handled but
+the the trade-off is now our create pod
+call against the global default
+um bucket that'll be able to be sir so
+this is one example of workload
+isolation where we could tune APF
+um to isolate some of the requests uh
+that aren't critical so that it makes
+room for the ones we need to get through
+Nathan do you have more in the demo I
+know we want to shift over to seeing
+what Shane has too to help people
+understand and troubleshoot it a bit
+more
+um yeah I'll I'll just um I won't
+actually
+um I'll just show the flow schema
+example for we could apply this and then
+this is going to capture all of our list
+Secrets um I won't go through and
+actually create it but
+so this is the object that we could
+apply
+um
+uh and I called it the secrets custom so
+those previous list requests uh this is
+going to be captured by this rule
+um it's listing Secrets at the cluster
+scope
+um and then the matching precedence
+um this uh if a request could Match
+multiple flow schemas it's going to
+match the one with the lowest matching
+precedence
+um so I'm making sure that this one is
+actually lower than what uh it was with
+the global default bucket and now it
+will be uh shipped it over to this new
+bucket Nathan could we see a a cube
+cuddle get flow schemas just to kind of
+see what precedence exist for maybe some
+of the other yeah yeah
+yeah
+yeah so these are all the default ones
+that will be installed um when you
+create a new cluster
+um and then if we wanted to apply a new
+one
+um we could do uh something like this
+where we created it from that file I
+just showed uh and now our list Secrets
+custom is applied and if we get flow
+schemas uh we can see that our custom
+one is here now
+what was the residence of the the list
+previously
+yeah so previously it was matching
+Global default with this 9900 we just
+need to make the new flow schema have
+something less than 9900 uh so we could
+have done that nine thousand eight
+hundred I I just did 9 000 for the
+example so now let's see Chris is
+matching this Rule and it's going to the
+catch-all bucket rather than the global
+default bucket okay and and the create
+pods which that would also be Global
+default or is that somewhere else yeah
+yeah so
+um initially they were both going to
+Global default we just moved the list
+over to catch all and then um the create
+pod call kept going to Global default so
+now it wasn't being starved yeah so so
+it looks like list Secrets is at a lower
+precedence meaning now it has even
+higher priority but is it because it's
+at a different priority level that that
+enables create pot to go through even if
+we're doing list secrets
+so so the the the precedent uh
+corresponds to when I have a request
+which flow schema does it go to
+um what really matters in terms of
+importance is the priority level so the
+the priority level is how many requests
+I actually get uh have allocated
+catch all actually has fewer shares than
+Global defaults
+um so even though our list Secrets call
+is going to be matching this rule with a
+higher priority it's going to be
+allocated actually a bucket with fewer
+requests
+got it got it I think I was conflating
+the Precedence and priority level yeah
+yeah that makes sense
+cool
+awesome yeah um yeah
+yeah sure um let me just do a quick
+point on why what Nathan's showing you
+is so important you want to fix these
+problems at the source so the number one
+thing to find out is like what's yelling
+at your API server that much right is it
+like the logging agent that we talked
+about beforehand I'm gonna show you in
+just a moment I sharing my screen right
+now
+um if you guys see that there you go
+great I'm going to take a look at a few
+things here
+um first off remember we want to solve a
+problem at its source so how would we do
+that we can kind of go and look at who's
+calling our API server on some charts
+right we can see the type of calls that
+are coming and try to reverse engineer a
+little bit who's calling here's how that
+would work out once you figure out who
+the villain is in that story we've got
+some Cloud watch queries that I'll share
+with you here basically that you run
+here and it'll output what agent is is
+spamming that and once you've got that
+villain identified you can go a lot of
+times these open source projects will
+have a feature that sounds so good wait
+in my logging I can get what pod it is
+or all this kubernetes data that sounds
+amazing and unintentionally it starts
+blowing up the server it starts blowing
+up the server and so by first
+you know do I even have a problem by
+looking at a chart right getting the
+villain kind of identified and turning
+that feature off but sometimes and
+sometimes and Nathan's who I call for
+help by the way when you get into
+trouble right you need a plan B and what
+Nathan's talking about is I could
+coordinate that traffic that villain
+into like a flow schema right to
+identify it and put it in a bucket where
+I'm like
+go away go away right and not blow up my
+server when I need it that's why what
+Nathan's showing you is so practical but
+how do you know
+if you got this problem and can we
+condense this through pretty pictures
+because that's what I need right this
+substitute brain damaging that's why I
+got Nathan do I have a set of things
+that I can navigate real simply to know
+do I have a problem do I need to spend
+time on this now I'll link a blog or my
+friend uh PSY and Justin will link a
+Blog that I have for you where basically
+I'm going to give you the chart that I'm
+showing you today and I've got a Blog
+I'm a little long-winded right so bear
+with me but I have a Blog that goes
+through all the stuff in the chart and
+what all the pictures feed and what you
+want to look for and I'll give you the
+chart at the end of the day but let's
+take a quick look at you know what does
+this look like so what I want to do is
+notice how Nathan was telling us about
+these different buckets the default
+friends is pretty good it turns out all
+these people these thousands of
+developers they kind of know what
+they're doing right the defaults are
+pretty good but sometimes sometimes
+friend you got that thing that's going a
+little crazy right and what you want to
+be able to do is on a person vintage
+basis I want to look at this and say oh
+my goodness this particular bucket and
+sorry I didn't spawn a bunch of stuff
+here but this particular bucket workload
+high is like a 3.7 percent or it's worth
+it's at a hundred percent if you see
+this bucket one and it's important
+looking right workload High system
+leader election if you see leader
+election is a hundred percent stop now
+you care about priority and fairness you
+gotta do something right however if you
+see something like catch-all at a
+hundred percent and you see drops that's
+okay that's what this was designed for
+it's just because you have drops does it
+necessarily that means that that's a bad
+thing because this is a protection
+mechanism right when I get into this
+stuff sometimes when I learn about
+something new everything is this problem
+and any drops are bad you don't want to
+mess with this stuff too bad because
+kubernetes hates delay right there's a
+lot of things to talk to and like a line
+in Disney World right as the wine gets
+longer and longer the longer it takes to
+get through that line kubernetes hates
+that things like web hooks only have a
+little bit of time that you're allowed
+to get through a system and if you
+overdo that you break some stuff that's
+really important so be careful about
+oversizing these cues be careful about
+making you know you can be a little too
+fancy for your own good that's see how I
+know so with that right we want to
+determine now that we know all this
+fancy stuff right we saw a hundred
+percent is this a real problem well or
+is it a problem with the API server
+itself a couple things that I would do
+first thing I would do is if I saw this
+at 100 and my catch-all was super high
+right in this case it's not but let's
+just pretend see this is that bucket and
+the shares that's associated
+um this is getting not used but
+um or sorry workload low look how big
+that is right well I don't care about
+that but my leader election is getting
+uh you know it's not enough well I would
+take shares from here and just put it
+over here right where it's important
+that's kind of the 90th percentile of
+what you'll be doing when you make you
+don't have to get into the fancy stuff
+unless you get into a bad way like we
+were talking about earlier but is your
+problem priority In fairness to begin
+with right just alluded to something
+really important right hey what if we
+pinned up to one API server somehow some
+way for whatever reason right how would
+we be able to detect that well friends
+what we have
+is the ability of these in-flight
+request charts so you see this server
+wasn't so much where these two server
+was if I saw some crazy imbalance would
+I spend all my time troubleshooting the
+API and priority fairness on that one
+server no I wouldn't right and where you
+get into trouble is not to charge shame
+anyone but a lot of these charts that we
+do that we develop to look at things
+like the API server were published
+before API priority and fairness came
+out so it would be so easy just to
+download a random chart and it looks
+good you're feeling good about it right
+but it doesn't actually cover this new
+system and that's the thing to be you
+know careful of in like all of
+kubernetes type of stuff right is
+everything's constantly updating and you
+know making sure that your charts and
+all of that type of stuff so watch those
+asymmetrical flows drops aren't always
+bad remember because this is here to
+protect right and troubleshoot it in
+tears right look for those empty buckets
+to give stuff that you need right and
+realize right the number one problem
+that we run into is what Nathan talked
+about and he knows that because he's the
+one that takes all these calls right of
+you know something's going crazy right
+and it's saying give me all 100 000 pods
+right don't just do it once and and keep
+a little cash sitting aside that it's
+just gonna send updates some things
+don't do that in kubernetes metrics are
+a great example I'm scraping metrics too
+because you're really good right and
+you're using a horizontal pod Auto
+scaler with some custom metrics right
+can I cash those metrics no I can't
+right because you know they need to be
+new right it's not something that's
+cashable but that's a very important
+function so imagine right imagine you
+know you're a support guy that learns
+this right and get a little too
+aggressive and creative with these cues
+that drops up and you start dropping
+those Prometheus requests that are
+scaling do you see how quickly we could
+get into trouble so when you do
+something like this make sure we're
+really do you know just because
+something spamming an API server doesn't
+necessarily means it's bad we want to
+look for that bad behavior that could
+have been more efficient like hey don't
+do a git pods on a hundred thousand pods
+every 30 seconds that that's something
+that's just straight up inefficient so
+think about the thing that you're
+putting in the workload just a little
+bit right well so I wanted to say so I
+was wondering what is this dashboard
+you're showing I see it's grafana so I
+looked it up and I got the the tagline
+for for this dashboard is it's a
+dashboard for obsessive people yes yes
+so look I'll tell you you know on my
+journey right you know I can't keep up
+with the Nathans and all that but what
+allows me to punch above my weight class
+is I can look at the wrong statistics
+all day and it points me away from the
+problem let me give you a really simple
+example of this I just showed you three
+API servers if I averaged all of those
+together guess what that would look like
+Psy if I was looking for the number of
+Errors I had 0 and 0 on this server and
+I was totally slamming this one that
+average would give me the wrong
+statistic right and so if you I notice
+some people are new to kubernetes right
+in the chat and whoever was trying to do
+their uh cka in like six weeks or
+something amazing put all that aside
+right if you're not spending six months
+getting your cka you're doing it wrong
+because at the end of the day it's not
+about the cert it's about like when you
+get in service right like how much value
+that you're at to add and you can easily
+get caught up in all this fancy stuff of
+web injected web assembly Envoy and
+stuff but if you had some time to spend
+right side Prometheus grafana
+understanding what these metrics are and
+stuff like that and what that will do
+for you right that'll cut about three
+years of learning off my kubernetes
+career right is it's going to point you
+in the right direction right of where
+your problem is and API and priority and
+fairness like we talked about Psy it's
+easy to over index on that realize the
+problem somewhere else and you get into
+trouble let me give you a great example
+here's how you know if a chart is kind
+of leading you to the problem or away
+from the problem
+this is called the heat map and what
+this is is it's saying hey how many of
+these requests were delayed and sorry
+this isn't like super great right maybe
+I've got um a better example in the blog
+here but what I can do easily is say hey
+wait a minute
+here we go I have some API duration
+that's uh kind of getting a little late
+in here right it's it's half a second is
+that a problem well now I can kind of
+scan over to the FCD and say wait a
+minute
+that latency that I'm seeing is actually
+at CD it is not right I can go to FCD
+requests and see that the latency that
+I'm seeing is actually at CD latency not
+API latency and you know what that would
+do so I that would make sure that I
+wasn't troubleshooting the wrong thing
+does that make sense
+yeah that makes sense and I did put a
+link to this dashboard in in the chat
+here so you know obsessive might not be
+entirely accurate here but if you need
+to talk about what's going on here get
+to the bottom of the issue these
+dashboards do seem very helpful then I
+mean to this point like the the graphs
+in the metrics can point you in the
+right direction for those fixes just
+like Shane's saying like I'm not going
+to go to the mechanic if I have a
+toothache or like this some people are
+looking in the complete wrong place for
+the answer because they just think like
+oh they fix things or this area is the
+right area to focus and they just start
+diving in deep and they make assumptions
+about that problem and being able to
+have the right data and understanding
+the system more holistically will help
+you so much to dive into only the
+correct areas to find the solution to
+what you're actually facing or even if
+it is a problem at all with with
+something that like it might be your
+workloads right we keep saying over and
+over again like Nathan's demo optimize
+your workload how you're calling the API
+and don't try to fix the API server
+right like don't just I need the largest
+API server available because I need to
+do list calls at 50 000 Secrets like
+well maybe you don't like let's let's
+see how this actually works where were
+you when I first started Justin that was
+half of all wisdom and kubernetes in
+like one minute right so yes a hundred
+times yes on that let's also go through
+kind of like a little bit of Futures on
+what this thing was supposed to do so
+this is you know they they work in
+Sprints just like any software
+development cycle this was the first
+place that they stopped to give us
+something to fight against this you know
+bad client just going crazy but where
+they really want to go is the following
+they want this system to be adaptive
+because if you think about it SCD is
+kind of like the linchpin of all of this
+what they want API and prior fairness to
+do this to be adaptive of whatever rate
+that your FCD can take it's going to
+send signal right maybe slow applies
+whatever that SCD sends to let
+dynamically API priority and fairness
+adjust that safety valve to protect that
+SCD for good working order when they did
+this originally they that's kind of
+their Vision I think that's a brilliant
+Vision it's just taking a little bit of
+time to get there for obvious reasons
+right so if this seems overly complex at
+first guess it is right this is meant
+for people that need to tweak some stuff
+out but realize where they want to go is
+going to really take kubernetes up a
+level right because you know once you've
+got that safety valve correct you're
+going to get better performance and
+stuff out of the system so you know just
+as an aside on kind of the big picture
+there if that makes sense yeah
+with that guys I'd love to just uh maybe
+take some questions or you know we can
+kind of just open the floor I think
+that's all I wanted to share from just a
+simple uh you know here's some
+dashboards that I got if you find that
+useful please do check out the blog if
+you have any feedback as always you know
+let me know I'd love to hear from you
+yeah and I know we do actually need to
+wrap up right now um we're reaching our
+time and so the two things that I love
+so far that Shane uh you said early on
+was you're only one Helm deploy away
+from hitting this problem right like
+that's people deploy these things and
+they don't necessarily understand them
+and it is a essentially a curl to bash
+uh in a distributed system is probably a
+bad idea if you don't know how the
+system works or what you're deploying
+um and that's that's really something
+that we tried to show on this on this
+show over and over again with demos and
+help people understand the systems
+they're running and how they work so you
+can know where to get help and how to
+learn these things a little more deeper
+a little more than than the the you know
+YouTube short
+um from from here here's one minute to
+explain it we just spent an hour and
+we're still not even like in depth of
+what you could go into
+which by the way Justin uh apparently I
+I thought you used a voice modulator or
+something to do the Elmo and Ernest
+apparently this is a field that you just
+have you can you can do an Elmo voice
+for my kids all the time
+that's great yeah this this is a common
+thing in my family and I've learned a
+lot of voices with a couple kids so it's
+awesome
+um but anyway thank you so much Shane
+and Nathan and PSY uh for joining thank
+you everyone who joined the live stream
+uh if you want to dive more into this uh
+feel free we are there are people
+um I know a lot of us hang out in slack
+there's a kubernetes slack
+um that some people are active in uh
+look at eksworkshop.com if you're trying
+to learn kubernetes and want to get
+started there's a ton of great tutorials
+on there
+um and then also we didn't link to the
+eks best practice guide but we do have
+best practices uh that go into a lot of
+this detail on various topics such as
+AFP but also scalability in general and
+various other areas so check out the
+best practice guide because those are
+all amazing resources that we try to
+group this stuff together so that you
+can find it on your own whenever you
+need to so
+um there you go thank you for linking
+that got it and with that we'll go ahead
+and wrap up thanks everyone for coming
+and hope you have a great day
+[Music]

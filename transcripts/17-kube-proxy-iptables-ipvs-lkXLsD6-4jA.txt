@@ -1,0 +1,1548 @@
+hello everyone and very welcome
+in this video we will going to talk
+about cube proxy modes ip table
+and ipvs and we'll deep dive into how
+they actually work
+so this video is all about kubernetes
+service load balancing
+methods and options and i actually
+wanted to do this
+for a long time but
+i just got a
+sometime last week and i put this
+together and i hope you'll enjoy it
+so on on the agenda we'll have a quick
+overview of kubernetes pods services
+and cube proxy and their relationships
+so basically framing up this video what
+is this all about and why we care about
+this proxy mode at all
+let me do a quick intro into linux ip
+tables so before jumping into how
+quantities
+load balancing and iiq proxy
+uh works in ip tables what you have to
+understand actually what i i what i ip
+tables are and how they work so let's
+provide a quick intro if you are not
+familiar with ip tables
+then we'll discuss uh kind of more
+in details how load balancing works in
+ip tables mode
+then following that we'll concentrate on
+ipvs i'll do a quick intro into
+uh linux ipvs load balancing system
+which is part of the operating system
+then we talk about a demo or
+do a demo
+and then we set up an ipv installed
+balancer for vm hosted service kind of a
+quick demo of how
+rpvs works outside the kubernetes
+environment and and then you can imagine
+how then quantities will be taking
+advantage of
+this load balancer
+following that we'll do a demo on how to
+configure kubernetes to use ipvs when
+you're setting up a brand new kubernetes
+cluster
+and following that we do another demo
+and in this demo if you already have
+a cluster and you want to switch from
+ip tables into ipv ipvs how you can do
+that
+then we talk about the advantage some of
+the advantages of ipvs over iptv table
+mode
+and finally we discuss situations where
+currencies may fall back to ip tables so
+i hope you'll join me
+first let's take a look at the
+relationship between parts
+granted services and q proxy
+so the first thing to note is that
+pods are ephemeral which means that they
+could be deleted and recreated
+at any time for any
+for a number of reasons therefore
+clients must not
+bind directly to pods their ip addresses
+so so we need something else
+to create an abstraction over the pause
+and that's where
+q proxy creates
+the coordinates services so service is
+really an a virtual ip
+it has an ip address so this is a
+permanent ip as long as the service
+exists regardless of the pods being
+deleted and recreated this is permanent
+so clients can bind to this ip address
+they can also
+bind to its name
+so when the service is created
+it creates a predictable name for that
+service and it the syntax is as follows
+the service name for instance in this
+case is app1 dot
+and then the name of the uh
+the namespace in this case default
+dot
+svc.cluster.com so
+local.cluster.svc these are permanent
+all the services will have
+those uh
+combinations
+and then the next thing that q proxy
+that it actually works with
+the linux kernel to create to set up a
+load balancer
+and how it does it depends on the mode
+or
+on the mode of that we select either
+uses ip tables
+that is a default behavior
+we can change that
+we can set it to ipvs
+and that is the myth of this discussion
+is
+how these modes are different and how
+the load balancer
+will be different as a result of our
+selection and when to use which
+the client then can
+bind to the service
+and then call the service
+and then the load balancer we pick one
+of these parts
+and the the algorithm to choose which
+part really again depends on the mode
+in ip table mode we only have one option
+and that is round robin
+however if we switch to ipvs
+we have more options
+so we will next we will look at what the
+ip table is kind of a general overview
+of
+what the ip tables are
+and then how load balancer in that
+mode work and then we
+switch the rest of
+our attention the rest of this video on
+ipvs how to set it up and how it works
+when we talk about ip tables really we
+are talking about
+the firewall systems in the linux
+environment
+so firewalls has different rules and
+those rules are divided into different
+tables and hence the name
+iptables
+is where the name come from
+these rule these
+tables deal with different rules
+depending on the situation for instance
+the filter table deals with
+the packets
+if they're allowed or disallowed to
+enter or exit
+the computer system
+whereas at the nav table or net network
+address translation decides if the
+source or the destination of the packet
+needs to be
+changed
+and you can think of this
+when a client calls
+a combination service
+the ip address of the service will need
+to be
+changed into
+the ip address of the one of the
+pause in the back
+listening so
+that table will be responsible for that
+and the way that firewalls interacts
+with the packets is through net filters
+and net filters are hooks
+inside linux that makes this interaction
+possible
+the tables are further more are further
+divided into what is known as chains
+as chains basically decide
+at what point the rule should apply for
+instance input output or forward
+and finally the rules really decides if
+i get if the packet is accepted dropped
+or rejected
+now let's take a look at various chains
+the input
+the rules in this chain control the
+packets when they they received by the
+server
+the output this chain controls the
+packets
+for outbound traffic
+forward
+this set of rules controls the packets
+that are routed through the system
+pre-routing this chain assigns packets
+as soon as they
+and the server receives them
+and the post writing the rules in this
+chain allow
+making changes to the packets after they
+leave
+the output chain
+now let's take a look a quick look at
+each one of those tables in the ip
+tables as mentioned the filter table
+really is responsible for to see if the
+packet are allowed or disallowed to
+enter or exit the system
+the nah table again as discussed
+it decides if the destination
+or the source
+of the ip of the packet needs to be
+adjusted
+the manual rules
+disable is used to alter the ip headers
+of the packet
+in some various ways for instance we can
+adjust the time to leave so each packet
+has a time loop to leave or to tl ttl
+and
+that
+ttl can be adjusted
+through this table it also places an
+internal kernel mark on the packet for
+weather processing if the packet needs
+to be further processed then it is
+marked in this table
+finally the raw table
+we need to realize that
+the linux firewall system is
+stateful that is it remembers the
+packets that
+were
+what the packet that
+passed through it before this packet and
+that is important for instance think of
+the situation where it is used as a
+as a load balancer through the nat table
+when you call a service the first time
+it calls probably versus the pod number
+one but it needs to remember when it
+calls then the second time the service
+is called
+then the second part needs to be
+um called not the first one because the
+first one is already
+called so
+that is the nature of the
+statefulness of the firewall
+however there are situations where
+connection tracking is not
+needed and the raw table
+is used to
+to exempt packets from a connection
+tracking system
+now that we learned a little bit about
+ip tables and how they work
+let's walk through an example and see
+what happens when we deploy a service
+and how the load balancy
+occurs and we also peek inside the ip
+tables and look at the
+the rules the chains
+so let's say we have
+this yaml file which is in two section
+the first section the kind is deployment
+so we are deploying
+pods here
+and the second section
+is service so we we create a service for
+our pods
+up here
+now um this is very simple
+we select a
+name for for our pod
+we also select a label
+then we label that
+the pods
+then under containers
+we specify the image where the image is
+coming from
+and and the reports to specify
+what
+port number they will be listening on in
+this case 8080
+and their services again we select the
+name for it
+and we also select
+what
+labels
+will be what levels we are matching
+which is hello world which it matches
+those are
+labeled up here
+and then and the ports the servers will
+select port 80. so the service itself
+will be listening on port 80
+however
+it
+forwards the call to port 8080 because
+that's where our containers are
+listening on
+and finally we select the
+because this is an old port
+service we selected port number is
+optional if we don't select one it will
+automatically
+coordinated with select a random null
+port for you
+okay let's say now we go to the command
+line and execute this
+yaml the request go to api server
+cubelet
+to cri cri download
+the container then cni or container
+network interface creates the networking
+for the pod and also sets up the vet
+these are comes in
+pair and that establishes the connection
+between the pod and the server it also
+uh
+sets the default route for the pod and
+also programs the route table and adds a
+rod so the
+client
+or the the host be able to to connect to
+the pod and vice versa
+and because there are two parts it
+does the same thing on the other server
+it downloads the pod sets up the
+networking and now we have our
+pods set up the next thing that it does
+because we had a service also and we
+were also deploying a service
+then it goes through the process of
+setting up the server the service
+so it creates
+or
+saves the request to the server to fcd
+and then the control manager endpoint
+control manager wakes up
+and then at this point our pods have ip
+addresses so add those two
+parts that we just created
+add them at the end point and the port
+number
+that will be listening and then
+um
+into q proxy q proxy creates the cluster
+ip
+and then also it programs the ip tables
+and it establishes load balancing for
+these two parts and it does does the
+same thing on the other server
+now we can actually uh go inside
+iptables and
+view
+what roles what rules were created and
+we can do that if we open a terminal and
+we can execute this command
+sudo ib table
+minus n
+let's go through that one by one so ip
+table is cli
+that allows us to interact with ip
+tables
+minus n
+means that
+give the ip addresses when we display
+information and don't don't display the
+hostname actually display the ip
+addresses
+minus t
+is what table we are looking for inside
+then the iptables system
+and we are interested is in that because
+that's our load balancing occurs inside
+that
+and minus l means list
+and then followed by a chain and we have
+a chain name called cube services
+so cube services the entry point for the
+service packet basically what it means
+that all the services that are created
+by kubernetes will be under this and
+then it um
+that also includes a sub chains for each
+one of those entries
+um called cube dash service
+and then
+that
+dispatches the packets to the to the
+next one which is that um
+chain here so if we execute that we'll
+see that now this is a sub chain so
+what does this sub chain apply to
+it
+any
+source so the source could be anything
+the destination is
+10.101.886.1.73 which is the cluster ip
+so any packet
+that is destined for this ip address and
+also for port
+80 this will apply to so what is
+what is what does it do
+so cubes svc
+act as a load balancer and distributes
+the packets equal so if we
+now go ahead and
+run the same command but now pass
+this chain
+we'll see that
+you have three entries we are interested
+in these two
+um we'll see that this has
+a probability of 50 so basically these
+are correspond these to these two nodes
+and
+the first one the the probability of
+selecting
+the first
+part is 50 that's what it says
+and if it's not selected then by default
+it selects
+the next part which the probability will
+be then a hundred percent
+and then cube dash cube
+dash sep
+chain represents a service endpoint it
+simply does the dna so if we execute
+this now
+and now pass in
+this chain name
+we'll see that now we have two entries
+so and basically this is where the dna
+occurs so
+it says that in in
+over here any when the service when the
+request comes in and the service
+and the ip address is this then we do a
+dna or destination that and we change it
+to
+172.168.209
+which is this guy here that 4 144
+and then
+the first one and then this one the cube
+dash
+mark and dash
+mask
+um so this is the rule it's a source is
+this so
+let's just apply which
+indicates this
+and then destination
+so what happens here is it says if
+this
+pod for some reason
+service calls it's called itself
+and comes through the the chain
+then
+make sure that we
+do the source net so we change the um
+source from 172.162.209
+to 144 to the ip address
+of the
+of the the the server the node itself
+the reason for that is we want we don't
+want to circumvent
+the process we want to go back through
+the process otherwise if we don't do
+that
+then it answers this locally and then it
+um it kind of gets out of the process so
+that's that's what it means it wants to
+make sure if this call itself for some
+reason caused itself then it goes
+through this
+chain and then it goes back
+through the ip to the node itself it
+goes back to
+and follow the process as it was set out
+in the beginning and we can do the same
+thing for the second one
+if we look at the chain here
+we'll see that again it does a dna this
+time it does for
+172.16.9
+which is the first one
+so this is how the load balancing occurs
+when we
+use ip tables
+so this works well this is the default
+behavior of kubernetes and you know is
+battle tested and everything
+however there are some situations that
+this may not work and
+um
+one of those situations or the main
+situation is when we have thousands of
+services
+then
+um
+ip tables will not be performing well
+and there are a number of reasons for
+this is
+because for each service that we add
+multiple multitude of role rules b needs
+to be added look at this all the rules
+that we created for simply saying if we
+call this um
+virtual ip then either call brought the
+call leader to this
+service or to this
+but we have a lot of services and
+actually we didn't look at all of all of
+them there are you know some chain for
+instance this guy here which is applies
+to the northport so there are many many
+rules that they just create for
+simply load balancing a service again
+this is not a big deal when you are
+have you know
+medium number of services number of
+services um let's say below a thousand
+if you go over a thousand then
+performance may become a problem
+the other problem uh is that
+when we go through this chains and look
+for stuff these are not
+indexed so we have to do actually a
+table scan we go through that and do a
+sequential
+search
+again if the number of services
+is low um because this is happening
+inside current is very fast
+however if we go again beyond a thousand
+mark then and the performance might be
+becoming apparent
+start
+degrading
+also incremental changes are not
+supported
+if we want to make a slight change to
+this we need to copy all the rules make
+changes and then save all the rules back
+again
+and one more important one is this is
+really a firewall system as you can see
+it was really never meant to be
+used as a load balancer but over the
+years
+um the load balance the the firewall has
+kind of merged or merged into
+um
+load balancing as well
+so and that is where we might be looking
+at or you might be
+looking at ipvs as
+an option instead of iptables for
+to
+instruct kubernetes to use on ipvs
+rather than iptables and this is what we
+we are going to look at the remainder of
+the course we'll be looking at what ips
+ipbs is and how we create those
+so let's see how ipvs works so ipvs
+stands for ipv virtual server
+it implements transport layer load
+balancing also known as l4 switch inside
+the linux kernel so
+to remind ourselves let's take a look at
+the osi network model
+and these are the layers and layer names
+so layer four
+is the transport layer
+and it uses udp tcp and udp so basically
+provides load balancing at this layer
+keep in mind that there are also load
+balancers such as ng-nex
+that operate at layer seven
+however in terms of
+raw performance this always beats this
+so that's why
+it's being used by kubernetes behind the
+scene
+so basically what we do is we set up an
+ipvs on a host and that acts as a
+as a load balancer sits between the
+clients and the server and the
+uh
+the clients really doesn't don't know
+anything about the backend servers they
+call
+into that ip virtual ips other side we
+set up on the ipvs and then they can
+talk and then requests are sent on their
+behalf to the backend servers
+also the the machine that is configured
+as load balancer is also as known as a
+director so if you're reading the
+documentation
+and they talk about directed they're
+really talking about the load balancer
+for routing that is moving packets
+between the client and destination
+servers either
+we can configure to use as nat or
+network address translation that is
+rewriting the ip addresses
+or if all the
+clients on the servers are on the
+physical network
+it can use direct
+which rewrites then mac addresses rather
+than ip addresses which is faster
+or it can also use encapsulation
+in terms of using ip and ip and using
+a udp tunnel between them
+so let's take a look at how this
+actually works so as mentioned we have
+clients that
+um there's the director or the load
+balancer sits between the client and the
+server
+so the first thing that we need to do is
+we need to define
+a virtual ip and port number
+uh either tcp or udp
+that client can bind to
+we need to also
+specify
+what kind of
+scheduling algorithm we use
+round robin um is the
+most popular one
+but it's not may not always be the best
+option so this is another advantage of
+using ipvs is we have option here
+if you use
+ip tables you're only stuck with round
+drawing
+round robin but there are other options
+such as least connection
+destination hashing source hashing
+shortest expected delay and network so
+these are other options that can be used
+so let's see what happens
+when the client
+calls into this virtual ip address
+so as part of the request
+it sends is ipa source ip which is ip
+address of the client itself
+and the destination would be the ip
+address
+and the port number of this server
+or this virtual ip
+so when the request comes here
+the director or the load balancer
+intercepts
+the call
+and changes the source
+for the source
+ip address of the client to itself
+and the destination
+is changed to one of these servers
+according to which algorithms that being
+used one of them is selected
+and then
+also the the port number
+these are listening on port 8080 it also
+changes the port from 80 to 8080
+and then when they request
+one of these response
+the result is sent back
+from the server one of the servers with
+the ip address of the server to the ip
+address of the director here
+and then
+the load balancer then rewrites the ip
+address
+and the source becomes
+this source because the client called
+this ip
+so
+sorry this is this ip and req
+explicit response coming from the same
+source otherwise the packets would be
+dropped so that's would be the source
+and the destination would be the client
+itself so this is
+a very overview of how ipvs works
+nonetheless we are going to actually
+implement
+this
+diagram here and see how that works
+again this is for
+giving you
+some idea of how kubernetes uses this
+load balancing behind the scene
+so in this demo we're going to set up
+an ipvs based load balancer
+and so we need a director and this is
+director that i've already logged into
+so this server will be acting as our
+load balancer or a director
+and line 15 sorry line five we need to
+install
+a software called iv ipvs adm
+which is used to set up maintain or
+inspect the virtual server table
+in the linux environment i've already
+installed that so i'm not going through
+the installation process
+then on line eight and nine we are going
+to
+these are the two servers that we call
+real server or these are the servers
+that will be behind
+the virtual the load balancer
+so
+this is the ip address
+of one and port number so
+these two servers both
+listen on port 8080 so if you run that
+right now out outside of
+load balancer this is the result that we
+get a very simple system
+service basically returns
+the operating system
+and
+type and also the ip address
+of the host the same thing with this
+and these are
+current running this is one server and
+this is one server so these are two
+virtual servers
+that we will be using
+so again keep in mind we are not dealing
+with coordinators here at all that we're
+just showing you raw how we
+this can be set up on a virtual server
+and how
+kubernetes actually takes advantage of
+this
+um so
+in terms of kubernetes imagine that
+these two are two parts that are hosting
+a service
+and then on line 13 we need to set up a
+load balancer sudo ipvs adm
+minus a minus t so minus a means add a
+service
+minus t this is a tcp
+service
+rather than the udp service
+and this is the ip address
+of the
+director or the load balancer and this
+is the host that or the port number that
+we'll be listing out so in in essence we
+are
+sending a virtual ip address that that
+client can call
+and minus s means the scheduler
+algorithm and rr means
+round robin so you're setting up
+a load balancer which will be
+using round robin algorithm
+and this is the
+virtual ip address and port number that
+can be used by clients
+and then on line 17 and 18 we are adding
+these two servers to be part of to be
+behind this
+load balancer so
+the command is ipv and sadn minus a
+minus t
+minus a again in this case means add a
+virtual service
+um minus
+and then this is the ip address
+of
+the load balancer is set up
+up here
+and then
+this r minus r means real server so this
+is the ip address
+of the one of our server a virtual
+server and this is the port number so
+these two will be listening on port 8080
+and minus m means masquerade which means
+that
+they they are
+using that so let's go ahead and execute
+that first
+and then this
+and finally this
+so we have our
+load balancer
+so that we can verify that on line 22
+sudo ipvs adm minus capital l means list
+a virtual
+server table
+and as you can see now we have
+these two
+servers now listening
+for traffic and
+the forward method is masquerade so you
+it's going to use the nat table the
+um
+load balancer server will be using
+that to forward
+messages or traffic to these two servers
+okay let's go ahead and now test our
+load balancers occur
+http minus one
+192.1 968.0.14
+so that is the ip address of our
+uh vip that we set up virtual ip address
+and let's call that
+and you'll see that it respond one of
+the servers and the first one would be
+89 and then if we call that again
+this time we'll be responded by 13 all
+that so not the load balancer has been
+established we can also look at
+more information connection on line 27
+sudo
+ipvs adm minus
+lcn
+so l means list
+and see connection table
+and n
+numeric numbers
+that show ip address is not the
+um
+dns name so let's go ahead and run that
+and we'll see that
+remember that we make two calls to
+um to our
+uh our load balancer
+and those are listed here
+um so
+first of all the protocol is tcp
+so expire when will um if the
+server doesn't here if the load balancer
+doesn't hear from these clients and
+within this allocated time it will drop
+those packets
+and then
+these are the source ip
+so i'm calling it from
+the load balancer itself
+and then and this is a virtual server
+which is uh itself again and these are
+the destination
+so um this is a quick
+demo
+to see
+how
+ipvcm works and you can imagine
+um how communities will take advantage
+of this so think of this virtual
+ip address as
+a kubernetes service
+and think of this
+as
+creative parts that are behind that
+service
+now that we saw ipvs in action
+let's go ahead and talk about how we can
+configure
+kubernetes to use ipvs instead of ip
+tables for
+load balancing
+there are two methods the first method
+is to configure ip
+kubernetes during the installation
+process
+or you can wait until the quantities
+cluster is set up
+and then configure that later on
+so i'm going to show you both ways the
+first first i'm going to show you how to
+do it during the installation so i'm
+going through the installation process
+and this needs to be run on all
+nodes um
+both
+master and worker nodes and basically
+we're setting up
+the
+requirements um
+on line 12 and 13.
+it's a best practice to make sure that
+your linux system is up to date
+and then we need to install
+rpv as adm that is a requirement that we
+need to set up before we initialize the
+cluster so that's on line 16.
+then online 19th uh you need to set up
+a cri or con
+container runtime interface
+i'm going to use container d
+but you could use crc iro or
+even docker although docker will be
+going away so probably if you're setting
+up a brand new cluster i wouldn't
+recommend using docker anymore
+and then online uh 22 to 25 this is how
+we set up container d we will need to
+make a directory create a directory
+under etc called container d
+and then we run this command as sue or
+administrator um container d
+config
+default and the location
+uh of this
+file so basically that file will be
+created and configured when this uh many
+computers install the
+container id and configures it
+then before installing quantities we
+need to get the key from its key from
+google and that is on line 28
+and then online
+31 we need to add quantities
+to our cluster to our repository so
+that's online 31
+then we install
+cube adm
+which is used for
+initializing the cluster
+cubelet and qctl so those needs to be
+installed
+then online
+37 we need to
+edit this file
+with which is ctl and the etc folder
+and we need to add this line
+to it
+basically
+allowed an
+ip table on the note
+to correctly see bridge traffic
+so even though
+we'll be after configuring
+ipvs it
+will for the most situation we'll be
+using ipvs for
+load balancing but there are some
+situations that it fallbacks and it you
+know has some dependency on
+container on the
+table ip tables and i'll talk about that
+a little bit later but make sure that
+you do that
+and then on line
+42
+we need to add one to this file
+under
+slash proc system sys
+inet ipv4 and ip underscore forward
+basically what it does is
+allow
+when the packets arrive at the node
+network interface to be forwarded to
+pods so and ipvs actually depends on
+this so you make sure you
+do this
+then we
+restart
+system
+and then on line 49 and 50 we
+load a couple of modules overlay and vr
+underscore net filter so
+we need to
+load those two
+and then on line 53
+we need to
+modify this file fstab which is under
+slack
+etc
+and we need to comment out this line
+here
+and this is for swapping because
+quantities does not support swapping so
+we need to disable that
+and on line of 57 we need to do
+disable swapping from command line
+as well
+then on line 60
+we need to
+go
+download all the images that are
+required by kubernetes
+so that's that's done
+then
+on line 64. so before initializing next
+step is to initialize
+uh our cluster and this to be run only
+on master so
+make sure you only run it around this on
+your master but before running the
+command we need to
+get the
+create a
+basically a configuration font so we
+need to
+let's go through the command cube
+adm config
+print
+and then
+init
+dash defaults and then we put it into a
+file called cube adm so we need to
+modify this so this is our default
+setup that
+cube adm uses we need to modify that and
+i have the file here and i'll provide
+that so you can use it if you like
+um
+so
+i've i've
+commented on the section that we don't
+need
+and then
+under node registration this is an
+important
+part
+if you are not using docker then you
+need to specify
+which cir you're using in my case i'm
+using
+container d so this is the location
+that will be um
+when is will be uh looking during or q
+adm will be using during installation
+but that will set up will set the
+uh default cri to this
+if you are using ciro so this is the
+location for it if you're using
+a docker so this is a docker
+location
+if you're using docker you don't you
+won't need to specify this because
+it assumes that by default up to this
+point actually after this version
+cube adm
+assumes that you're using
+docker if you are not then you have to
+specify
+the cr the cri
+socket and then you specify where the
+socket is
+and then um
+just add
+leave there is the api server part
+as is
+and then at the bottom this is the most
+important part of
+this ad we need to add this section
+to the
+configuration
+and
+so
+start from here
+so the api version um
+q proxy dot config
+cube
+ks
+ka s dot is io slash
+v1 alpha one so that's the version
+and the kind is q
+proxy configuration and the mode is ipv
+so this is the kind of the key here we
+need to make sure that we set it to ipvs
+so let's go ahead and then we can then
+run
+um
+after you configure after you uh modify
+that then
+you run
+cube adm init
+and then dash config
+and the name of the configuration file
+that you just created so let's go ahead
+and run that
+it will take a minute or so to set up
+the cluster
+i'll just wait
+okay that's done
+and this line is important here if you
+are
+going to set up worker notes
+then you need to copy this
+and run it later on i'll i'll show you
+where okay
+so that's done then we need to
+um make online 69 we create
+a folder a header folder called cube
+under the
+home directory so let's go ahead and do
+that
+and then we copy the reason for this is
+kubernetes when it sets up the cluster
+initially it uses
+some certificates as
+the proof of authentication and only it
+can access communities so in order for
+us to be able to
+also access we need to copy everything
+from this folder and put it in the
+folder that we just created so let's go
+ahead and do that
+and then we need to give access to that
+on line 71
+then on line 74
+we need to at this point we need to
+set up a cni we needed
+because the cni is um
+required i'm going i'm using
+calico so i'm going to download calico
+one thing one
+caution here if
+calico
+works with ipvs if you're using a
+different cni just make sure read the
+documentation and make sure it works
+with i with ip ipvs before doing that so
+let's go ahead and
+download that
+and then on line 76
+you're going to
+apply
+uh qctl apply minus f and then the um
+calico yaml file that we just downloaded
+that and that will go it will go ahead
+and so that calico as our cni or
+container network interface
+and then at this point
+before doing that if you are setting up
+you know additional nodes first of all
+you need to
+run this command the command that
+you saw here you need to copy and paste
+that and run that on each node
+um after install installing your
+the um the requirements the
+prerequisites that i show you at the
+beginning
+and then you need to run this so to join
+those uh servers as part of your
+cluster so let's go ahead and clear
+those
+and also
+if you want to if you want to be able to
+run qctl on those nodes you need to copy
+this
+file that you created here you need to
+also copy that to those
+nodes so you'll be able to run cube ctel
+from those
+as well
+okay on line 82 now we can verify that
+our cluster is up and running
+and yes we can see this is the
+information this is a master and that is
+the port number that it's running on
+and on line
+85 i'm going to only set up one server
+and that is master by default
+when you schedule deployment
+they are not scheduled on master so we
+need to
+untaint master basically to allow it to
+be able to
+um schedule their
+be able to deploy
+pods to that and that is on line eighty
+five keep city obtained note this is a
+node name role dash
+no dash role
+dot commanded
+dot iso slash master and then minus one
+minus
+okay so that is now undated now i can we
+can deploy
+application to it
+so just to verify a um
+on line 88 cube ct i get nodes minus or
+wide
+so i only have one
+and that is the master so if you have
+more more than those then those uh roll
+on nodes will be shown here
+and now at this point i will check to
+see
+um line 91 cube
+sudo ipvs adm minus l and see what's
+going on and you'll see that already
+kubernetes added some services that it
+uses and they're already part of this so
+it's a good sign that
+it's using
+ipvs
+now for
+verifying that let's go ahead and
+deploy an application online
+94 qctl create deployment
+hello world
+dash dash image so this is the image
+that we are going to deploy which is
+basically hello world application let's
+go ahead and
+deploy that
+and to verify that on line 97 cube ctl
+get
+deployments
+and we'll see that hello world has been
+created
+okay
+now we are going to create a service
+online 99
+so we to be able to access the the
+service the the application so cube ctl
+exposed deployment
+hello world
+dash dash
+port 1890
+target port 8080
+so the
+service itself inside container will be
+listening on port 8080 however the
+service
+the kubernetes service will be running
+on 80
+90. so the
+call will be forwarded from
+port 1890
+from the
+server to the
+containers on port 88 let's go ahead and
+run that
+because that's done
+now to verify cube ctl get services
+and we'll see that this is our hello
+world
+and this is port 8090 that we specify
+and online line
+103 we can also get the parts so cube ct
+i get pods minus all white
+and this is the ip address
+of our
+um
+part so it ends with 196. so let's go
+ahead and run
+uh
+um ipvs adm to see if
+our service shows up now
+and as you can see
+1890 this is the
+service we just deployed so
+that is the service port 8090
+and this is the ip address of the pod so
+very much like the demo that we did
+previously uh with virtual services with
+virtual servers that would see that
+containers also
+um pod will be also part of our load
+balancer
+okay
+so let's go ahead and now um
+we deployed it with one
+container now let's go ahead and
+scale it up to four
+so on line 108 cube ctl scale
+replicas equal to four
+and the deployment name which was hello
+world let's go ahead and do that
+and now let's go ahead and take a look
+at ipv
+as adm again
+and now you'll see that under 89 um this
+service which is listing on port 89 and
+we see that there are four parts
+so
+ipvs as we create
+services it manages the
+balancing for us and those are added
+automatically to our
+load balancer
+if you prefer to
+set the q proximal to
+ipps
+after you set up your cluster
+that is also possible
+and now i um outline the steps
+here so starting on line 11
+we need to edit a config map
+called q proxy so
+on line 11 cube ctl edit
+config map
+q proxy minus n
+cube system so this
+config map called q proxy in the cube
+system we need to edit that
+and then we need to scroll down to
+the ips section
+and the mode here
+since we just set up this cluster
+it's already set to ipvs but if it's not
+set to ipvs it will be blank so you need
+to
+edit that you need then to change to set
+the mode to ipvs just changed from blank
+to ipvs
+also
+we can change
+the
+scheduler
+mode
+so these are the various mode
+round round robbing this connection and
+so on
+um
+so if it's not set in this case which is
+blank so it means it's round robin so
+this is the default behavior
+but if you like you can change
+your situation um dictates you can set
+to one of these so again i'll provide
+uh the script so if you like you can set
+it up
+so
+and then uh we are not done yet so i'm
+not going to make any changes here so
+just quit
+once you do that once you make the
+change here then there's another
+step that you need to take we need to
+actually delete the cue proxy so on line
+14
+we're going to capture
+the q proxy
+and this is the command cube ctl
+get pods minus
+and no heads minus n cube system
+and then what you're looking for is a
+cube proxy
+so this is a trick to get the name of
+the q proxy
+and then we can then let's just do it go
+ahead and do that
+and then we can print the name so this
+is
+basically the name of the q proxy
+and then you need to delete that so it's
+very important on line 16
+delete this cube proxy because the
+changes that you made
+appear when you edited the config map
+will not take place uh until you delete
+the queue proxy and it creates a new
+queue proxy and at that moment on
+then um you you will see the
+results and you will see that
+my previous s is set
+and one way to
+check that
+on line 19 we can get the
+again the proxy name
+and
+at the uh on line 21 we we can
+do a
+log basically read the logs from
+the new q proxy that was just created so
+once you
+delete the q proxy one will be
+generated and then you're looking for
+this
+uh using ipvs
+proxier and that is the clue that
+now uh the system has switched to
+ipvs
+it can also then do the same command
+that we did before for another
+kind of another perspective of
+um
+proof that uh the the change has
+happened and that's on line 25
+sudo um ipvs adm minus l so this is
+again for the situation that you already
+have a cluster and you want to switch to
+ipvs just be very very careful
+with this because uh switching to ipvs
+um
+make sure that one of the most important
+things to check again is to ensure
+that
+the cni
+provided that you're using is compatible
+with it
+let's summarize some advantages of ipvs
+or ip tables
+the first one is performance
+as we saw iptables doesn't use any
+indexes so you have to do a
+complete scan of tables when you're
+looking for something
+versus ipvs that uses hashtable which is
+very fast it's like comparing having two
+tables one doesn't have an index and the
+other one has in a database
+kind of scenario and obviously the one
+that has indexes is usually a lot faster
+the second one is in iv tables mode
+latency to add rule increases
+significantly is almost exponentially as
+we will see when the number of services
+increases
+on the other hand
+in ipvs mode latencies to add whip and
+back-end ips do not increase
+in the number of services increases
+and this is the comparison that
+the
+kubernetes team actually published
+and
+let's go through that together
+so
+we have the number of services number of
+rules and then we compared uh how
+how long we'll take those kind of do a
+little bit of apple to apple comparison
+and so we'll have in the scenario where
+there's only one number of services is
+one
+and number of rules um are eight
+and the performance is pretty comparable
+because they're very small
+however when they get to like 5 000
+rules and
+5000 services and 40 000 rules
+it took 11 minutes for ip tables and
+only 2 million 2 milliseconds
+so as you can see the time for ipt ipvs
+is flat again because it uses
+index tables
+uses hash tables and they're all indexed
+and then if we go even further
+we have 20 000 services and 160 000
+rules
+it will take five it took five hours for
+ip tables and again only two
+milliseconds for us so you'll see the
+time doesn't change
+uh for ipvs so this is a very
+significant differences
+and as we discussed earlier load
+balancing options uh
+we are only
+the ip tables only supports
+round robin but
+in addition to uh round robin ipvs
+supports this connection destination
+hashing source hashing
+shorted expected delay and never queue
+so
+in this in a situation where
+you have to use a different um
+balancing algorithm then obviously ipps
+is the way to go
+it supports server health checks and
+connection retar tries which we don't
+get if we use ip iptables
+and finally supports
+sticky sessions
+so the last topic i wanted to discuss
+before ending this video is
+when ipvs falls back to ip tables
+and it's not as bad as you would you
+might think and we will see why
+so
+ipvs will provide will employ ip tables
+in doing packet filtering
+snat or masquerade
+specifically
+ipvs proxyer will use ipset
+to store
+source or destination address of traffic
+that needs drop or masquerade
+to make sure the number of ip tables
+rules be constant no matter how many
+services we have so it will use
+something called ipsec to keep track of
+the source or destination um traffic
+that needs to be dropped or masquerade
+so what is ipset cyprusit is an
+extension to iptables that allows us to
+create firewall rules that match entire
+sets of addresses at once
+unlike normal iptables chains which use
+which are stored and traverse linearly
+ip sets are stored in index data
+structures so basically these are index
+tables which are a lot faster and much
+faster than iptv so you don't really get
+the the hit that you would get everybody
+using
+primarily ip table so what are those
+some of those situations
+that ipvs will fall back to ip tables
+really all of them really deals with
+situations where
+you want to provide external access to
+your services in the kubernetes
+environment
+and you might be familiar with noteport
+and load balancer but there are other
+ways that you can do that through
+either setting when you start the proxy
+to proxy you pass in the masquerade at
+all
+and then provide the routes from outside
+into your kubernetes
+so that's one way of doing that
+and then the other way is to
+create external services which you
+provide the ip addresses that
+then
+kind of bypassing the the whole
+kubernetes and provide ingress access
+into kubernetes so there's not much time
+to discuss some of those
+of those situations here
+but you can look them up if you are
+interested or if you want me to cover in
+the future
+then we'll just let me know in the
+discussion section
+so i hope that you enjoyed this and i
+hope it was useful if you have any
+questions or comments or suggestions for
+future
+videos please
+don't hesitate to let me know and post
+your comments and
+questions i read them all and reply to
+all of them thank you and have a great
+day

@@ -1,0 +1,480 @@
+Ready.
+>> Hello, I'm Whitney Lee. I'm a technical
+advocate and this is Abby. Excited to
+say hello. Uh I am a principal engineer
+at Centaso. Abby and I just spent over
+an hour and a half talking about custom
+resources. In the comments, we'll put a
+link to that longer conversation. But
+meanwhile, here we are making a recap
+video. Personally, I'm interested in
+what you think of this, Abby.
+Personally, I'd say a custom resource.
+If you want to extend your Kubernetes
+cluster by adding custom resources and
+you need to add a custom resource
+definition that teaches your cube API
+about the custom resource. So then that
+enables you to be able to make the
+actual custom resources that are
+specific to that particular instance of
+the custom resource. But it's very
+likely that you also want there to be
+running stuff somewhere infrastructury
+things. In order for that to happen, you
+need a controller. In most cases, we'll
+say, and we'll talk about the exception,
+the recipe is you make a custom resource
+definition to teach your cube API about
+your custom resource. And then when you
+actually create an instance of the
+custom resource, the controller has the
+logic that does the work that makes that
+custom resource run on your cluster. But
+let's talk about it in a little more
+detail. You're nodding. Yes. So that's
+good. You would you would tell me if I
+was wrong, right?
+>> I would absolutely tell you that all
+sounds right.
+>> Okay, cool. Do you want to start us off
+about what we talked about first? The
+first thing we wanted to do was actually
+demystify custom resources and custom
+resource definitions by looking at how
+they're just Kubernetes resources. So
+what is a Kubernetes resource? We talked
+about the fact that a Kubernetes
+resource definition is a schema that is
+stored incd. Uh and so this is just kind
+of YAML definition, a schema that says
+what required fields are there, what
+optional fields are there, what
+validation on those fields can can be
+applied. This is installed as part of
+your Kubernetes cluster. So therefore,
+you don't ever think about it like a
+Kubernetes cluster by default knows when
+you say you want to make a pod resource,
+it knows what to do. And that's because
+the pod resource definition has already
+been created and stored in the cluster.
+>> Then I guess Whitney, what is special or
+different about a custom resource
+definition? Oh, I love this. A custom
+resource definition is not installed as
+part of the Kubernetes cluster. So
+whatever the custom resource is you want
+to make, Kubernetes API doesn't know
+about it yet. So you need to install the
+custom resource definition, which
+spoiler alert is just a schema. Then
+that teaches your cube API to accept
+this new kind of resource, this custom
+resource.
+>> Exactly. And you don't have to always
+write those custom yourself though,
+right? Like there are ways to get custom
+resources that have been written for
+you.
+>> Yes. Yes. So as we talked about there
+are two types of CRDs. So you can you
+might have already interacted with
+custom resources because you added
+Prometheus to your cluster, you added K
+native to your cluster, you used like
+manager those are all adding custom
+resources to your cluster but maybe
+there's something you want to do and you
+can make your own custom resources so it
+can go both ways. Exactly. So I like
+this teacher student thing. Keep asking
+me questions.
+>> Keep asking. Okay. So you talked about
+this thing an instance of a custom
+resource definition. Tell me more. What
+is an instance of a custom resource
+definition?
+>> A custom resource is an instance of a
+custom resource definition. A pod is an
+instance of a a Kubernetes resource, a
+pod Kubernetes resource definition. But
+when we say pod in this case, we're
+talking about pod just being a
+configuration file that's stored incd.
+We're not yet talking about the actual
+running pod. And this is what was really
+confusing for me is because basically a
+custom resource definition is a
+definition of the custom resource. A
+custom resource is also a definition,
+but it's a definition of a specific
+instance of a custom resource. But
+because they're ultimately both
+definitions, that's I think the crux of
+why all of this was so confusing for me.
+Right at the beginning when you tried to
+summarize an hour and a half brilliantly
+in about 30 seconds, uh you said that
+it's most common that you're going to
+have a a custom resource definition and
+a controller so that when you install a
+custom resource that meets that
+definition, the controller can run some
+logic and create some things in the
+cluster.
+>> Do its thing.
+>> Do its thing. Exactly.
+>> That isn't required though. And we can
+see that that's not required because we
+can see how a config map operates in
+Kubernetes. So a config map is a
+Kubernetes resource type. And so there
+is a Kubernetes resource definition that
+is installed on creation of the cluster.
+It already knows about what a config map
+is. Now as users, we can create config
+maps that meet that schema definition.
+And those would be a resource. That
+resource doesn't actually have anything
+running behind it. It's literally just
+data in a database, right? It's in the
+CcD database. And so there actually
+isn't a controller behind that. It just
+has the data stored incd. So when you go
+and you say coupubectl get config map,
+it goes to CD and gets the data out of
+that without needing to go through any
+sort of a reconciliation loop.
+>> For the config map, you can make lots of
+different config maps from like um one
+resource definition. like you taught
+Kubernetes knows what it is and
+therefore you can make lots of instances
+of it. So what would be different about
+something like a pod and a pod at the
+end of the day is a container
+>> running on a virtual machine or a number
+of containers running on a virtual
+machine or on a machine could be
+hardware. So, how does the same setup
+where all you're doing is defining some
+definition that meets a schema result in
+a running container for a pod and not
+results in running infrastructure for a
+config map? It's because for a pod,
+there's also a controller that reads
+that definition out of CD and takes
+action on it. And so the controller will
+read the definition of your pod resource
+the so your specific resource not the
+the generic schema definition and it
+will try and reconcile that to make it
+real and that means setting up some
+arbback rules and setting up some
+networking rules and actually taking a
+container and running it on the machine.
+So this is another place that's
+confusing for me or that was confusing
+for me because we're saying a pod is the
+actual definition of the pod stored incd
+that's a pod regard like before it's
+created we're saying the pod is created
+because it's defined incd. And so if
+we're calling this configuration file a
+pod and the actual running thing a pod,
+then that's another area of confusion
+because those two different concepts
+both have the same name and kind of are
+talked about interchangeably. And that's
+because there's this declare and
+converge idea in Kubernetes. You declare
+what state you'd like and that's anc. So
+that's the pod definition and then
+kubernetes will con use the controllers
+to converge that into reality. So
+whenever you're doing coupubectl get and
+trying to see the status of something
+you are checking the status asc knows
+it. It is working on converging that
+status to reality at all times. So
+controller, it's its own piece of
+software that's running on the cluster
+somewhere
+and it takes in a resource from the cube
+API. So this resource could be a
+Kubernetes resource or it can be a
+custom resource that you created and
+then it does its thing and what its
+thing is can vary drastically depending
+on what it is that you're creating.
+And then it will return a status to cube
+API. And what makes a controller special
+is that it does this on a reconciliation
+loop. And it can watch the state of
+things to make sure the state that you
+defined using your instance of a
+definition is making sure that state is
+always as things actually are in the
+cluster. So controllers was watching
+that to make sure what happens and
+controllers are the magic behind
+Kubernetes itself. So we talked about
+how how the process works in in more
+vanilla Kubernetes resources. Um and so
+now for a custom resource you would
+first install a CRD. So whether you're
+installing the custom resource
+definition that you yourself made or
+whether you're installing a third party
+one it doesn't matter but the first step
+needs to be you need to teach the cube
+API that you want to start using a
+resource that has this particular shape
+to it. And then once that CRD is
+created, then you have the power to make
+a custom resource. That's where you
+could actually define an instance of the
+custom resource that you want to make
+that's specific where you define exactly
+what you want your particular version of
+it to look like. I would like to say at
+this point that our cube API part of
+what it means to teach the cube API to
+accept this resource is part of the
+intake process is it's going to make
+sure your resource when you create it
+matches that schema and it's going to
+reject it from the cluster if it doesn't
+match that schema. So then once you've
+created your resource, you've defined
+the state you want your resource to be
+in your actual custom resource, your
+instance of a custom resource, then
+that's when our controller kicks in and
+does the actual work of making the
+running instance of the whatever
+when it does its thing and makes the
+running instance of the stuff.
+>> Yep. I think that's as far as we got in
+90 minutes yesterday. So yes.
+>> Do you have anything you want to add or
+say around custom resources themselves?
+cuz this is really the meat of why we're
+here and what it took us a while to
+figure out yesterday.
+>> I think the only thing I would say is
+that the reason we're using the phrases
+does its thing and stuff that it creates
+is because it can right now it's it's
+really popularizing the fact that it
+really is quite broad and you can do
+things in the cluster. So you can create
+other cluster resources like pods and
+deployments and things or you can do
+things off the cluster and it's just
+running software. you can do things like
+configure cloud resources that are not
+within Kubernetes or any other kind of
+API driven infrastructure. So just to
+call out why we're using thing and stuff
+um and and why there's such power behind
+that. So yeah.
+>> So then my next question was I hear
+operator all the time and when people
+define an operator to me I've never
+really understood what makes it
+different than custom resources and you
+helped clarify that for me in a big way.
+So an operator is another controller
+that listens to custom resource types
+that it has defined. But when people in
+common everyday language say operator,
+it is typically the package of things
+required to make that happen which
+usually includes other things like
+arbback uh so role-based access control
+and and other tools you may need to
+really make that controller powerful um
+and the CRDs associated with it and so
+on. reason why you might use the term
+operator as well aside from just that
+idea of packaging together all the kind
+of bits you need is because uh you might
+be speaking about the life cycle
+management of something. So that
+operator operates creates reads updates
+and deletes a running application and it
+codifies that upgrade process it
+codifies that deprecation process and it
+can do that for just a single running
+instance or it can do that for all
+running instances of a certain type. So
+for example, you might have many
+Promethei running and the Prometheus
+operator can manage the life cycle of
+all of those or you might have a really
+custom operator just for your business
+application that has codified all of the
+create, read, update and delete and and
+particularly the upgrade as I said
+process for that really specific
+application codified in it. So it can be
+very broad and it can be also very
+specific. So to summarize what you just
+said, there are two things. One is the
+operator wraps up controllers uh custom
+resource definitions with some
+additional dependencies into one unit.
+And then the second thing it does is it
+does application life cycle management
+on that unit. That's what makes an
+operator different.
+>> All operators are would contain
+controllers but not all controllers will
+be considered an operator. Exactly.
+Yeah. But again some people will be very
+adamant that these are very different.
+you know, a controller and operator are
+very different and some people will be
+adamant that they're both just running
+software that run in the control loop.
+But there are some some reasons why we
+use the both language. Please do give
+your kind and constructive feedback and
+opinion in the comments. We'd love to
+hear from you for sure. So then we did a
+good amount of talking about admission
+controllers, but I have a confession,
+Abby. I don't understand what the
+admission controller story has to do
+with the custom resource story. So let's
+open with that. I think that the reason
+I think of them in similar trains of
+thought is because both are talking
+about how to build your custom business
+logic, your custom needs on top of
+Kubernetes default behavior. If you want
+to extend the Kubernetes
+default behavior by introducing a whole
+new resource type, you would want to
+talk about a custom resource definition.
+If you want to extend the Kubernetes
+default behavior by putting more
+business rules around it. So things
+around when people can access things,
+who can access, and what are sort of
+baseline configuration requirements for
+a built-in Kubernetes resource type,
+then you'd want to be talking about
+admission controllers. So you're right,
+they are different use cases and they
+could be completely kept separate. But
+the reason that I always think about
+them in the same breath is because it's
+there are two implementations of the
+same intention which is to build your
+your company and your personal opinions
+and needs into the Kubernetes API.
+>> That helps a lot. Thank you. So
+admission controller is part of the
+Kubernetes API's admission process. So
+when you talk to the cube API and you
+say I want to make a new whatever
+instance of my custom resource the cube
+API is going to like say like who are
+you are you allowed to do this it's
+going to validate your custom resource
+against the schema that you gave for the
+custom resource definition and then it
+gets to admission controllers as part of
+the admission process. So the mission
+controllers can be two different types
+or they could be both types at once. I
+understand this is another thing that's
+confusing for me. A mission controller,
+it's called a controller. But when we
+talked about a controller before, we
+said a really important of the
+controller is that reconciliation loop.
+A mission controller does not have a
+reconciliation loop. It behaves more
+like a web hook. And sometimes you'll
+hear people call these admission web
+hooks. In fact, terms are used
+interchangeably. And weirdly, I think
+controller is the more correct term, but
+um controller is also the more misnomer
+of a term in my opinion. That's another
+number three super confusing thing that
+got cleared up for me as part of this
+conversation. Part of the admission
+process before storing the resource incd
+that's the final goal of this whole
+admission process. Two different things
+can happen. There can be a validating
+admission controller there can be a
+mutating admission controller or there
+could be both. So the validating
+admission controller its only job is to
+be like is this allowed yes or no. And
+so you can give it lots of different
+rules. You can give it more complex
+schema validation. You can give it
+permission rules. You could say there
+has to be a a compute limit defined or
+don't let it in, which I guess is schema
+depth validation.
+>> That might not be a required field in
+the schema, but it might be a required
+field for your for your company. I think
+the really powerful thing to call out is
+that it can use external APIs to do some
+of that validation. So not only can it
+can you like kind of locally validate
+the thing, but if you want to check the
+configuration against something that's
+out external, you can make API external
+API calls,
+>> get data back and then have that
+validation happen. So this helps you if
+you have certain like databases of
+information that you need to reference
+on each admission of a resource type.
+>> And then we have mutating admission
+controllers or mutating web hooks and
+that can edit the the resource entirely
+before it gets stored in FTD. So with a
+mutating admission controller, you gave
+an example where it might add labels and
+I gave an example when I've heard of it
+before is a way to inject a sidecar in
+the case of service mesh. You you use a
+mutating emission controller to do that.
+And I think that's everything on the
+board. So if you want to add custom
+resources to your cluster, whether it's
+a third party custom resource or whether
+you're making your own, the first thing
+you need to do is add a custom resource
+definition, which is nothing but a
+schema. But what that's doing is
+teaching your cube API instance that
+your cube API that you have this type of
+resource. Then once you have that
+schema, you can make the actual
+resource. And depending on the resource,
+probably you also need a controller in
+place that's all that's going to take
+that instance of the resource that
+you've defined in your custom resource
+and it's going to make it uh into
+infrastructury things that are actually
+running somewhere. Just as simple as
+that, Whitney. How'd that take us an
+hour and a half? You know, just as
+simple as that.
+>> Thank you so much everyone for your time
+and appreciate you. Thanks to you, Abby.
+Bye.
+Ready?

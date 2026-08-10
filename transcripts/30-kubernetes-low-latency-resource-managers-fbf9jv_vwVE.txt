@@ -1,0 +1,607 @@
+Hello, my name is Yanir Quinn and I'm
+going to give this session alongside
+Francesco Ocmani. We're both engineers
+at Red Hat and today's session is going
+to be about how to enable low-latency
+workloads in Kubernetes clusters. So,
+let's start.
+Now that Kubernetes has conquered the
+cloud, it's time for it to move on to
+other domains.
+First and foremost, conquering
+cloud-native network functions, the
+cornerstone of 5G deployments. To make
+that happen, we need to address an
+important limitation, ensuring low
+latency.
+The workload of running cloud-native
+network functions, such as workloads
+designed for Telcos, stores interesting
+challenges to overcome.
+It's very demanding, requiring
+fine-tuning of the node behavior to
+ensure low-latency processing of network
+packets, where special hardware and
+software are needed.
+Kubernetes container platform can be
+augmented and tuned to to become a great
+platform for some demanding class of CNF
+workloads and this talk will demonstrate
+how.
+We will describe the features available
+alongside upstream Kubernetes to provide
+real-time guarantees and to handle
+low-latency and high-performance
+workloads.
+Let's have a look of a feature use case
+taken from the Telco world.
+A cluster admin handling a deployment
+that should provide low-latency
+real-time or DPDK purposes will want to
+configure it without deep understanding
+of all the interactions of the kernel
+and the operating system components that
+are in the mix.
+You should be able to do so in an easy
+declarative manner that will encompass
+all the moving parts to achieve this
+goal, such as isolating workloads for
+interruptions, for gaining better
+latency results for its Telco company
+and on the web scale and edge fronts.
+So, how do we do it? And how can we
+guarantee performance and low latency?
+Let's have a look.
+The ecosystem that will provide a way to
+achieve this is built from these
+existing and further developed
+components.
+We will explore the Kubelet settings,
+topology and CPU manager,
+the kernel settings on the node using
+tuned D,
+and how they interact to deliver the
+workload guarantees.
+Kubernetes tunings that can be achieved
+harnessing and manipulating Kubelet
+settings entangled with CPU and device
+managers,
+as well as applying topology structures.
+And doing that,
+on the side, we can be using operators
+and will be using operators to apply
+machine configurations to the operating
+system itself, including installation of
+real-time kernel and other
+configurations between the kernel and
+Kubelet.
+We will be setting node level tunings
+relayed by tuned D. This also will be
+done by an operator.
+At the top, we have an operator,
+performance add-on operator, we will see
+it later on.
+It will orchestrate everything to
+achieve optimized clusters for
+applications sensitive to CPU and
+network latency.
+If you're asking yourself, what is an
+operator? So, an operator is a
+Kubernetes controller specified to
+operating an application.
+It's a Kubernetes pattern that is
+extending the Kubernetes control plane
+with a custom controller and and custom
+resource definition that add additional
+operational knowledge of an application.
+We will see some of the operators in
+actions as I mentioned, combined to
+tailor a tuning suit for our cluster.
+To optimize Kubernetes clusters for
+applications sensitive to latency,
+installing a real-time kernel and
+configuring the operating system to run
+as a real-time system is one of the key
+aspects.
+Linux can be considered as the best
+choice for high-performance computing
+due to the years of Linux kernel
+optimizations focused on delivering high
+average throughput for a vast number of
+different workloads.
+A real-time is not necessarily superior
+or better than than a standard kernel.
+Instead, it meets different business or
+system requirements.
+It is an optimized kernel designed to
+maintain low latency,
+consistent response time, and
+determinism.
+All resources managed by the Linux any
+Linux kernel, CPU time is a principal
+resource.
+Tuning a CPU towards better performance
+aspects should be according to
+scheduling algorithms that use
+priorities and real-time policies to
+control execution, favoring high
+priority tasks while interrupts and
+preemptions are enabled for a much wider
+range of of time than on traditional
+kernel.
+Let's see how we reach and touch the
+nodes in our cluster to make them real
+stars using operators.
+With the use of a machine config
+operator, one of the operators
+we mentioned earlier on and we'll see
+following the slides,
+the machine config operator manages the
+operating system and keeps the cluster
+up to date and configured. Using this
+operator, platform administrators can
+configure and update system D, cri-o, or
+Kubelet,
+kernel, network manager, and more on the
+nodes.
+To do so, the machine config operator
+creates a statically rendered machine
+config file,
+which includes the machine configs for
+each node.
+It then applies that configuration to
+each node with the machine config server
+and the machine config controller really
+relaying this configuration.
+In the following example,
+we see how a machine configuration can
+set a kernel type to real-time on a
+specific node in a declarative way. So,
+we have this configuration called of
+kind machine config, we set real-time
+kernel as an argument and this will
+apply using the operator
+on the nodes.
+Let's see it in a micro demo now.
+Before the micro demo, we'll see another
+example here
+of a machine config capabilities, which
+sets Kubelet's configuration just such
+as CPU, memory, and topology manager
+policies on the node.
+The configuration goes through the
+operator and finally lands on Kubelet
+conf files for matching nodes.
+And now we'll get to the demo.
+So, we'll see how we apply real-time
+kernel and Kubelet arguments on nodes
+using the operator.
+First, we'll see how we change a kernel
+nodes to real-time kernel.
+So, here we label the node with a
+with an RT worker label.
+We create the machine config as we saw
+earlier on to set the node as real-time
+kernel.
+We create a machine config pool, a pool
+where the machine configurations we
+create will apply to. So, if we apply
+the machine the pool, all the machine
+configs associated to it will be applied
+on the nodes according to the labels.
+The labels the label we used earlier on
+was the worker RT.
+We get the nodes, we see the label.
+And now digging into the node,
+we can see that the Linux has changed to
+real-time.
+That's one example. I'm using here OC,
+but you can consider it as a CLI, very
+similar to Cube CTL with additional
+capabilities.
+Next example, we'll see how we change
+Kubelet configuration on a desired
+nodes.
+So, we create this machine config
+machine configuration with Kubelet
+config settings then that will
+sync into Kubelet conf files on the
+node. So, we have here CPU system
+reserved values and Kube reserved, for
+example. And also manager policy and
+reconcile period.
+We create the configuration.
+The pool already existed, so changes has
+applied. And then we go into the
+specific node we labeled.
+And here we can see,
+going to the Kubelet conf file, that
+values
+has actually
+changed according to to the
+configuration we we added.
+So, after seeing how we use machine
+configuration, let's talk about tuned D.
+Tuned D is an open source system tuning
+service for Linux. It monitors
+connect the connected devices using the
+Udev device manager.
+Tune system settings according to the to
+a selected profile.
+It supports various types of
+configuration like sysctl, sysfs, or
+kernel boot command line parameters
+which are integrated in a plugin
+architecture.
+Many of the plugins are supported by
+another operator, node tuning operator,
+and include
+the plugins listed below, sysctl CPU
+boot loader for example.
+Tuned also supports hot plugging of
+devices
+and stores and also stores all of all
+its configurations cleanly in one place.
+Tuned profiles that that manifests the
+required tunings we desire can be
+defined hierarchically,
+as we can see in the diagram, which
+reduces duplication and simplifies
+maintenance.
+Tuned also supports full rollback where
+the system can be easily returned to the
+state before the profile was applied.
+And it also includes a number of
+predefined profiles for common use
+cases. For example, presets for high
+throughput, low latency, or power saving
+are all distributed.
+Ultimately, we will want to ship a
+profile that best suits the tuning
+requirements we have.
+The profile can be composed from one or
+more presets to have our desired
+settings, but more parts are needed to
+compile to complete the picture as we
+will see soon.
+Here we meet yet another operator after
+the machine config operator, a node
+tuning operator.
+It is designed for node that provides us
+a centralized way to customize node
+level tuning for cluster administrators,
+abstract OS version level dependent
+tuning details away,
+enable modularity and tuned profile
+inheritance,
+provide same defaults for control plane
+and worker nodes, and also provide
+dynamic tuning with rollback without the
+need for node reboots.
+The node tuning operator manages tuned D
+as a containerized Kubernetes daemon
+set.
+It ensures custom tuning specification
+is passed to all container as tuned D
+demons running in the cluster in the
+format that the demons understand. The
+demons run on all nodes in the cluster,
+one per node.
+Deployment of custom tunings is done by
+creating a tuned D CR which includes
+profile data,
+recommendation logic, and machine
+configuration labels and selectors to
+apply these tunings on desired nodes.
+So, let's see a short demo of how the
+node tuning operator applies
+our tuned D profile.
+First, we label the node we want changes
+to apply to as we did before.
+So,
+in our case, we see the label here.
+We create the pool to be associated with
+the node as we mentioned earlier on.
+And here we see a tuned D declarative CR
+associated with the node tuning operator
+where we set
+uh uh
+several variables such as kernel
+arguments for isolated cores,
+but we also see it includes a real time
+and OpenShift nodes uh parent profiles
+in our example. So, let's see the parent
+profile.
+The parent profile also sets several
+variables. For example, under sysctl,
+the kernel hung task timeout 6 to 600.
+So, we get into the nodes again,
+and we debug our specific node.
+We can see the kernel arguments has
+changed to isolated CPUs equals one, and
+also check the sysctl uh value for
+kernel hung task timeout 6, which is
+indeed 600.
+Let's look at the kubelet, and let's see
+how we can tune it and then the work
+nodes for telco workloads.
+Let's start with the most basic computer
+resources, the CPU cores.
+To meet the latency requirements, we
+need to mitigate CPU contention and
+context switches. To do so, we can use
+the CPU manager, which is built in in
+the kubelet.
+The CPU manager supports different
+policies.
+The static policy allows exclusive
+allocation of CPUs to the workload.
+Exclusive allocations allow us to avoid
+context switches and to reduce and to
+reduce cache misses because no other
+workload can run on the exclusively
+allocated CPUs.
+However, system activities can still run
+on isolated CPUs. For full isolation, we
+need other settings like, for example,
+uh handling the IRQ processing on
+housekeeping CPUs. Housekeeping CPUs can
+be selected using, for example,
+uh other kubelet options like the
+reserved CPUs option, command line
+option.
+Uh uh the telco workloads very often
+require access to SR-IOV virtual
+functions or to hardware devices in
+general.
+Kubernetes provides a device plugin
+framework which works together with the
+device manager, another component built
+in in the kubelet. And this and this
+system can be used to expose other
+resources to the kubelet.
+Hardware supported by the device plugins
+includes the aforementioned SR-IOV
+virtual functions, but also other
+devices like GPUs or hardware
+accelerators in general.
+The device plugins report topology
+information for the hardware they
+manage, including the NUMA affinity.
+The topology manager is another
+component built in in the kubelet. It
+orchestrates the other resource manager
+like, for example, CPU and device
+manager. It allows to align the
+resources that the workload requires
+using the topology information provided
+by those managers. For example, we can
+do NUMA cell alignment.
+The topology manager is configurable
+using policies.
+With the most restrictive policy enabled
+the called single NUMA node, all the
+resources a workload require must be
+allocated with the same NUMA affinity.
+If this requirement is not met under
+this strict policy, the workload won't
+be admitted.
+Other policies allow less strict
+behavior.
+The topology manager can do, for
+example, best effort allocation. If it
+is not possible to allocate the required
+resources with the same NUMA affinity,
+the workload will still be admitted.
+Let's see a few example of NUMA aligned
+and NUMA unaligned resource allocation
+in order to see how the topology manager
+works.
+In general, we should not ex- not expect
+the NUMA cell to be symmetric or
+we should not expect the NUMA cell to
+all
+the NUMA cells to all have CPU cores,
+memory, and PCI buses because in general
+NUMA cells may have different
+combination of those resources.
+For simplicity's sake, however, we will
+consi- we will
+consider
+uh
+a system with two symmetric NUMA cells.
+Each of them will have CPU cores, local
+memory, and a PCI bus attached to them.
+This is the simplest scenario, and we
+use it for illustration purposes.
+Our first example is a NUMA unaware
+resource allocation. The workload is
+allocated regardless any NUMA cell
+alignment for the required resources.
+So, the those required resources
+required by the workload may span across
+different NUMA cells.
+This
+still allows the workload to run, but
+the performance is not optimal because,
+for example, of the of the traffic
+required between the NUMA cells.
+For example, if our workload gets core
+number three and a SR-IOV virtual
+function from NUMA cell zero on the
+left, and core number six and the memory
+from NUMA cell number one, pictured on
+the right, this is a um
+legal allocation a NUMA unaware
+allocation. Does not prevent the the
+workload to run, but if, for example,
+core number six on the right needs to
+access the SR-IOV virtual function on
+the NUMA cell number zero on the left,
+it it must pass across the cross NUMA
+link, and this causes a performance
+penalty.
+This is a Our second example as it is a
+NUMA aware resource allocation.
+We can do we can obtain this allocation,
+for example, using the single NUMA node
+topology manager policy. In this case,
+all the resources the workload requires
+are aligned on the on the same NUMA
+cell, in this case, the NUMA cell zero
+on the left.
+The performance is optimal because no
+cross NUMA link traffics is traffics is
+ever required.
+Let's see a demo of how the topology
+manager works on a real Kubernetes
+cluster.
+Okay.
+We are now seeing
+the demo.
+So, let's run a workload
+which requires aligned resources.
+From workload perspective, the only
+requirement is to obtain in the
+guaranteed class quality of service
+class.
+So, this is the example workload which
+we are going to run, which is very very
+similar
+to the workload we've seen previously in
+the in the example slide. So, two cores
+are required and one SR-IOV virtual
+function.
+So,
+from the user perspective, with topology
+manager enabled, there is no difference
+in the flow. We just run the pod,
+and it is running.
+Okay.
+Yeah. It is running. So, which is more
+more interesting is how the resource
+looks like from inside the pod.
+So,
+to inspect the resources from inside the
+pod, we can run uh the bug
+uh workload, but first let's see how the
+definition workload definition actually
+looks like. So, again, we record the
+same resources and we just run a
+different command
+because we want to run our debug tool.
+So, we create the pod as usual.
+We wait for it to be running.
+And here it is.
+No, not yet. Here it is.
+So, now we can jump inside the pod and
+check the resource allocation.
+And okay, here it is. So,
+two CPUs core two CPU cores are required
+and this workload got two of them and
+both of them are bound to NUMA cell one.
+We required one SR-IOV virtual function,
+which is as a PCI devices, again, bound
+to the NUMA node one. So, everything is
+aligned on NUMA node one.
+We have seen so far how many moving
+parts like operator, components, kubelet
+settings we need to configure to ensure
+optimal performance uh for low latency
+workloads. Let's see how we can bridge
+together everything
+since it this is also quite complex
+task. Let's see how we can it could be
+automated. And to automate it,
+we can use, for example, another
+operator, which is the performance
+operator.
+To configure a cluster, we can use this
+operator, which simplifies the process
+exposing a high-level profile, which
+allows us to configure the performance
+behavior of the cluster. We use another
+higher level of of abstraction.
+The performance operator will
+orchestrate the configuration of all the
+components like the operator we seen,
+the kubelet settings, and we it will
+drive them instead of user.
+So,
+the performance operator acts as
+orchestrator for all the
+cluster components.
+So, in this slide we see an example of
+all of how the performance operator will
+drive all the other components. And for
+example, some settings are still done
+almost directly by the operator itself
+like, for example, for now huge pages
+configuration.
+This is how the performance profile
+could look like. We have, for example,
+we can request the like huge pages, we
+can select the reserved housekeeping
+CPUs, and we can we can add command line
+kernel command line arguments.
+And we will see now how the performance
+operator
+works in practice in a cluster.
+Okay, we have a cluster with few nodes,
+few worker nodes,
+and
+we selected the role to make sure the
+performance operator can work can change
+the configuration of worker nodes. So,
+we see the performance operator is
+running and we have how the spec looks
+likes. So, again, kernel some kernel
+arguments, some huge pages for use
+station purposes, the single NUMA node
+topology manager policy, and in this
+case we also we are requiring
+the real-time kernel and for that we
+need
+cluster capability to support real-time
+kernel.
+So, for example, we see again the huge
+pages.
+And now we see how the performance
+operator works with the all the other
+cluster components. For example, we are
+now checking the tuned D the tuning node
+tuning settings we seen previously in
+this session.
+Okay, we are seeing how the tuned D
+profile is translated in practice.
+And now we're checking we're checking
+we're going to check the huge pages. So,
+this is how it should look like.
+But now let's jump in on a node and
+check how the all those settings
+actually translated
+to node tunings. For example, again,
+with proper mm cluster support,
+we seen the real-time
+kernel, but
+we also seen the kernel arguments we
+required
+and the huge pages we requested.
+And just a moment.
+And here they are.
+Here it is. Huge pages configured. So,
+this is how
+So, this is how the performance operator
+drives the configuration of all the
+cluster.
+If you want to try the performance
+operator, we can check the GitHub page
+of the project on which you find, of
+course, the source code, everything is
+open source, the documentation, the
+installing instructions. We have
+pre-built container image and very soon
+we'll have all the operator available on
+operatorhub.io to ease your consumption.
+So, this concludes our session. Thank
+you very much for attending.

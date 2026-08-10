@@ -1,0 +1,13 @@
+{
+  "close": 18.834188,
+  "filter-then-score": 24.267688,
+  "locate": 16.221938,
+  "nominated-node": 22.961563,
+  "pending-ladder": 22.857063,
+  "preemption-policy": 19.38275,
+  "request-errors": 21.446438,
+  "requests-not-usage": 24.71175,
+  "reserve-unreserve": 20.97625,
+  "two-cycles": 26.488063,
+  "what-it-writes": 16.82275
+}

@@ -1,0 +1,190 @@
+{
+  "title": "An API You Cannot Take Back",
+  "subtitle": "Module 05 — CRDs, operators, versioning, and finalizers",
+  "series": {
+    "module": 5,
+    "unit": "u5",
+    "spineSegment": "controller queue",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/content.js unit u5.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 26,
+      "narration": "Same segment as module four, but now the objects are yours. A CRD puts your own kind into the same API the built-in controllers use. That is powerful, and it makes you responsible for an API other people will depend on.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE with segment four lit, annotated 'your own kinds'."
+      }
+    },
+    {
+      "id": "four-words",
+      "n": 1,
+      "stage": null,
+      "title": "Four words people blur",
+      "lane": "control",
+      "estSeconds": 54,
+      "narration": "Four terms, and interviewers use the confusion between them as a filter. A CRD registers an API kind and its schema. A CR is one stored object of that kind. A controller reconciles those objects toward their spec. An operator is packaging: a controller plus domain lifecycle knowledge, RBAC, installation and upgrade. If you can say those four cleanly, you have answered most of what follows.",
+      "visual": {
+        "type": "fourWords",
+        "spec": "NEW. Four stacked cards revealing in order, each with a one-line definition. Then show them assembled: CRD registers the kind, a CR appears in the API, the controller picks it up, the operator wraps controller plus lifecycle."
+      }
+    },
+    {
+      "id": "crd-alone",
+      "n": 2,
+      "stage": null,
+      "title": "A CRD on its own does nothing",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "Apply a CRD with no controller and the API server will happily accept your objects. It validates them against your schema, stores them, serves them, and lets you list them. Nothing else happens. Ever. That surprises almost everyone the first time, and it is the cleanest demonstration that the API server stores intent while controllers create reality.",
+      "visual": {
+        "type": "crdAlone",
+        "spec": "NEW. A CRD is applied; the API gains a new kind. CRs are created and appear in a list. Nothing downstream moves. Hold on the stillness longer than feels comfortable, then a controller starts and everything begins."
+      }
+    },
+    {
+      "id": "spec-status",
+      "n": 3,
+      "stage": null,
+      "title": "Intent and observation",
+      "lane": "control",
+      "estSeconds": 52,
+      "narration": "Split your object honestly. Spec is intent, written by the user. Status is observation, written by your controller, including conditions and observedGeneration. When your controller cannot do what was asked, report the shortfall in status. Do not edit spec down to match what you managed. That destroys the record of what was requested and makes the gap invisible to everyone, including you.",
+      "visual": {
+        "type": "specStatus",
+        "spec": "NEW. An object with spec and status panels. The user sets replicas to ten in spec. The controller manages six and writes that into status with a condition. Then show the wrong version: the controller rewrites spec to six and the discrepancy silently vanishes, flagged red."
+      }
+    },
+    {
+      "id": "contract",
+      "n": 4,
+      "stage": null,
+      "title": "What you signed up for",
+      "lane": "control",
+      "estSeconds": 50,
+      "narration": "Publishing a CRD is publishing an API. You commit to everything a client can observe. The structural schema. List and map semantics. Pruning, defaulting and validation. And how server-side apply merges your fields. What you have not committed to is the implementation. You can rewrite the controller in another language tomorrow and no user will notice.",
+      "visual": {
+        "type": "apiContract",
+        "spec": "NEW. Two columns, contract and not-contract. Items sort themselves in as named. Then swap the controller implementation entirely and show the contract column unchanged."
+      }
+    },
+    {
+      "id": "versions",
+      "n": 5,
+      "stage": null,
+      "title": "Served, and stored",
+      "lane": "control",
+      "estSeconds": 58,
+      "narration": "A CRD can serve several versions at once. Exactly one is the storage version. Changing that marker does not migrate anything already stored. Old objects keep their original encoding and convert on read. So the conversion path must keep working until you have actually rewritten them. Remove an old version before migrating, and you strand objects nobody can read.",
+      "visual": {
+        "type": "servedStored",
+        "spec": "NEW. A CRD serving v1 and v2, with a storage marker on v1. Objects written under v1 sit in the store. Flip the marker to v2: new objects store as v2, old ones stay v1 and convert on read. Then remove v1 and show the old objects become unreadable."
+      }
+    },
+    {
+      "id": "migration",
+      "n": 6,
+      "stage": null,
+      "title": "The order that works",
+      "lane": "control",
+      "estSeconds": 48,
+      "narration": "The safe order has five steps and each gates the next. Serve both versions. Verify conversion round-trips both ways. Mark the new version for storage. Migrate the existing objects by rewriting them. Confirm what is stored and who is still using the old version. Only then retire it.",
+      "visual": {
+        "type": "migrationOrder",
+        "spec": "NEW. Five gates in sequence, each unlocking the next. Then replay it with step four skipped: the storage marker flips, old objects are never rewritten, and retiring v1 strands them."
+      }
+    },
+    {
+      "id": "finalizers",
+      "n": 7,
+      "stage": null,
+      "title": "Deletion that waits",
+      "lane": "control",
+      "estSeconds": 56,
+      "narration": "Owner references and finalizers both affect deletion and do opposite jobs. An owner reference says delete me when my owner goes; that is garbage collection. A finalizer says do not actually remove me yet. The API marks the object for deletion and holds it until the owning controller clears the finalizer. So a CR stuck Terminating is usually not a Kubernetes bug. It is a controller that is down, crash-looping, or blocked on something external.",
+      "visual": {
+        "type": "finalizers",
+        "spec": "NEW. Delete a CR with a finalizer: deletionTimestamp is set, the object stays. The controller cleans up an external resource, removes the finalizer, and the object disappears. Then the stuck case: the controller is down and the object simply waits."
+      }
+    },
+    {
+      "id": "force-remove",
+      "n": 8,
+      "stage": null,
+      "title": "Before you strip it",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "Which makes force-removing a finalizer a decision, not a fix. The object will vanish immediately and look resolved. Whatever the finalizer was protecting stays behind: a cloud volume, a DNS record, a database. Find the owner first, and understand why its cleanup is not completing. Remove the finalizer only once cleanup has actually happened, by the controller or by you.",
+      "visual": {
+        "type": "forceRemove",
+        "spec": "NEW. Strip the finalizer: the object disappears cleanly and the cluster looks healthy. Then pan out to the external resources still running, unreferenced, with nothing tracking them."
+      }
+    },
+    {
+      "id": "schema",
+      "n": 9,
+      "stage": null,
+      "title": "The schema is the API",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "Your structural schema does more than reject bad input. It decides how server-side apply merges lists, whether unknown fields are pruned or kept, and what defaults appear on objects the user never touched. Declare a list as atomic and two controllers overwrite each other. Declare it as a merge key and they coexist. That choice looks like a detail in the CRD and behaves like an API design decision forever.",
+      "visual": {
+        "type": "schemaSemantics",
+        "spec": "NEW. The same list field declared two ways. Under atomic, two controllers apply and the second replaces the first. Under a merge key, both entries survive. Same YAML in, different outcomes."
+      }
+    },
+    {
+      "id": "cel-validation",
+      "n": 10,
+      "stage": null,
+      "title": "Validation at the API, not the controller",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "Push validation into the API server wherever you can. A rule expressed in the CRD rejects a bad object at admission, before anything is stored and before your controller ever sees it. Enforce the same rule only in your controller and the object is already in etcd. Other clients can already read it. Your only way to complain is a status condition nobody is watching. Reject early or explain forever.",
+      "visual": {
+        "type": "validateEarly",
+        "spec": "NEW. Split path. Top: a CRD-level rule rejects a bad object at the gate; nothing is stored. Bottom: the same object is admitted, stored, read by two other clients, and only later marked invalid in status."
+      }
+    },
+    {
+      "id": "operator-scope",
+      "n": 11,
+      "stage": null,
+      "title": "When not to write one",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "The operator pattern is not free. You are taking on an API contract, an upgrade path, RBAC, and a controller that must be correct under partial failure forever. If the job is a fixed sequence somebody runs occasionally, a Job or a script is honest and cheaper. Write an operator when the work is continuous: something must be watched, repaired and reconciled without a human present. That is the test, not whether the domain feels complicated.",
+      "visual": {
+        "type": "operatorTest",
+        "spec": "NEW. Two columns headed run-once and continuous. Example tasks sort into them. The continuous column resolves into an operator; the run-once column resolves into a Job."
+      }
+    },
+    {
+      "id": "close",
+      "n": 12,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 36,
+      "narration": "Your objects now travel the same spine as everything else. They pass the same gates, sit in the same store, and wait on the same controllers. Next module: the scheduler, and the difference between what a Pod requests and what it uses.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: preview segment five."
+      }
+    }
+  ]
+}

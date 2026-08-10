@@ -1,0 +1,190 @@
+{
+  "title": "Which Signal Proves What",
+  "subtitle": "Module 12 — API Priority and Fairness, the evidence hierarchy, and the spine as a diagnostic tool",
+  "series": {
+    "module": 12,
+    "unit": "u12",
+    "spineSegment": "desired object",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/content.js unit u12. This is the series finale; the close recaps the whole spine rather than previewing a next module.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 32,
+      "narration": "Back to the front of the spine, where every request arrives. This module is what protects the API server when too many arrive at once. Then the last thing the series owes you: which piece of evidence proves which layer is at fault.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the first segment lit, and the rest of the spine visible but dim — the finale returns to the entry point before recapping the whole path."
+      }
+    },
+    {
+      "id": "concurrency-is-finite",
+      "n": 1,
+      "stage": null,
+      "title": "Concurrency has to be allocated",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "An API server can only handle so many requests at once. That capacity has to be allocated deliberately, not taken by whoever shouts loudest. FlowSchemas classify incoming requests by user, verb and resource. They sort them into priority levels. Limited levels then use queues and concurrency seats, so one noisy client cannot consume the whole server.",
+      "visual": {
+        "type": "concurrencySeats",
+        "spec": "NEW. A finite pool of concurrency seats drawn as a real countable set. Requests arriving from several clients get classified and take seats. Show the pool filling, and one client being held in a queue rather than being allowed to take every remaining seat. The finiteness must be visible — a countable pool, not an abstract meter."
+      }
+    },
+    {
+      "id": "two-objects",
+      "n": 2,
+      "stage": null,
+      "title": "Classify here, serve there",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "Two objects do two separate jobs, and they are deliberately separate. The FlowSchema decides which bucket a request belongs to. The PriorityLevelConfiguration decides how that bucket is served — how many seats it gets, and whether it queues or is rejected. Classification and execution policy are different decisions, so they are different objects.",
+      "visual": {
+        "type": "classifyThenServe",
+        "spec": "NEW. Two stages with a clear handover: FlowSchema on the left sorting requests into named buckets, PriorityLevelConfiguration on the right defining each bucket's seats and queuing behaviour. Show one FlowSchema change altering only which bucket a request lands in, and one PriorityLevelConfiguration change altering only how that bucket is served. The independence is the beat."
+      }
+    },
+    {
+      "id": "shuffle-sharding",
+      "n": 3,
+      "stage": null,
+      "title": "Blast radius, not fairness",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "Shuffle sharding bounds how many queues any one flow shares with others. It is a blast-radius control, and it is worth being precise about what it does not do. It cannot repair a pathological client. It only limits how many other flows that client is able to hurt. Containing damage and fixing a cause are different achievements.",
+      "visual": {
+        "type": "shuffleSharding",
+        "spec": "NEW. Many flows mapped across a set of queues. Without shuffle sharding, one pathological flow poisons everything it touches. With it, that flow is confined to a small subset and most other flows are untouched — but the pathological flow is visibly still pathological. Do not draw it as fixed; draw it as contained."
+      }
+    },
+    {
+      "id": "apf-does-not-fix",
+      "n": 4,
+      "stage": null,
+      "title": "Contained is not fixed",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "So when a controller floods the API server, be clear about which half you have solved. Priority and fairness protects the API server from that controller. It does not stop the controller looping, and it does not repair whatever list behaviour is generating the load. A complete answer says both halves out loud: contain the damage, then go and fix the loop.",
+      "visual": {
+        "type": "containedNotFixed",
+        "spec": "NEW. A flooding controller and a protected API server, with the protection visibly working. Then split the frame into two labelled outcomes: 'API server protected' marked done, and 'controller still looping' marked outstanding. Both states true at once. Neither half should look like the whole answer."
+      }
+    },
+    {
+      "id": "informers-as-load",
+      "n": 5,
+      "stage": null,
+      "title": "Why informers exist at all",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "This is also the load-shaped reason informers exist. Repeated listing, reconnecting, or requesting huge objects amplifies load on the API server and on etcd behind it. Informers share list and watch caches across controllers, which turns many pollers into one watch. Module three framed that as correctness. Here it is capacity.",
+      "visual": {
+        "type": "informersAsLoad",
+        "spec": "NEW. Left: many controllers each listing independently, with the request count and etcd load climbing. Right: the same controllers sharing one informer cache fed by a single watch, with the load collapsing. Put the request counts on screen for both so the difference is quantitative, not just visual. Reference module three's framing without re-explaining informers."
+      }
+    },
+    {
+      "id": "no-ground-truth",
+      "n": 6,
+      "stage": null,
+      "title": "No single source is truth",
+      "lane": "control",
+      "estSeconds": 48,
+      "narration": "Now the evidence. No single source is ground truth, and knowing what each one is for is most of debugging. Events are lossy hints. Logs are component-local unless you ship them. Metrics have already aggregated away the individual case you care about. Audit records API activity and identity. Traces connect one request path. Object state is authoritative for what the API currently believes.",
+      "visual": {
+        "type": "evidenceHierarchy",
+        "spec": "NEW. Six sources laid out, each with what it is good for and its specific blind spot: events (lossy, expire), logs (local unless shipped), metrics (aggregated), audit (who and when), traces (one path), object state (authoritative for current intent). Object state marked distinctly as authoritative for intent, with everything else framed as explaining how it got there. All six legible at once."
+      }
+    },
+    {
+      "id": "authoritative-state",
+      "n": 7,
+      "stage": null,
+      "title": "The object is the contract",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "For what the cluster currently intends, object state is the contract. Events expire and were lossy to begin with. Logs are local to a component you may not be looking at. Metrics have averaged away the specific object in front of you. When those disagree with the object, the object is what the system will act on.",
+      "visual": {
+        "type": "objectIsContract",
+        "spec": "NEW. One object at the centre as the authority, with events, logs and metrics arranged around it, each visibly incomplete about it — an expired event, a log on another node, a metric that has averaged it away. Then show the system acting on the object regardless of what the others say. The object's primacy for intent is the beat."
+      }
+    },
+    {
+      "id": "who-and-when",
+      "n": 8,
+      "stage": null,
+      "title": "Who deleted it",
+      "lane": "control",
+      "estSeconds": 36,
+      "narration": "When the question is who deleted this object and when, there is exactly one answer: the audit log. It records API requests and their stages, including identity. Events would not have retained it, and may never have recorded it at all. If audit is not enabled, the honest answer is that the information no longer exists.",
+      "visual": {
+        "type": "auditAnswers",
+        "spec": "NEW. The question 'who deleted this, and when' tested against each evidence source. Events: expired or never recorded. Logs: not necessarily present. Metrics: aggregated away. Audit: identity, verb, resource and timestamp, present. Then the honest failure case — audit disabled, information genuinely gone, nothing to recover."
+      }
+    },
+    {
+      "id": "isolate-the-layer",
+      "n": 9,
+      "stage": null,
+      "title": "Which layer is slow",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "For a slow control plane, the useful signals are the ones tied to a boundary. Request latency at the API server. Storage latency underneath it. Watch and cache behaviour. Work queue depth in a controller. Each belongs to a different layer, which is exactly what makes it diagnostic. A raw Pod count tells you the cluster is big. It does not tell you where the time is going.",
+      "visual": {
+        "type": "isolateLayer",
+        "spec": "NEW. The control-plane layers stacked, each with the one signal that belongs to it: API request latency, storage latency, watch and cache behaviour, work queue depth. Light one layer as slow and show its signal moving while the others stay flat. Set 'total Pod count' aside as a non-diagnostic number, struck through."
+      }
+    },
+    {
+      "id": "the-spine",
+      "n": 10,
+      "stage": null,
+      "title": "The spine is the method",
+      "lane": null,
+      "estSeconds": 50,
+      "narration": "Which brings the series back to where it started. The spine is not a diagram to memorise. It is a path any symptom can be walked along. Intent arrives and is admitted. It is stored. Something watches, something reconciles, something schedules. A kubelet acts. Runtime, network and storage each do their part. Endpoints, Service and DNS make it reachable. Every failure you have studied lands on exactly one segment, and finding which one is the whole job.",
+      "visual": {
+        "type": "spineRecap",
+        "spec": "REUSE the pilot's SpineRecap. Extend it: walk the full spine once, and as each segment lights, surface the characteristic failure signature taught in that module — write refused, nothing reconciles, no node name, no address, resolves but nothing answers, and so on. This is the payoff frame of the whole series, so it must be legible and unhurried."
+      }
+    },
+    {
+      "id": "ninety-seconds",
+      "n": 11,
+      "stage": null,
+      "title": "The ninety-second answer",
+      "lane": null,
+      "estSeconds": 46,
+      "narration": "And the drill it was all for. Clients declare intent through a policy-enforcing API, persisted in etcd. Controllers reconcile objects, and the scheduler binds Pods. Kubelets coordinate runtime, networking and storage. Services and DNS expose ready endpoints. Every stage is asynchronous, observable and retryable. All of it protected by ownership, quorum, flow control and recovery. That is ninety seconds, and it is the whole architecture.",
+      "visual": {
+        "type": "ninetySeconds",
+        "spec": "NEW. The six lines of the answer building one at a time as spoken, each anchored to the spine segments it covers so the answer and the diagram are visibly the same thing. End with all six on screen together as a single readable summary — this is the frame a viewer will pause and screenshot, so it must hold up as a still."
+      }
+    },
+    {
+      "id": "close",
+      "n": 12,
+      "stage": null,
+      "title": "The end of the spine",
+      "lane": null,
+      "estSeconds": 36,
+      "narration": "Twelve modules, one spine. If you can name the segment a symptom belongs to, you already have the next question. That is the difference between knowing Kubernetes commands and understanding the system underneath them, and it is what an interviewer is actually listening for.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, final state: the whole spine lit end to end, with all twelve module numbers marked against their segments. No preview of a next module — this is the last frame of the series. Hold it long enough to read."
+      }
+    }
+  ]
+}

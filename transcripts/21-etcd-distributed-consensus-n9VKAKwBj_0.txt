@@ -1,0 +1,920 @@
+all right hello everybody I'm gonna
+start 30 seconds early because I have
+the microphone and I can so I'm gonna my
+name is Laura Frank I am the director of
+engineering at cloudBees formerly coach
+ship we just got acquired about three
+months ago so we're very happy to be
+joining up with a bunch of other people
+trying to solve DevOps problems however
+I'm not here to talk about CI or CV or
+anything like that I'm here to talk
+about distributed consensus which is a
+really scary thing but I'm gonna try to
+make it a little bit less scary for you
+I'm gonna go over a couple main topics
+today first is demystifying this very
+intimidating phrase called distributed
+consensus we're gonna talk specifically
+about the raft consensus algorithm what
+it is where you find it why it's there
+we will talk about quorum which is
+essential to understand and if you're
+operating any system that depends on
+distributed consensus we'll talk about
+leader election and log replication and
+then just maybe at the very end I will
+break a cluster because it's my favorite
+thing to do so I'm not necessarily
+showing best practices if you're
+operating a cluster in production that's
+not really the point of this talk I'm
+here to give you a little bit more
+theoretical background for the sort of
+theoretical underpinnings of what makes
+the kubernetes world go round
+so let's get started first with
+distributed consensus and I really like
+saying this term or like bringing it up
+at a party I'm real fun at parties
+it sounds really fancy but what it means
+is just getting more than one party to
+agree on something and that those
+parties are not all located in the same
+place so we're really focusing on
+agreement and the reason that we have to
+do that is because we've sort of made it
+our own problem her we've sort of
+created the problem for ourselves so we
+used to not really have to worry about
+distributed consensus because the world
+was really easy we had a client that
+maybe made a request to a server to
+update a value and the server kind of
+knew what the values were and said yep
+cool I'm gonna append that value and
+then my new value is seven for example
+we use tools like kubernetes though
+because we don't want that model anymore
+we don't want there to be a single point
+of failure just one database
+we want redundancy and fault tolerance
+and that means having multiple entities
+in a lot of cases that means having a
+management group or consensus group that
+is comprised of more than one machine so
+we have to get all of those machines to
+agree on the state before we can take an
+action on our cluster so in this
+distributed model here's a visualization
+so we have a client making a request but
+then that request needs to be decided
+upon by a manager group and in a manager
+group there's always a leader that's the
+the node that's taking in the requests
+and then there are followers who are
+participating in that consensus group
+but aren't necessarily in control of
+making making the final decisions so
+they'll get requests to say hey from the
+from the leader like hey can this happen
+is this is this possible to happen and
+those followers can respond yep thumbs
+up let's do it and then the leader can
+confirm it but there's different roles
+and we'll talk about those roles in a
+management group as as the talk
+progresses so the problem with clusters
+is that having n machines agree on a
+single thing or having n anything
+whether it's people or cats perhaps
+agree on a single thing is really hard
+and that's where Raph comes in and kind
+of does the heavy lifting for us so what
+is raft this has been I think one of
+those underground parts of our system
+that we didn't really talk about much
+but in the last couple of years it's
+gotten a lot more popular and a lot more
+visibility which makes me happy because
+I find it very interesting raft is an
+algorithm to manage consensus based
+systems such as container orchestrators
+it can be certainly used in other kinds
+of applications or other other ways as
+well I would also encourage you not to
+get too intimidated maybe by the word
+algorithm in raft because it is a
+complex system and it's just a system of
+patterns and I think it can be really
+accessible it just sounds a little bit
+intimidating which hopefully you'll
+you'll find out by the end of this talk
+that it's easier to understand it's
+designed to be easier to understand so
+if you are from a traditional CS
+background you might have studied paxos
+or multi Paxos that was a bad time in in
+my in my study so the laughter tells me
+it was probably a bad time for you as
+well
+raft
+sort of came out as like the opposite of
+that like hey this was really painful
+why don't we figure out a way to make
+this not only perform as well but also a
+little bit easier to understand so that
+the people who are responsible for
+operating systems that use this
+algorithm can actually you know
+understand what's going on and be able
+to kind of process it at a human level
+it also has a cute logo which I just
+found out about yesterday I didn't know
+I had a logo but there it is
+I guess it's named Annie at least that's
+what the PNG file was called so I'm
+gonna go with it and either raft so
+paxos multipack sews all of these
+distributed consensus algorithms are
+really painful and they're very complex
+and and have so much risk in so many
+edge cases and they're dealing with lots
+of responsibilities that no sensible
+person wants to write their own except
+the authors of raft but they had good
+reason to and because this is such a
+kind of a solved problem algorithms or
+systems like graph do have a lot of
+popularity because there's no reason to
+implement it yourself it's also it's
+like really hard to implement yourself
+and for that reason raft is used in a
+lot of places so orchestration systems I
+think are the most visible way or most
+visible place that that raft is used so
+kubernetes using SCD and then by
+extension every single system that uses
+@cd in any way shape or form is using
+rafts because raft is embedded inside of
+@cd docker uses raft it's embedded
+inside of docker itself
+dr. doesn't have a reliance a net CD for
+for their orchestration nomad has a
+similar approach where raft is kind of
+baked in the internals if you are
+familiar with zookeeper zookeeper uses
+something slightly different from raft
+called the zookeeper atomic broadcast
+which is sab which is fun to say it's
+similar to raft has a lot of the same
+responsibilities a lot of the same
+patterns just it's not raft but luckily
+the patterns are very similar so if
+you're using zookeeper zookeeper in some
+way you can kind of translate what we'll
+talk about today onto that raft has
+three main responsibilities wherever
+it's being used the first one and
+probably the most important one is log
+replication raft is there to maintain a
+consistent state across your distributed
+node that's participated nodes that are
+participating in that
+consensus group and then by way of that
+consensus group to your entire cluster
+we'll talk about each of these in more
+depth as kind of the main meat of the
+talk leader election is another thing so
+as I said before inside of any consensus
+group there's a leader that's taking in
+requests and then asking basically for
+permission or asking the the followers
+if that action is allowed to take place
+so there has to be a leader if that
+leader goes offline or is unreachable
+then we have to elect another leader in
+order for the world to keep going around
+safety is another responsibility of raft
+and I'm not gonna go into depth on this
+because it sort of baked into both log
+replication and leader election safety
+is the sense that any action that is
+happening in the cluster should be
+allowed to happen and raft is designed
+to make actions that shouldn't be
+allowed to happen
+impossible to occur and that's sort of
+baked into both log replication and
+leader election so I won't go deeply
+into safety today but that was one of
+the design goals of raft I think one of
+the other big things that raft is
+responsible for is being easier to
+understand as we are using tools like
+kubernetes more in production and we
+have people responsible for operating
+them if something happens with your
+management group are your consensus
+group if that you lose form or something
+goes wrong it's not fun and I think it's
+always better to be able to really
+understand what's going on so you can
+troubleshoot and that's one of my goals
+also for this talk is to give you some
+more fundamental knowledge so the first
+thing that we'll talk about in terms of
+fundamental RAF knowledge is quorum and
+this is a buzzword maybe it's fun to say
+I think quorum is not a term unique to
+computer science or orchestration
+systems or at CD or raft or anything
+this is a borrowed term it is just the
+minimum number of votes needed to
+perform an operation I think usually we
+hear this term in government depending
+on what country you're from
+sometimes the groups of elected
+officials need quorum in order to
+conduct a vote and this is the same idea
+it's just a borrowed concept without
+quorum nothing can happen
+because the system is not allowed to do
+work and I think we have a general idea
+that quorum means majority and it
+doesn't just apply to nodes being online
+they have to actually agree and vote for
+the same thing in order for that action
+to take place so majority is a good way
+to think about quorum it's also a much
+easier word to understand and to spell
+and to pronounce but it's it's I guess
+slightly different quorum is
+specifically defined if n is the number
+of nodes in your cluster and divided by
+two plus one so the most important thing
+about that is distinctly and precisely
+more than 50% 50% does not constitute
+quorum it has to be some value above 50%
+and thankfully because this is just an
+easy mathematical expression we can fill
+out a chart and you've probably seen a
+chart like this if you are operating at
+CD or another system with a consensus
+group this is a pretty common thing to
+say okay how many nodes should I have in
+my consensus group in that cluster if
+you have one node in here I've labeled
+those Raft consensus group participants
+managers that's a common term to
+describe them if you have one note
+obviously quorum is one if that node
+goes away then you can't do any more
+work on your cluster if you have two
+nodes quorum is 2 because 2 divided by 1
+or sorry 2 divided by 2 is 1 plus 1 is 2
+so it's really not getting you anything
+extra but when we go to 3 or 5 or 7 we
+can start to see that there's a pattern
+that the the odd numbers seem to be more
+efficient one other way to think about
+quorum is not about how many you need to
+satisfy quorum but what your fault
+tolerance is when you're making these
+choices so if we go all the way back up
+to 1 our fault tolerance is obviously
+zero we can't survive a failure of a
+node in that case the same is true for
+two we can't survive a failure but if we
+have three nodes in our consensus group
+quorum is two that means one can go down
+or maybe there's a network partition or
+something happens where it's unreachable
+and our cluster can still be up and
+running and and perform new work
+so my recommendation is that if you're
+running something in production
+especially if it's making money five is
+sort of the magic number because then
+you can tolerate one failure and then
+have one node down for maintenance so
+just my experience working with many
+different projects in production that
+seems to be sort of the magic number
+again odd are sorry even numbers are not
+very efficient in this type of model
+because of that n divided by two plus
+one and over 50% you don't actually get
+any more benefit if you have one manager
+just adding another isn't going to give
+you more fault tolerance and in a very
+counterintuitive point that's always
+mind-blowing when I share it with people
+who haven't thought about it in this way
+having two managers actually doubles
+your chances of losing quorum because
+you still have zero fault tolerance and
+now instead of having one single point
+of failure you've doubled your chances
+of having a node failure by introducing
+another one so stick to odd numbers stay
+away from even numbers and you'll be
+good if you are deploying your consensus
+group across multiple AZ's which you
+might have a good reason to do so I
+think deploying them across multiple
+regions can get a little bit hairy
+because of latency and we'll talk more
+about like node to node communication in
+a bit and why that can be a problem but
+multiple AZ's might be reasonable so
+just pay attention to a data set data
+center topology when you do that
+anticipate that one of those Easy's will
+go down and that the Status page won't
+be updated for that cloud provider not
+going to name any names but there's a I
+mean it's just it's math it it's um
+follows that same quorum principle just
+anticipate failure I think that's a
+really good strategy in general for
+distributed computing a lot of turnkey
+solutions that might stand up a
+bootstrap a cluster for you magically
+kind of have this functionality in it if
+you're using something like an auto
+scaling group as part of that generally
+we'll try to distribute evenly across
+the across the easies to make sure that
+you're resistant if one of the easiest
+has a failure so keep an eye out but I
+would always
+double check to make sure that you're
+you're insulated from that or isolated
+from that failure
+so that's quorum quorum is going to
+become a very important thing as we talk
+about both leader election and log
+replication so leader election is very
+important and one of the core
+responsibilities of Raft because without
+a leader your management group or your
+consensus group can't do any work
+because there's no one to delegate
+responsibility and control whether or
+not a log can be appended or should be
+committed into the log in a consensus
+group there are really three states of
+nodes that participate one of them is
+the leader the leader is again the one
+taking in the requests and then sending
+messages out to the followers which is
+the other state to make sure that that
+action is able to take place and gets
+confirmation from the followers commits
+it and then sends that message back to
+the followers to say okay yeah you can
+really really write that into your log
+now we've gotten enough votes there's a
+third state called a candidate which
+happens in leader election if the leader
+is unreachable or goes offline for some
+reason if you execute chaos monkey
+scripts in your cluster like some people
+might do then your your consensus group
+doesn't have a leader and we need to go
+into leader election the first follower
+to notice that there's no leader will
+put itself into candidate state in order
+to solicit votes from the rest of the
+nodes that are online to elect itself as
+the new leader it will also vote for
+itself
+there's also another another state which
+is kind of an unofficial one which is
+unreachable I think that's important to
+remember that there can be notes that
+are formally participating in the
+consensus group that could be
+unreachable so that could be the downed
+manager or a Down node or the downed
+leader that's spawning the next leader
+election they still exist even if
+they're not online so I want to talk
+through a couple scenarios of leader
+election and to do that I have a little
+handy visual aid actually forked this
+from let me see if I can make this
+bigger cool
+yeah you can all see that okay I
+this from the author of raft and kind of
+tweaked it a little bit for this talk
+and if you've ever looked at the secret
+lives of data if you are a independently
+curious raft consumer then you may have
+seen something like this before I want
+to talk through what happens during a
+leader election we're gonna start out
+really slow so a couple things that pay
+attention to we have a 5 node consensus
+group up here starting with s1 s2 s3
+those are the names of the nodes in the
+in the consensus group we have this
+little ticker that's happened going
+around and that's a timeout and I said
+before like the first manager to notice
+or the first node to notice that there's
+no leader is gonna put itself up for
+election and that's exactly what
+happened right here with us to notice
+that there was no leader so it timed out
+and put itself up for election solicited
+votes and I can rewind time a little bit
+here I'm sorry I got I just got a new
+Mac a new MacBook with the touch bar and
+like the huge attract pad and I'm very
+unhappy with it so please bear with me
+there we go okay so we see that s2 timed
+out and now we have a new election cycle
+so election term two we see five spaces
+for votes in there those little circles
+we can see that as two voted for itself
+it gets a black circle from itself
+it's asking for votes from the rest and
+everyone's online and everyone votes and
+that means yep s2 gets elected as the
+leader and we see that in red a little
+bit probably hard to see for those of
+you in the back so that's great and
+things will just carry on until oh no s2
+went down whether or not it actually
+there was a hardware failure or there's
+a network partition or who knows what
+could happen but the point is that it
+went down and just as in the last time
+the first node to notice that there's no
+leader is going to put itself up for
+candidacy
+now quorum becomes important here
+because we have one node that's down but
+since we have a five node cluster quorum
+is three which means that four is fine
+and we can keep going and we can
+tolerate that failure
+so s3 is going to notice that there's no
+leader it will vote for itself solicit
+votes it's not getting any vote back
+from s2 but that's fine because it has
+already four votes one from itself and
+then one from each of the other nodes
+that are online speed this up a little
+bit cool there's one thing actually
+there's many edge cases that can happen
+in this and one that I find particularly
+interesting and one thing that's a
+little bit different in raft versus
+other implementations like paxos and
+multi Paxos is the event of a split vote
+so this is highly unlikely because these
+timeouts are randomized across all of
+the nodes so it's highly unlikely that
+two nodes in your group have the same
+timeout but it can happen and in this
+case it has so I can go back in time
+just a little bit and see that these two
+nodes s 1 and s 5 timed out exactly the
+same time and put themselves up for
+candidacy for election term 4 at exactly
+the same time they also sent votes out
+at exactly the same time and they are
+voting for themselves so they have one
+vote
+but they can only manage to get one
+other vote back because it is a truly
+split election quorum is again how many
+in this situation 3 so two votes isn't
+enough to elect a new leader but what
+happens then because it looks like we'd
+be just at a standstill raft is designed
+though if there's no leader whatever the
+next node is which in that case was s3
+oops to notice that there was no leader
+is gonna put itself up for election and
+let's just go through that so s3 right
+here is just about to timeout it doesn't
+matter the candidacy state of s 1 and S
+5 they don't have enough votes to be
+elected
+so what Raph does is just throws out
+that cycle it just counts it as lost and
+we're moving on we're not going to try
+to repair it or try to do anything we're
+just gonna plow forward so s3 will put
+itself up as can't a candidate for for
+election term 5 and since it was the
+only one to do that it's going to be
+able to get the votes
+having a candidate state of a node
+doesn't prevent it from voting for
+another node as well so s 1 and s 5 are
+able to participate in that election it
+can get the requisite votes so it gets
+four in this case and time marches on
+we've just moved on to a different
+election cycle so that is leader
+election kind of a brief intro to it
+there's a couple other edge cases that
+are captured by think that split vote is
+really the most common that that is
+possible to happen the next thing that I
+want to go into that more depth on is
+log replication because it's kind of
+similar with that heartbeat timeout
+transaction between the manager and the
+and the followers but it's a little bit
+more more complicated so we're gonna
+combine sort of everything we've talked
+about so far and talk about log
+replication before we do that though I
+want to make it clear what I'm talking
+about when I'm talking about a log I
+think this is also one of those terms
+that's like highly loaded and it needs
+like that Wikipedia like which log are
+you talking about page when we when we
+discuss it this is the source of truth
+for your application I'm not talking
+about log output or system log I'm
+talking about like imagine someone
+hammering values into a stone tablet
+kind of log a record of truth so this is
+an append-only time-based record of data
+we can visualize that really simply by
+imagining just a list of you know some
+values that let's say X has so at one
+point in time X had two and now we're
+going to maybe append an entry for
+whatever the new value of X is this log
+is specifically for computers really
+it's not for humans luckily for you all
+I am a human with a computer so I'm
+going to show you how you can actually
+read the raf log and where it's found
+which i think is pretty interesting
+before we do that let's look at what
+happens in this log replication scenario
+and go over a couple a couple bad states
+with some data inconsistency and see how
+raft repairs them so in this case we
+have
+States for a log entry to be one is
+uncommitted and those are represented by
+the little dashed lines if we see s1 has
+two to two those are all uncommitted
+that means that the leader has scented
+the follower please update this to two
+but has not gotten enough votes and
+enough confirmation to make that truth
+yet so that's uncommitted state that's
+sort of like you know pre-commit not yet
+in in the log so in this case we don't
+have quorum so nothing can be committed
+we can have these things in an
+uncommitted state just sort of like
+preparing it to be committed but because
+we can't get enough votes there's no way
+for that to become true this will go on
+and will just populate whatever nodes
+are listening with these uncommitted log
+entries let's move a little bit faster
+and see what happens then when we do
+have quorum one came back which means
+that we can now start committing these
+so now that enough votes are possible
+even though those nodes knew about the
+possibility for change that change
+hadn't yet been voted on so it's not
+been committed in the log now they have
+been so that's represented by this solid
+line across or around the the log entry
+the one really interesting thing about
+raft is what happens in the case of data
+against inconsistency so in this example
+we had know some nodes offline but I
+don't know what they were doing they
+could have been you know on a separate
+partition and had a new election cycle
+and had a new state of truth we don't
+know but now let's say that happened and
+maybe the network partition is restored
+what happens now we have two sets of of
+data and how do we repair the
+inconsistencies and in general the
+answer to that in Raph is that whatever
+the most recent election term was that
+data gets precedent precedence so in
+this case we've already moved on to
+election cycle three we have some the
+old leader which was s1 is offline now
+so we have kind of like two conflicting
+sets of data when s1 comes back online
+it still thinks that it's like the year
+1995 or it's like election term two it
+doesn't know what leader has been
+elected it will get in
+forms soon by the new leader so it
+updates itself to understand that it's
+election term 3 and because it had only
+uncommitted logs it can throw those out
+and then reconcile itself with the new
+the new version cool so there's of
+course other edge cases but I think that
+network partition is particularly the
+one that you might find in production
+and is more likely to happen in real
+life so if you are new to logs or kind
+of new to log replication in just
+distributed consensus there's a really
+awesome blog post about logs and what
+you all should understand about them if
+you're gonna be operating any system
+that depends on the log I have it up on
+a handy little bit Lee it's a LinkedIn
+engineering blog post so highly
+recommend that it's a kind of a long
+read but a good one so if you want to
+check that out cool so I promise that
+I'm a person with a computer or a human
+with a computer which means that I'm
+able to look at the logs so I actually
+wanted to do this live but the Wi-Fi was
+choking a little bit so instead of me
+kind of like fumbling and waiting for
+Wi-Fi to error out I just prepared this
+beforehand but I can talk through maybe
+I can talk through what this is so I'm
+gonna I'm gonna do something like
+scandalous and I'm actually gonna use
+docker for the example for for raft
+instead of at CD because I find the
+tooling just slightly slightly better
+for conference talk demo specifically
+there is a choice I said before raft is
+embedded directly in docker and
+everything lives in a directory in at CD
+it's living in var Lib at CD member
+there's a snap directory and a wall
+directory so snapshots and then the
+right head log right upend log right
+ahead log those are a net CD they're
+just file and it's the same thing
+because raft is the consistent part here
+so it doesn't really matter what tool
+we're talking about that's also
+available in docker and when I use this
+there's a tool called raft there's a
+dump wall tool in in swarm kit and I'll
+have links in the slide so you can check
+it out later it's a little bit too much
+detail to kind of try to process during
+a talk but it basically looks at that
+log crosses it into something that's
+human readable and then spits it back
+out so I have a cluster here of three in
+a raft consensus group and basically
+what's stored in the raft logs is
+everything that you could possibly need
+to know about the state of the cluster
+so we have the action that happened we
+know that index we know exactly when it
+was created when it was updated we can
+see the image we can see resource limits
+status kind of everything is here which
+is really great because if you have this
+raft log you can basically breathe life
+into your cluster in case of a failure
+and there's a couple different failure
+scenarios that I want to talk about and
+we'll talk about this raft log and its
+role in each of those the first one is
+the hard failure of like your data
+center being on fire so this is like
+worst case scenario but I want to
+emphasize that you should be backing up
+these logs that are controlled by raft
+as long as you have that log you can
+restore the state of your cluster you
+know like asterisks there's probably
+some little things that you're not going
+to be able to restore and you can't
+restore what happened after you took the
+backup but you can kind of rewind time
+and breathe life back into a failed
+cluster if you've sort of declared
+bankruptcy and your incident response
+and need to start from scratch as long
+as you have that backup you can do it
+generally speaking wherever raft is
+implemented there's going to be two
+directories there will be a snapshot
+directory and that log directory in wall
+in xcd you can specify where these come
+from or where they're stored so you can
+put them somewhere else you can back
+them up somewhere else you can kind of
+define a disk and adder of your choice
+in at CD at least so that's a really
+cool feature some tools will manage this
+for you I think that's becoming like the
+new horizon of kubernetes management is
+just to automatically backup at CD so
+that you
+always have something on hand if you if
+your cluster goes down in a dumpster
+fire you can just sort of bring it back
+up if you're gonna restore from a backup
+so a net CD you want to pass in where
+those things come from so where that
+data is coming from where the wall is
+coming from and then there's this really
+important thing called - - forced new
+cluster and this seems to be the agreed
+upon flag for kind of all tools that are
+dealing with distributed consensus that
+will force a one node cluster to kind of
+come online with the data that is in
+that backup you can do this the same
+thing on docker again because it's not
+anything specific to the tooling it's
+about raft and about that raft log same
+thing docker swarm in it with that - -
+forced new cluster will kind of
+disregard the cluster configuration you
+had before take that log and start a
+brand new cluster with one node using
+that backup one important thing to keep
+in mind and I'm I'm hoping that this
+will be a solved problem in maybe a
+couple months time I know there's a lot
+of smart people working on this problem
+when you restore from the backup those
+like member IPS of the nodes that are in
+the cluster are also stored as part of
+that log which means that if you have a
+brand new cluster at the IP addresses
+are probably not going to be the same in
+ED CD what's really awesome and probably
+one of my favorite features that's very
+underappreciated is that it's super easy
+to update a member IP you can just like
+go in there and say oh I have a new node
+that's replacing this old node this is
+the new IP address swarm at least the
+last I checked maybe it's maybe it's
+different you can't really do that in an
+in a graceful way I think that's one
+really great thing that CD has for it if
+you're an SRE or someone that's on call
+that's something that makes me sleep a
+little bit better at night so let's talk
+about a soft failure and I'll demo a
+soft failure because that's hopefully
+fingers crossed when I can recover from
+more easily and with the time allotted
+so that I can get you all to lunch on
+time
+so losing quorum is probably the most
+common failure it's not common that our
+data centers may come up in smoke
+so you probably want to practice that
+backup recovery you know
+every month or every week or whatever
+your policies are practice also what
+happens when you lose quorum because it
+can mean different things for your
+application so losing quorum just means
+that no new action can take place it
+doesn't mean that everything that's
+running falls down all right and that's
+an important distinction so understand
+what that means for your app if you have
+just a bunch of services that are
+long-running and you're just using a
+tool like kubernetes because you want
+Phil you know fault tolerance and
+resistance to failure then that's maybe
+okay and not such an emergency because
+unless there's a failure everything's
+just gonna stay up and running but if
+you're using like you're processing tons
+and tons of jobs those new jobs aren't
+going to be able to be run the
+interesting thing about losing quorum is
+that you also can't add new nodes to
+that management group so let's say you
+have three nodes you can't just and two
+of them go down you can't just start a
+new node and add it to the group and try
+to like force quorum to be regained
+because your management group can't
+agree that it's possible for a new
+manager to be added so how do you
+survive a quorum like losing quorum you
+can regain quorum by bringing the down
+nodes back up like that's kind of
+Captain Obvious probably not something
+useful in the talk but it is there and I
+think it's like maybe you don't think
+about that an instant response the other
+thing you can do is that this is sort of
+like that disaster recovery that we
+talked about before is but you can use
+force new cluster on a healthy manager
+that's part of the management group or
+the the consensus group and do - - new
+force new cluster and that will just
+look at the current raft log that it
+already has there's no need to restore
+from backup and just disregard the fact
+that there were at one point other
+managers you will have to re add new new
+nodes to that leader group if you do it
+this way and again you can't just add a
+new healthy manager to the cluster
+because that would require consensus and
+that's something that we don't have so
+that's what I will show you right now
+and I have little visualizer here I have
+three nodes participating in this
+consensus group and I have elasticsearch
+running
+here so we can go down and get rid of
+this oh I'm in a container always in the
+container when I don't expect to be I
+can curl and just look at what my
+elasticsearch is doing and we can see
+it's like online you know for search so
+it's here and it's running and that's
+great I have five replicas right now
+let's not have consent so I'm gonna take
+one away and this might just take a
+second to realize that that note is down
+we can see that failure so we can expect
+that that fifth one will be rescheduled
+soon cool everything's happening just as
+we expect that's because we still have
+quorum and things are fine but if I
+always makes me a little nervous it's
+fine it's just it's just virtual
+machines it's okay like I should put a
+warning like no vm's were harmed in this
+it's fine but now I'm kind of I kind of
+I did a bad thing because now not only
+did I kill a node where I had like work
+running but now I just like I lost
+everything because I only have one node
+that's up but the interesting thing is
+though oh no oh no no I lost Wi-Fi Oh No
+oh crap see I don't know I didn't
+anticipate that happening yeah yeah
+that's fine let's uh let's see
+man okay okay that's fine um we have one
+minute left I'll just talk to you about
+what happens so I'll get I'll give it
+like a hot minute and then
+we can see oh man I expected a lot of
+failures I did not expect that one so I
+was very trusting of conference Wi-Fi so
+what happens in this case if we so I
+killed node 2 and node 3 leaving node 1
+and what I'm gonna do on there is just
+go docker swarm an it or use the sed
+command that's the equivalent and -
+force new cluster it's gonna look back
+to the raft log that's stored in that
+that wall directory that we talked about
+before and just kind of revive itself
+understanding that then there were
+supposed to be 5 elastic searches
+replicas running and it's gonna revive
+those five but we still have kind of
+some cleanup to do because we didn't
+actually gracefully terminate the other
+node so we have to get rid of those two
+old nodes that were in our consensus
+group manually or scripting or whatever
+your your tool of choices and then
+re-add new managers if I want more than
+one let me try this one more time before
+admitting defeat that's fine so I will
+leave that actually this is always up
+because I have a really bad habit of
+buying domain name so I own consensus
+tech group it's like I really love raft
+so this is up in perpetuity you can
+check this out or secret lives of data I
+will let you all go to lunch but I'm
+happy if you want to come up to the
+stage after to answer any questions so
+thank you so much sorry about the Wi-Fi
+[Music]

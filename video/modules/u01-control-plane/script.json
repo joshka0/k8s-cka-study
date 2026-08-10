@@ -1,0 +1,164 @@
+{
+  "title": "Who Owns What",
+  "subtitle": "Module 01 — the control-plane map, and what an outage actually costs",
+  "series": {
+    "module": 1,
+    "unit": "u1",
+    "spineSegment": "desired object",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/content.js unit u1.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 34,
+      "narration": "In the pilot we followed one declaration from kubectl apply to a packet. Fourteen stages. This module is the first one: desired object. It covers everything upstream of a scheduler decision. Who accepts your write, who stores it, and who notices. And what happens to all of it when the control plane goes down.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "NEW. The full 14-segment spine from the pilot's recap, drawn small across the top. The first segment lights and enlarges while the rest dim. A bracket drops beneath it labelled 'this module'. Reuse the pilot's SpineRecap row layout and colours so the two read as the same diagram."
+      }
+    },
+    {
+      "id": "five-actors",
+      "n": 1,
+      "stage": null,
+      "title": "Five actors",
+      "lane": "control",
+      "estSeconds": 58,
+      "narration": "Five things do the work. The API server exposes the supported API and applies policy to every request. etcd stores what the API server persists. The controllers decide what objects should exist. The scheduler chooses which node a pod runs on. The kubelet turns an assignment into running containers. Reciting that list is worth doing. The boundaries between them matter more. Almost every question you will be asked is really about which of the five owns a given failure.",
+      "visual": {
+        "type": "componentMap",
+        "spec": "NEW. Five chips arranged around a central API server node — not in a row. Each names its one-line ownership beneath it. As each is spoken it lights and draws its connection to the API server. End state: five chips, five connections, all through the middle. No connections between the outer four."
+      }
+    },
+    {
+      "id": "one-contract",
+      "n": 2,
+      "stage": null,
+      "title": "One contract",
+      "lane": "control",
+      "estSeconds": 62,
+      "narration": "Notice what that shape means. The controllers do not talk to the scheduler. The scheduler does not talk to the kubelet. Nothing talks to etcd except the API server. Every interaction is a read or a write against one HTTP contract. That is what makes a cluster inspectable, because the API you use is the API the components use. kubectl is not privileged. It is just another client. That single boundary is also where seven things get enforced on every write: identity, authorisation, defaulting, schema validation, versioned conversion, audit, and supported watch semantics. A controller that reads etcd directly skips all seven. It also couples itself to a storage layout that is not a public contract. So it breaks on an upgrade that changed nothing about the API.",
+      "visual": {
+        "type": "contractBoundary",
+        "spec": "NEW. Start from the componentMap end state. Attempt to draw a direct arrow between two outer components — it is refused, dashed red, struck through. Then a controller draws a dashed red arrow straight to etcd, bypassing the API server; the seven things it skips stack up alongside it as a list, then the arrow is struck through too."
+      }
+    },
+    {
+      "id": "what-etcd-holds",
+      "n": 3,
+      "stage": null,
+      "title": "What etcd holds",
+      "lane": "control",
+      "estSeconds": 48,
+      "narration": "etcd holds API state. Not container images — those live in a registry and on nodes. Not metrics — those come from a metrics pipeline. Not your pod logs — those stay on the node unless something ships them. The distinction matters the moment someone proposes backing up etcd as a disaster recovery plan. A snapshot of etcd captures your declared intent, not your cluster. The other thing to know about etcd here is that its latency is the control plane's latency. Every write waits on consensus across a majority of members. So slow disks under etcd do not show up as an etcd problem. They show up as everything being slow.",
+      "visual": {
+        "type": "storeContents",
+        "spec": "NEW. An etcd cylinder. API objects flow in and settle. Then three things try to enter and bounce off, each redirected to where it actually lives: container images to a registry chip, metrics to a metrics pipeline chip, logs to a node chip. Keep the bounces quick and legible."
+      }
+    },
+    {
+      "id": "controllers-plural",
+      "n": 4,
+      "stage": null,
+      "title": "Controllers, plural",
+      "lane": "control",
+      "estSeconds": 52,
+      "narration": "The controller manager is not one controller. It is one binary containing dozens of controllers. Each owns one kind of object: Deployment, ReplicaSet, Job, node, endpoints. They run as independent loops in one process. When someone says the controller did something, ask which one. The failure you are chasing usually belongs to exactly one of them, and they fail independently.",
+      "visual": {
+        "type": "controllerFamily",
+        "spec": "NEW. One box labelled kube-controller-manager. It unpacks into a grid of named controller chips, each with its own small loop icon spinning at a slightly different rate. Emphasise: one process, many independent loops."
+      }
+    },
+    {
+      "id": "scheduler-job",
+      "n": 5,
+      "stage": null,
+      "title": "One decision",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "The scheduler's entire job is choosing a node and writing that choice down. It does not create pods — controllers do that. It does not start containers — the kubelet does that. It does not contact the node at all. Its output is a single field, and the moment it is written the scheduler is finished with your pod forever.",
+      "visual": {
+        "type": "binding",
+        "spec": "REUSE the pilot's Binding component unchanged. It already shows the scheduler emitting a binding, nodeName filling in, and the deliberate absence of an arrow to the node."
+      }
+    },
+    {
+      "id": "kubelet-owns",
+      "n": 6,
+      "stage": null,
+      "title": "The node's agent",
+      "lane": "node",
+      "estSeconds": 50,
+      "narration": "The kubelet owns one node. It watches for pods assigned to that node, drives them toward their declared state, and reports what it observes back to the API. Nothing pushes work to it. Connections generally run from the node inward to the API server, not the other way. That lets nodes sit behind NAT. It also means the control plane cannot simply reach out and ask. The pull model also explains why a node can vanish while the control plane keeps serving the last thing it heard. The kubelet is the only thing reporting on it, and it has stopped reporting. What breaks the tie is the lease — a small object the node renews on a timer. When renewals stop, the node controller infers the node is unreachable and other controllers begin reacting.",
+      "visual": {
+        "type": "handoff",
+        "spec": "REUSE the pilot's Handoff component, which already shows the kubelet's watch as a pull. Extend only at the end: the watch line goes dark and the API server's copy of the pod status freezes, greyed, with the last-reported timestamp held."
+      }
+    },
+    {
+      "id": "the-chain",
+      "n": 7,
+      "stage": null,
+      "title": "Four loops, one Deployment",
+      "lane": "control",
+      "estSeconds": 56,
+      "narration": "Put it together with the question you will actually be asked: who starts a container after a Deployment is created? The Deployment controller creates a ReplicaSet. The ReplicaSet controller creates pods. The scheduler binds each pod to a node. That node's kubelet asks the runtime for a sandbox and containers. Four independent loops, each triggered by an API object the previous one wrote, and none of them aware of the others.",
+      "visual": {
+        "type": "controllerChain",
+        "spec": "REUSE the pilot's ControllerChain, extended to run all the way to the kubelet: Deployment → ReplicaSet → Pods → binding → kubelet → containers. Each hop shows the object that triggered it. No single arrow spans the whole chain."
+      }
+    },
+    {
+      "id": "outage-cost",
+      "n": 8,
+      "stage": null,
+      "title": "What an outage costs",
+      "lane": null,
+      "estSeconds": 64,
+      "narration": "So what breaks when the control plane goes down? Placement stops — nothing new gets scheduled. Self-healing stops — a crashed pod is not replaced, a failed node is not drained. EndpointSlice updates stop, so a pod that becomes unready keeps receiving traffic, which is the one that actually hurts. Leases stop being renewed, so the cluster loses its ability to tell a dead node from a quiet one. Most day-two operations stop: scaling, rollouts, secrets rotation, anything that is a write. What keeps working is everything already programmed — processes inside running containers, and forwarding rules already written into each node's data plane.",
+      "visual": {
+        "type": "outageMatrix",
+        "spec": "NEW. Two columns, 'stops' and 'keeps working'. The control-plane lane visibly goes dark, then items sort themselves into the two columns as they are named — placement, self-healing, endpoint updates, leases into the left; running processes and programmed forwarding into the right. Left column red-tinted, right column green-tinted."
+      }
+    },
+    {
+      "id": "not-healthy",
+      "n": 9,
+      "stage": null,
+      "title": "Serving is not healthy",
+      "lane": null,
+      "estSeconds": 46,
+      "narration": "Which produces the most dangerous sentence in an incident: traffic still flows, so we are fine. Traffic flowing proves the data plane still has state programmed into it. It says nothing about whether the cluster can change, repair, or even tell you the truth about itself. A cluster in that condition is frozen, not healthy, and it will look perfectly fine right up until something needs to move.",
+      "visual": {
+        "type": "frozenCluster",
+        "spec": "NEW. A green dashboard reading all-healthy, packets flowing steadily. The control-plane lane behind it is dark. Then one pod fails — and nothing replaces it. A second fails — nothing. The traffic graph stays flat and green while the replica count silently drops. End on the dashboard still green, caption 'frozen, not healthy'."
+      }
+    },
+    {
+      "id": "close",
+      "n": 10,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 42,
+      "narration": "Segment one of the spine, then: desired object. If a failure lives here, the symptom is that nothing happened at all — no events, no pods, no attempt. Your write was rejected, or it never reached the API. Everything downstream at least leaves a trace. Next module: the five gates that write has to pass, and what it costs to put your own webhook in that path.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE this module's opening spineLocator, reversed: the enlarged first segment shrinks back into the full spine, then the second segment lights to preview the next module. Hold on the complete spine with the module title card."
+      }
+    }
+  ]
+}

@@ -1,0 +1,164 @@
+{
+  "title": "Choose, Then Commit",
+  "subtitle": "Module 06 — the scheduling framework, why a Pod stays Pending, and what preemption costs",
+  "series": {
+    "module": 6,
+    "unit": "u6",
+    "spineSegment": "scheduler queue + binding",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/content.js unit u6. Module 04 beat 7 already teaches preemption vs kubelet eviction vs API eviction; this module takes the scheduler-side depth instead and does not repeat that distinction.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "Segment five of the spine: the scheduler queue and binding. The pilot showed a Pod picking up a node name in a second or two. This module is the machinery behind that name, why a Pod sits Pending in a cluster that looks empty, and what preemption actually costs.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with segment five lit."
+      }
+    },
+    {
+      "id": "two-cycles",
+      "n": 1,
+      "stage": null,
+      "title": "Two cycles, not one",
+      "lane": "control",
+      "estSeconds": 47,
+      "narration": "The scheduler runs two cycles, not one. The scheduling cycle is serial: sort the queue, pre-filter, filter, score. One Pod at a time, because the decisions interact. The binding cycle then runs reserve, permit, pre-bind and bind, and it may overlap with the next Pod's scheduling cycle. That split is what keeps the scheduler fast while it still does slow work, like waiting for a volume to attach. A slow bind delays one Pod. It does not stall the queue.",
+      "visual": {
+        "type": "twoCycles",
+        "spec": "NEW. Two horizontal tracks filling the stage. Top track, 'scheduling cycle — serial': four labelled stages (sort, pre-filter, filter, score) with a single Pod token moving through, and the next Pod visibly waiting at the entrance. Bottom track, 'binding cycle — may overlap': reserve, permit, pre-bind, bind. When Pod A leaves the top track it enters the bottom one, and Pod B immediately starts the top track while A is still binding. Let that overlap be the whole point — run it long enough that two tokens are in flight at once. Wrap stage labels to rows if needed; no fixed-width slots."
+      }
+    },
+    {
+      "id": "filter-then-score",
+      "n": 2,
+      "stage": null,
+      "title": "Eliminate, then rank",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "Filtering answers one question: can this Pod run here at all. Resources, required affinity, taints, volume topology — each removes nodes from consideration. Scoring never revisits that. It only ranks what survived. So a preferred affinity cannot rescue a Pod that filtering eliminated everywhere, which is why adding one never fixes Pending. If the filter phase leaves zero nodes, there is nothing left to score.",
+      "visual": {
+        "type": "schedulerCycle",
+        "spec": "REUSE the pilot's SchedulerCycle — it already shows eight nodes with per-node rejection reasons. Extend it: after filtering, the survivors get numeric scores and the highest wins. Then show a 'preferred affinity' badge being added and landing on an already-eliminated node, changing nothing. The badge must sit in flow, not at an absolute edge."
+      }
+    },
+    {
+      "id": "what-it-writes",
+      "n": 3,
+      "stage": null,
+      "title": "The output is a name",
+      "lane": "control",
+      "estSeconds": 39,
+      "narration": "The output of all that work is a name. The scheduler writes a Binding — this Pod, that node — into the API. It starts no container, pulls no image, and touches the node not at all. The kubelet on that node is watching, sees the Pod is now its problem, and takes over. Two loops that fail independently.",
+      "visual": {
+        "type": "binding",
+        "spec": "REUSE the pilot's Binding. Add a muted panel listing what the scheduler does NOT do — no image pull, no container start, no node contact — beside the single field it does write. Keep that panel legible: same type scale as the primary label, not 14px grey."
+      }
+    },
+    {
+      "id": "reserve-unreserve",
+      "n": 4,
+      "stage": null,
+      "title": "Holding the claim",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "Between choosing a node and committing to it, a plugin may need to hold something — a device, a volume slot. Reserve takes that claim so a second Pod cannot be handed the same resource in the gap. Unreserve gives it back when the binding fails. It has to be idempotent, because it can fire more than once for the same Pod. A leaked reservation is capacity that nobody can use and nobody can see.",
+      "visual": {
+        "type": "reserveUnreserve",
+        "spec": "NEW. A node holding four GPU slots. Pod A reaches Reserve and one slot is claimed but not yet occupied — drawn as held, distinct from both free and running. Pod B arrives and is refused that slot. Then A's bind fails: Unreserve fires and the slot returns to free. Then replay with Unreserve firing twice, showing the slot count staying correct — that is what idempotent means here. Finally show the leak: Unreserve never fires, the slot stays held forever, and the node's visible free count no longer matches reality."
+      }
+    },
+    {
+      "id": "requests-not-usage",
+      "n": 5,
+      "stage": null,
+      "title": "Requests are the currency",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "The scheduler filters on requests, not usage. Declared requests against allocatable capacity. What the Pods actually consume never enters the arithmetic. So a cluster can sit at fifteen percent measured CPU and still refuse to schedule anything. Every Pod asked for far more than it uses. The dashboard showing idle nodes and the scheduler reporting insufficient CPU are both correct. They are measuring different things.",
+      "visual": {
+        "type": "requestsVsUsage",
+        "spec": "NEW. One node drawn twice, side by side, same width. Left, 'what the scheduler sees': allocatable filled almost to the top by stacked request blocks, a new Pod bounced off. Right, 'what the dashboard sees': the same Pods drawn at real usage, the node visibly 15% full. Same node, same Pods, two honest pictures. Put the contradiction on screen at once — do not animate between them."
+      }
+    },
+    {
+      "id": "request-errors",
+      "n": 6,
+      "stage": null,
+      "title": "Wrong in both directions",
+      "lane": "control",
+      "estSeconds": 39,
+      "narration": "Both directions cost you. Requests set far above real usage waste allocatable capacity — the scheduler believes the node is full while the node is idle. Requests set below real usage produce the opposite. The scheduler packs the node, the Pods grow into their real appetite, and the kubelet starts evicting under pressure. One failure shows up at schedule time. The other shows up hours later.",
+      "visual": {
+        "type": "requestErrors",
+        "spec": "NEW. Split stage, both halves equal. Left, over-requested: a node with large request blocks and small usage inside them, wasted space shaded, a Pending Pod outside, tagged 'fails at schedule time'. Right, under-requested: many Pods packed in, usage bars growing past their request outlines, then the kubelet evicting, tagged 'fails hours later'. Give each side its failure timing as a labelled clock so the delay reads."
+      }
+    },
+    {
+      "id": "pending-ladder",
+      "n": 7,
+      "stage": null,
+      "title": "Why is it still Pending",
+      "lane": "control",
+      "estSeconds": 47,
+      "narration": "A Pending Pod has an order of investigation. Read the scheduler events on the Pod first — they usually name the predicate that failed, and that ends most searches. Then compare requests against node allocatable. Then affinity, taints, topology spread and host ports. Then the volume side: binding mode, storage topology, capacity. Then quota. Image size is not on that list — a large image is slow after scheduling, never a cause of Pending.",
+      "visual": {
+        "type": "pendingLadder",
+        "spec": "NEW. An ordered diagnostic ladder filling the stage, each rung lighting as it is named, with a real representative event string in monospace beside it — for example '0/8 nodes are available: 3 Insufficient cpu, 5 node(s) had untolerated taint'. The first rung is visually weighted heaviest, because it resolves most cases. Below the ladder, 'image size' drawn struck through and set apart, labelled 'slow start, not Pending'. Lay it out as rows, not a fixed-height column that clips."
+      }
+    },
+    {
+      "id": "nominated-node",
+      "n": 8,
+      "stage": null,
+      "title": "A hint, not a reservation",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "Module four separated preemption from eviction. What preemption costs the scheduler is a gap. Once victims are chosen, the pending Pod gets a nominated node — and that is a hint, not a reservation. Termination takes time. Grace periods run. In that window the cluster changes, and the Pod can land somewhere else entirely, or wait again. Saying the nominated node guarantees placement is the wrong answer.",
+      "visual": {
+        "type": "nominatedNode",
+        "spec": "NEW. A high-priority Pod is pending; victims on node-3 are selected and marked terminating with a visible grace-period countdown. The pending Pod carries a 'nominatedNodeName: node-3' tag drawn as a sticky note, deliberately not as a lock. During the countdown a different Pod is scheduled onto node-3's freed capacity, and when the countdown ends the nominated Pod re-enters the queue. Show the tag surviving unchanged while the outcome diverges from it."
+      }
+    },
+    {
+      "id": "preemption-policy",
+      "n": 9,
+      "stage": null,
+      "title": "Queue order without displacement",
+      "lane": "control",
+      "estSeconds": 39,
+      "narration": "Priority does two separate jobs, and you can take one without the other. It orders the queue, so a high-priority Pod is considered first. It also authorises preemption. Setting the preemption policy to Never keeps the queue advantage and removes the ability to displace anything. That is the setting for work that should be considered early but must never cost another team its Pods.",
+      "visual": {
+        "type": "preemptionPolicy",
+        "spec": "NEW. Priority drawn as two independent switches on one Pod, not one. Switch A, queue order: the Pod moves to the front of a queue of waiting Pods. Switch B, preemption: victims are displaced. Run the same Pod twice — with both switches on, and with preemptionPolicy set to Never, where it still jumps the queue but the occupied node is left untouched and it simply waits. The two switches must be visually independent; the whole beat fails if they read as one setting."
+      }
+    },
+    {
+      "id": "close",
+      "n": 10,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 40,
+      "narration": "Segment five, then. A failure here has a signature: the Pod exists, it has passed every gate, and it has no node name. Nothing is wrong on any node, because nothing has been asked of any node yet. Once that name is written the failure moves — to the kubelet, the runtime, and the boundaries they own. That is module seven.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: segment five shrinks back into the spine, segment six lights to preview the next module."
+      }
+    }
+  ]
+}

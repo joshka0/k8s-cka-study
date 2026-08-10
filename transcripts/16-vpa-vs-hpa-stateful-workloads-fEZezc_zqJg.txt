@@ -1,0 +1,275 @@
+Your stateful app is getting evicted
+every few hours, or it's sitting on four
+times the memory it actually needs, and
+you're not sure which auto scaler to
+reach for. That's the exact scenario
+interviewers love because most
+candidates only know one half of the
+answer.
+Let's set the stage. You have a
+Cassandra node, a RabbitMQ broker, or a
+PostgreSQL read replica running in
+Kubernetes.
+It's a stateful set.
+Traffic is not uniform. Some days it's
+busy, some days it's quiet.
+Someone on your team says, "Just add
+HPA." And someone else says, "We need
+VPA."
+Who's right?
+That question shows up in senior SRE and
+platform engineer interviews constantly
+because the answer is not obvious, and
+the wrong choice causes real incidents.
+Interviewers ask this because auto
+scaling is one of those topics where
+surface level knowledge falls apart
+fast.
+Saying HPA scales pods out, VPA scales
+pods up is correct but incomplete.
+The follow-up is always, "Okay, so which
+one do you use for a stateful workload
+and why?" And then, what happens if you
+use both at the same time? If you can't
+answer those, you signal that you've
+only worked with stateless services.
+Here's the mental model you need.
+The HPA, the horizontal pod auto scaler,
+works by changing the number of pod
+replicas.
+It watches a metric, CPU or memory or a
+custom one, and when that metric crosses
+a threshold, it adds or removes pods.
+That works beautifully for stateless
+services. Each replica is identical.
+Sessions don't matter, and spinning up a
+new pod behind a load balancer is
+invisible to users.
+Stateful workloads break that
+assumption.
+A Cassandra node owns a subset of the
+token ring. A RabbitMQ broker may hold
+unacknowledged messages. A PostgreSQL
+replica has an open replication slot.
+Adding a new pod doesn't instantly help
+because the new pod has to join the
+cluster, sync data, or acquire state
+before can carry load.
+Scaling out fast is often dangerous.
+Scaling in is even worse because you
+might be removing a pod that holds data
+not yet replicated elsewhere.
+So, for stateful workloads, the more
+useful lever is usually vertical.
+Give the existing pod more CPU or more
+memory so it can handle the load without
+needing a new replica.
+That's where the VPA, the vertical pod
+autoscaler, comes in. VPA has three
+components.
+The recommender watches historical
+resource usage and calculates what your
+requests and limits should be.
+The admission controller patches those
+values into new pods at scheduling time.
+And the updater, this is the dangerous
+one, can evict running pods so they
+restart with the new resource values.
+The key knob is the update mode, and
+this is a common interview question on
+its own.
+Update mode off means the VPA only
+calculates recommendations.
+It never touches your pods. You query
+the VPA object and apply changes
+yourself.
+This is the right starting point for any
+stateful workload.
+You get the data without the risk.
+Update mode initial means the admission
+controller sets resource values when a
+pod is first created, but the VPA never
+evicts a running pod.
+The pod keeps whatever resources it
+started with until it's naturally
+replaced, for example, during a rollout.
+This is a reasonable middle ground for
+apps that tolerate restarts as part of
+deployments, but not random evictions.
+Update mode auto, and this is the one
+that bites teams, allows the VPA updater
+to evict pods at any time to apply new
+recommendations.
+For a stateless deployment, this is
+often fine.
+For a stateful pod, it can be
+catastrophic.
+Imagine your primary Redis instance
+getting evicted at 2:00 in the morning
+because the VPA decided it needed 50%
+more memory.
+The pod comes back, but during those 30
+seconds of restart, your application is
+throwing errors.
+The fourth mode, recreate, behaves like
+auto but only triggers on pod creation
+events.
+In practice, most teams treat auto and
+recreate as the same risk category for
+stateful workloads.
+So, the concrete recommendation for
+stateful apps is start with update mode
+off, run it for at least 2 weeks to
+cover your traffic patterns, look at the
+recommended requests in the VPA status,
+and then apply those values manually to
+your stateful set spec. After you've
+done that once and confirm stability,
+you can consider bumping to initial
+mode.
+Staying in auto is rarely worth it for
+anything with persistent state.
+Now, the tricky part that interviewers
+really test, can you run HPA and VPA at
+the same time?
+The short answer is yes, but only if
+they're watching different metrics. The
+classic failure pattern is enabling both
+on the same workload with both watching
+CPU.
+Here's what happens. Load increases. CPU
+goes up. HPA adds a replica.
+The CPU per pod drops
+because the load is now spread. VPA sees
+lower per pod CPU and recommends lower
+requests.
+It either tells you to reduce requests
+or in auto mode, evicts pods to resize
+them down.
+Meanwhile, HPA is still watching the
+same CPU signal. You get a feedback loop
+where both controllers are fighting each
+other. Your pod count oscillates and
+your resource allocation is unstable.
+The safe combination is to give each
+controller a distinct domain.
+A common pattern for a message broker is
+to let HPA scale on queue depth,
+a custom metric from your metrics
+pipeline, while VPA manages the the
+requests because memory usage on a
+broker tends to grow with configuration
+and message size rather than with load
+spikes.
+They're watching completely different
+signals, so they don't interfere.
+Another safe pattern is to disable HPA
+entirely and rely only on VPA in initial
+mode, pairing that with a pod disruption
+budget, the PDB, to prevent the cluster
+auto scaler from removing nodes that
+would orphan your pods.
+This is common for single instance
+stateful workloads where horizontal
+scaling genuinely isn't possible.
+Let's talk real numbers briefly so you
+sound credible in the interview. A
+typical starting point for a moderately
+loaded RabbitMQ broker might be 250
+millicores CPU request and 500
+millicores limit
+with 1 GB memory request and 2 GB limit.
+After running VPA in off mode for 2
+weeks under normal traffic, you might
+see the recommender suggesting 600
+millicores CPU and 1 and 1/2 GB memory.
+That gap between what you provisioned
+and what you actually need is exactly
+the over provisioning problem VPA is
+designed to solve.
+Without it, you're just guessing.
+On the eviction risk side, the VPA
+updater respects pod disruption budgets.
+If your PDB says zero pods unavailable,
+the updater will not evict your pod even
+in auto mode.
+So, if you are running VPA auto on a
+stateful set, always pair it with a PDB
+that reflects your actual availability
+requirements.
+This is a detail that separates strong
+answers from weak ones in interviews.
+There's also the resource policy inside
+the VPA spec itself. You can set min
+allowed and max allowed values per
+container, so the recommender can't
+suggest something absurd.
+For example, you can tell it to never
+recommend less than 100 millicores
+or more than four cores, keeping the
+recommendations inside bounds your
+infrastructure can actually handle.
+Always set these bounds for production
+workloads.
+One more wrinkle worth knowing.
+VPA and HPA cannot both target CPU or
+memory requests at the same time because
+HPA uses requests as the denominator for
+its utilization calculation.
+If VPA changes the request value, the
+HPA's target threshold shifts underneath
+it.
+The percentage-based math breaks.
+Kubernetes has a known limitation here
+and the official guidance is to not use
+HPA on CPU or memory when VPA is also
+active on the same workload. Unless
+you're using HPA with custom or external
+metrics only.
+Common wrong answers you want to avoid.
+The first is saying, "Just use HPA for
+everything, stateful or not."
+That ignores the data ownership and sync
+cost of scaling stateful replicas. The
+second is saying, "VPA is dangerous, so
+never use it."
+That's overcorrecting. VPA in off or
+initial mode is genuinely useful and low
+risk. The third is conflating pod
+autoscaling with cluster autoscaling.
+The cluster autoscaler adds nodes. VPA
+and HPA manage pods within existing
+nodes.
+They work at different layers and you
+need to be clear about which layer
+you're talking about.
+The fourth is not mentioning pod
+disruption budgets when discussing VPA
+auto mode. Experienced interviewers will
+notice that gap immediately. Quick
+recap. For stateful workloads, your
+default should be VPA in off mode to
+gather recommendations and then apply
+them manually. Use initial mode once you
+trust the recommendations.
+Avoid auto mode unless you've paired it
+with a tight pod disruption budget and
+you understand the eviction risk. If you
+combine HPA and VPA, give them different
+metrics so they don't fight each other.
+Never point both at CPU at the same
+time. Set min and max resource policies
+in your VPA spec to bound the
+recommendations. And always think about
+what a pod eviction means for your
+specific stateful workload before
+enabling anything that can trigger one.
+If you want to drill questions exactly
+like this one, the DevOps interview
+cloud channel on YouTube posts a
+30-second interview drill every single
+day. Short, sharp questions you can work
+through on your commute. And if you want
+the deeper reference material, practice
+scenarios, and answer frameworks, head
+over to devopsinterview.cloud.

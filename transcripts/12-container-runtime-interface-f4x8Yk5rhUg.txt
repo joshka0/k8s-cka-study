@@ -1,0 +1,699 @@
+all right I think it's 11:30 so I'll go
+and get started
+if you don't know why you're here
+hopefully you're here because you want
+to hear about the kubernetes CRI
+interface so how it talks to container
+runtimes and specifically first half
+I'll talk about the CRI and and runtimes
+second half I'll try and demonstrate and
+make it practical by showing container D
+as a runtime for kubernetes the fun part
+of this demo is we're going to talk to
+my kubernetes cluster back in dallas
+texas and IBM cloud over my phone's 4G
+connection so the demo made my commands
+maybe slow enough that we can talk
+through that and answer questions as we
+go so so let's get started I'm Phil
+Estes I work for IBM a distinguished
+engineer in our cloud platform unit more
+importantly to this topic I've been
+contributing to container runtimes for
+about four years starting with docker
+and the whole docker ecosystem and then
+in the last couple years container D I'm
+a maintainer in container D as well as a
+we have a few others here in fact if
+you're unhappy with how deep I get into
+container D you have another chance
+today at 3:05 Derek is over here on your
+the far corner of the room Derek and
+Mike Brown Mike Brown is also from IBM
+and a maintainer in the CRI plugin
+they're going to take you on a deep dive
+of the whole container D architecture so
+again you have a couple chances to hear
+more today about that so you're at cube
+con Shanghai the very first cloud native
+and cube con on the continent and so
+maybe it's silly to ask you know are you
+using kubernetes maybe you're not yet
+but you're interested or you're learning
+this week about it and the important
+thing to note is that kubernetes is
+really just that orchestration platform
+above a container run time and that's
+important because kubernetes doesn't
+actually run your containers so there's
+no code if you look through the entire
+github repo for kubernetes you will not
+find any code that knows how to run to
+start a container on a Linux or Windows
+system to handle the lifecycle commands
+of creating starting stopping containers
+for many years that's been done that
+role has been played by the docker
+engine again you can look back this URL
+here is to release 1.4 of kubernetes so
+you know ancient history if you're
+keeping up with kubernetes 1.11 1.12 but
+you know pick an old release you'll find
+a package called docker shim in
+kubernetes and the docker shim was
+implemented to know how to talk to the
+to the docker engine and have it do
+commands like docker run docker start on
+behalf of kubernetes as it created pods
+as it created your put your application
+orchestrated across a cluster so again
+that's that's kind of been the life
+cycle of kubernetes again I don't have a
+lot of time to go into how docker has
+itself has grown and matured over the
+last few years to really be a stack of
+components with the open container
+initiatives run see at the bottom of
+that stack container d.a CN CF project
+as you know and docker driving those so
+again that's been kind of the way things
+are for a good while
+but back in 2016 and actually we're
+coming up on two years since this blog
+post came out on kubernetes on the
+kubernetes blog about hey we're
+introducing a container runtime
+interface to abstract the kubernetes
+code base from runtimes like docker at
+this point rocket also a CN CF project
+had a variant of kubernetes called
+rocket Nettie's where you could drive
+rocket as the container runtime but as
+the kubernetes community
+tried to figure out what to do with the
+fact that now you had places all across
+the Cuban Andes code base that had to
+know about the run time and that got
+very messy and if you thought about
+adding a third or a fourth or another
+runtime the CRI was meant to separate
+those concerns so anyone could implement
+the CRI API and you could become a
+container runtime underneath kubernetes
+this is a rough differentiation between
+the role of what kubernetes still has to
+do and then the CRI interface
+effectively separating out what the
+container runtimes job is underneath
+kubernetes this picture isn't perfect
+I've gotten feedback from a few other
+talks that you know there's obviously
+ways in which some of these come some of
+these roles are handled on both sides of
+the CRI but it gives you a general idea
+that kubernetes is still handling the
+kubernetes api it's handling storage
+concerns you've picked a C&I plugin to
+handle your networking kubernetes all
+the API machinery around health checking
+and placement all the orchestration
+parts of kubernetes all that is still
+handled by kubernetes on the when it
+wants to place a container on a node via
+the couplet obviously the things on the
+right are things that your container
+runtime is going to have to implement
+that are part of the container runtime
+interface such as all this all the
+lifecycle commands you'd expect
+start/stop delete also image management
+so your container runtime is going to
+have to talk to registries pull pull
+images actually push is not correct you
+don't push images from a pod get the
+status of an image you know is it pulled
+get to get all the layers pod status and
+all the related parts of knowing the
+state of your pods and containers within
+them and then there's a bunch of things
+you can do from the kubernetes interface
+side like I want an exact into a
+container I want to attack
+I want to assign a port I want to get
+logs all those interactions have to be
+implemented by your container runtime
+via CRI
+so that when those kubernetes api czar
+called your container runtime can handle
+the runtime aspect of those operations
+so again that gives you a basic idea of
+who's job is what in the kubernetes
+world between the runtime and the
+kubernetes stack
+so now that we have the CRI you might
+think well who's implemented this API
+you know what runtimes are available
+underneath kubernetes obviously docker
+shim has been repurposed to implement
+the CRI and so you you know many
+clusters today many production clusters
+continue to use docker as the runtime
+obviously with container D the project
+I'm associated with we have a CRI
+implementation that handles the CRI API
+and then calls into container D to again
+do all those those runtime steps for the
+CRI who's heard of creo from Red Hat so
+cryo is a project that also implements
+the CRI and basically cryo has all the
+code to drive run seed directly so again
+run C is underneath both docker and
+container D but cryo is a wrapper on run
+C to again implement the CRI and then
+frac T is a shim implementation
+initially hyper dot SH and Intel clear
+containers both had lightweight
+virtualization capabilities
+so this shim could basically either do
+lightweight virtualization like through
+run V or call the docker engine when you
+didn't want to use lightweight
+virtualization but if we fast forward
+today a lot of that has been is now
+handled in the merged projects of cata
+containers which I think you've probably
+heard about a little bit this week
+already and not only is cata associated
+with frac D but they're working with
+both cryo and with our team in container
+D so that you can actually use cata
+containers on other runtimes as well
+again the couplet has ways to specify
+which runtime do I want to use the tools
+that you use to install your kubernetes
+cluster may allow you to factor this out
+we'll talk about who's using container D
+and making that possible
+but at this point you might ask why I'm
+just a kubernetes you know end-user you
+know why do I care what run time is at
+the sort of bottom of the stack handling
+running my containers and it's true that
+most of the benefits of being able to
+plug in different runtimes is is
+operational more than end-user focused
+so your coop coop huddle commands don't
+change depending on what runtime and so
+your application developer and and the
+people at that end of your development
+organization probably don't care if
+docker or container D or cryo or cata
+containers is running the containers at
+the bottom but operationally there may
+be benefits so I cheated and took one of
+Kelsey Hightower's tweets where he said
+treating containers like a black box
+will eventually leave you in the dark
+and I hacked it to say treating
+container runtimes like a black box will
+eventually leave you in the dark I
+haven't officially gotten his approval
+that the the sense of the tweet still
+stands but what what I mean by this is
+that even as an application developer or
+someone at a higher layer of the stack
+knowing what container runtime is is
+their and what its capabilities are and
+how to interact with it can be valuable
+and definitely to your operational team
+there may be benefits to container D or
+cry or docker depending on other needs
+of your environment so for you know just
+just to hypothetically you know talk
+about what would you need from a
+container runtime you probably are going
+to care about performance you know
+you've heard in the keynotes all the
+interesting workloads that people are
+placing on top of kubernetes everything
+from a I - you know genomic sequencing
+they were talking about this morning
+maybe you have security concerns maybe
+you're running untrusted workloads and
+so the hypervisor isolation of Katta is
+very interesting to you or maybe you're
+interested in G visor or other
+interesting isolation capabilities so
+maybe the runtime you choose you want to
+make sure it has those those those
+options maybe you care about multi
+architecture support so at IBM we have
+power systems we have Z systems and so
+making sure that my container runtime
+operates in those environments maybe
+you're in the IOT space and you have arm
+devices or other cpu enablement that you
+want to make sure your container runtime
+has those capabilities so again those
+are things you might think about if you
+were deciding what runtime do I want my
+kubernetes cluster to use
+so let me talk a little bit more about
+container D I don't have enough time in
+the in the session to really dig deep
+but as I mentioned at the beginning and
+some people have showed up so I'll
+mention it again later this afternoon at
+3:05 there's a deep dive on container D
+on its architecture that will go into
+more depth than I can but effectively
+over the last few years
+docker has contributed code that used to
+be part of the monolithic docker
+codebase to various open source
+foundations so you have run C which is
+that basic unit of simply executing
+containers mostly thinking in a Linux
+kernel interface environment so how are
+the namespaces and C groups and
+everything's set up
+that's what run C is doing for you
+container D has been donated to the
+cloud native competing foundation so
+again you've seen container D as a
+component of the many projects within
+the CNC F it sits on top of run C and
+basically manages those run C processes
+for you
+and then in our recent releases under
+the CNC F has image management so we can
+push and pull from registries it fully
+supports OCI it has a great client API
+so we're finding many users who love
+container D as a way to be embedded into
+other runtimes or other software systems
+and so alabama's pouch container is also
+a user of container D and so on top of
+that you can obviously build other other
+software stacks so the docker engine
+docker seee docker for mac docker
+enterprise they all use container D and
+run c kubernetes via the CR I can use
+the same stack docker swarm and their
+orchestration can use the same stack and
+so we see container D is really that
+core container runtime for the cloud
+again some of the benefits these are
+just highlights not really a deep dive
+but really we intended for container D
+to have broad you
+in the industry so projects like Linux
+kid and kubernetes Cloud Foundry some of
+the other use cases I mentioned we
+expect the container D because of a good
+client API stability performance can be
+used by many many projects as a great
+container runtime we've also spent a lot
+of time doing stress testing making sure
+that container D is stable that we can
+meet its performance criteria and so
+Michael Crosby one of the key
+contributors and maintainer zhan
+container d tweeted earlier this year
+that we have a 24/7 system that's just
+constantly starting stopping exacting
+all the lifecycle operations into
+container D and running millions of
+containers every week just to continue
+testing and making sure that every
+change that gets checked in
+we haven't impacted the stability or
+performance of container D and again
+another aspect of what we've done with
+our commitment to stability is also a
+stable API and and stable releases with
+very specific support guarantees and so
+we do bug-fix releases with you back
+ports and bug fixes into old releases
+that's okay and that's just part of what
+we hope is a viable platform on which
+other people can build their products
+and software
+this was announced yesterday morning Liz
+Rice mentioned that between Copenhagen
+and this event that container D
+integration into kubernetes was
+announced as GA in May that was actually
+around the timeframe of coop con in
+Copenhagen but again just a validation
+that the implementation of the CRI and
+integration into container D is viable
+for use cases production use cases in
+your cloud or in your software platform
+so based on that you know who is using
+container D today obviously one of the
+interesting places you can go hear a lot
+more about container D being used as
+Kelsey Hightower's kubernetes the hard
+way uses in all the examples container D
+is the runtime we have two public clouds
+that are currently using container D in
+sort of early preview IBM clouds
+kubernetes service has container D if
+you select kubernetes 1.11 or 1.12 as
+your cluster you automatically get
+container D as the runtime and then down
+and below that that's the google
+kubernetes engine logo they have in beta
+today you can select container D as the
+runtime in a gke cluster again every
+version of docker for the last few years
+uses container D so every time you
+install docker you're also getting
+container D Linux kit which is a project
+that builds Linux distributions purpose
+optimized Linux also uses container D
+our Rancher has a project using
+container D cata has been a big
+proponent of container D and our new v2
+shim that maybe you can hear more about
+if you go to the deep dive today I
+mentioned alibaba's pouch container and
+there's a couple I Oh T projects ballina
+and Elliott that are using container D
+and the Cloud Foundry container runtime
+was using run C and there
+now switching to container D as well so
+again the purpose of making sure the
+container D was viable for many use
+cases we feel like we're seeing that
+come to fruition with a lot of users a
+lot of people building on top of
+container D and finding it valuable for
+their model of needing a container run
+time
+so effectively the rest of the time so
+we have just about 15 minutes I'd like
+to demonstrate kind of these layers and
+before I do that I thought it'd be
+useful yeah I'm gonna show you that my
+cluster setup in a minute but this
+picture may help to describe what I'm
+gonna try and show especially if it
+doesn't go well at least you'll step
+away with an understanding of what I was
+trying to show so really now that we're
+talking about kubernetes having the CRI
+and a container runtime you can think
+about talking about the workloads on
+your node from three aspects one is the
+cube cuddle commands which is you
+talking to the kubernetes api so i'm
+going to use the client the standard
+client something about a command like
+cube cuddle get pods and so that asks
+the kubernetes api list my pods if we go
+down to the CRI layer there's a nice
+tool cry cuddle that interacts with the
+CRI API directly and so I can do a very
+similar thing with cry cuddle if I'm
+sitting on the host node where the
+couplet is running I can use cry cuddle
+to talk to that CRI API and say hey tell
+me what pods are running well now if
+container D is my runtime underneath
+kubernetes I can now use the CTR tool
+which is container DS simple client and
+I can I can say container D hey tell me
+what containers are running because
+obviously that should match to the pods
+and the containers running inside there
+so I'm gonna do a few examples using
+these three commands because of time I'm
+not going to show you how the shims
+actually drive run see because run C
+even has a client where we could
+potentially LS and look at run C
+processes on the hosts but for the
+interest of time let's see what we can
+accomplish here so again I did say I
+would show you my cluster
+so I have a kubernetes 1.11
+IVM clouds Dallas 12 region I have three
+worker nodes the IBM managed kubernetes
+service is handling the master node I
+don't have to worry about that but my
+worker nodes are running kubernetes 1.11
+dot
+i've already for the interest of time
+deployed a few things out there so I
+have some pods that are already running
+on this node and if I switch to
+my secret little meth
+of getting onto the so now I you can see
+I'm on w2 which is work or two so if I
+go back to this other picture you know
+that should match this the middle entry
+here a certain public IP that's the
+actual note on sshd into and so
+obviously
+if I'm right about this cluster running
+container D I should see that PS looking
+for a docker process there's nothing on
+the system running docker obviously if I
+use the CTR tool
+and just asked for a version I can see
+that I'm running container D one dot one
+dot four which is our latest release on
+the one dot one line and it actually was
+able to connect to the server also
+running one dot one dot four and so you
+can see this is a worker node within my
+kubernetes cluster running container D
+and if I like I said I can talk to the
+CRI with cry cuddle and I'm sorry that I
+made the text big so hopefully everyone
+can read it but that makes the output
+not quite as pretty but these are
+obviously the list of of pods that are
+running there are many pods because
+there's obviously many namespaces so IBM
+and cube system and it's I have sto
+deployed here you know it's a huge list
+of pods but because in this other window
+you can see I have this my nginx running
+and there's four of them and I only have
+three nodes so I should at least have
+one pod on this node and so let's let's
+see if I can find that here if I cry
+cuddle pods and grep my nginx sure
+enough it's down here at the bottom I
+have the TV for 7q pod so if we go back
+and look at the pods that looks like the
+very last one here that the my nginx so
+that pod is running on my worker two
+node and cry cuddle I've been able to
+use I've seen from coop cuddle it's told
+me that these pods exist I've gone to
+one of my worker nodes and now I'm
+talking to the CRI socket and I've asked
+it to tell me the pods I'm sure enough
+my nginx pod is here well now let's go
+down to container D and see if I can
+find you know this pod because at some
+point that should turn into an actual
+container and we can see the container
+running on the system via container D
+I think I already exported
+so another thing that maybe you'll learn
+about if you go to the deep dive
+actually I don't have it set here so
+container D supports namespaces which
+means you can actually use container D
+by multiple kind of higher layer users
+including actually if I go to my laptop
+here you can see that if I talk to the
+CTR that's so my laptop is running
+docker 18:09 that just came out last
+week if I ask the CTR on my on my laptop
+you know what namespaces do you have
+you'll see it the you'll see ka desa I
+oh and Moby so now that docker is using
+my system container D it's creating
+containers inside the mobi namespace if
+I had a Kubla running on my laptop it
+would use the K dot IO namespace and so
+if I go back to this worker node and do
+CTR namespaces LS you can see I only
+have a que ésta IO I don't have docker
+running here I don't have other users of
+container D and so if I don't set a
+namespace and I ask container D to list
+containers it gives me nothing I
+actually have to tell it no I want to
+look at the decayed sto namespace to
+save time typing I'm going to export a
+variable
+name space equals ka dust io and now
+when I do CTR CLS I get a huge lung
+again it's kind of ugly output because
+of the text size but again these are all
+the containers that container D knows
+about because again couplet has talked
+to the CRI it started pods which started
+containers and so this is representing
+that list and so if I if I look for that
+nginx container again so I'm going to
+grep for nginx
+you'll see that here at the bottom I
+have a long container ID and you can see
+that the image being used is my little
+nginx demo and it's using the container
+DV 1 Linux runtime and so again we've
+mapped all the way from cube cuddle get
+pods so we saw that there were a bunch
+of nginx pods we asked the CRI to list
+pods we saw that one of those pods is on
+this worker node and now I've gotten all
+the way down to a container in container
+D is actually running the nginx there so
+the next thing I can do is I can
+actually
+I can
+I can asks actually I want to get that
+ID let me get that
+so it starts 3 9 6:05 if I copy this and
+then task CTR to tell me the tasks that
+are running which map to actual
+processes on my system I can find that
+there's a pid' two six nine seven seven
+that's actually running and this matches
+that container which matches that pod
+and so unless I've got something
+disastrously wrong if I ask the system
+to list processes and graph for that
+pid' it better be an engine X process
+and sure enough well it's got F CGI
+running and engine X so this is my
+actual containers process running engine
+X so again we've gone all the way from
+cube kuddle listing pods to cry cuddle
+again listing what pods are on this
+specific node to a container to a task
+to an actual pid' running that workload
+we have a couple minutes left so one
+thing that might be interesting is to
+think about how in this scenario we can
+start to see how kubernetes and
+container runtimes interact and so one
+thing I can do here
+I'm gonna so basically this engine exits
+running I can show it in the browser
+just so you get a sense for what we're
+doing here
+if I hit I've got this connected to s T
+O's ingress all this nginx container is
+doing is it returns the pod name you
+know as the HTML response from a request
+for index.html and so if I keep
+refreshing I should you know be hitting
+the various pods and every once in a
+while you'll see it's actually hitting
+the pod on this node that I'm logged
+into the TV for seven queue so that's
+great so you know kubernetes load
+balancers Sto that's all doing magic to
+to route traffic to my actual pods which
+ends up at my actual containers if I
+if I set up a little watch that this is
+just running that same it's using curl
+to to you know
+query the pods and every once in a while
+it'll pop around and and change to
+various pods one thing we can do is we
+can actually kill the nginx container on
+this node now I'm not going to stop the
+pot I'm just going to kill the container
+using container D and let me see if I
+remember how to do all this right
+actually I need that ID
+you
+so remember Derek you remember the
+signal is a - s
+let's try this let's have fun I think
+okay so if that worked I should no
+longer have
+I'll still have a container
+I shouldn't have
+let me look for nginx again
+you'll see that it started anew and on
+on this node here and so what what
+shouldn't have happened is we should
+still have a pod named tv4 7q because i
+didn't actually kill the pot I killed
+the container and it can recover from
+that by just restarting the container
+but now so again we can step back up to
+CRI so now we could use cry cuddle
+this is where I haven't memorized all
+the commands so this will be fun
+I think it's stop P oh I need the ID
+don't know so I'm going to get the pods
+so here's the pod ID I'm going to copy
+that so cry cuddle stop pod stop Pia's
+stop pod and cry cuddle remove pod same
+one if I did it right so you can see
+that it stopped and removed the sandbox
+there actually I'd be good at this point
+to cube cuddle get pods I'm probably not
+fast enough to actually see the the
+container I must have done that wrong
+because I still have a pod Dona name TV
+47q
+you
+here that or the
+yeah definitely deleted the pod
+so it's interesting we should have seen
+in coop Cod oh we should have seen a
+failure in coop kado get pods and then a
+restart I think we're almost at time we
+only have a couple minutes so I think
+rather than investigate why I didn't get
+to show you that properly let's just
+switch back to the charts for a second
+and we'll finish up
+so again there's a grit so if you're
+gonna use CRI and then CRI run times
+there's a great users guide for cry
+cuddle all the things you can do I
+showed almost nothing of all the
+possible things you could do with cry
+cuddle you can even create pods you can
+have a no CI spec and start and stop
+pods from cry cuddle there's a great
+talk from Kubb khan in copenhagen doing
+some more he had a little more time so
+you could do interesting things like
+actually replace the runtime underneath
+the coolant you could actually switch
+from docker to container d and back and
+show that the pods kind of restart and
+continue running we have lots more
+information at our github project page
+and I should be adding in our website
+because we have a new website container
+di o that also has a lot of great
+information so with that I say thank you
+and say please go see Derek and Mike's
+deep dive if you're interested in more
+about container D and the architecture
+later today and you can find me online
+or send me an email if you have more
+questions and I think we're effectively
+all out of time I'll pack up and be
+available here if you want to chat but
+I'll make room for the next speaker so
+thank you very much
+[Applause]
+[Music]
+you

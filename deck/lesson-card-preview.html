@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson deck — card preview</title>
+<style>
+body { margin:0; padding:28px; background:#e8ecf3; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+h1 { margin:0 0 6px; }
+p.lede { margin:0 0 28px; color:#4a5568; }
+section { margin-bottom:30px; }
+section h2 { font-size:.95rem; font-family:ui-monospace,Menlo,monospace; color:#334; margin:0 0 10px; }
+section h2 small { color:#7a8699; font-weight:500; }
+h3 { font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:#7a8699; margin:0 0 6px; }
+.pair { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+.card { border:1px solid #c9d2e0; border-radius:12px; }
+@media (max-width:900px) { .pair { grid-template-columns:1fr; } }
+@media (prefers-color-scheme: dark) { body { background:#070b13; } section h2 { color:#cbd5e6; } }
+.card {
+  box-sizing: border-box;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1.25rem;
+  background: #f8fafc;
+  color: #172033;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 20px;
+  line-height: 1.5;
+  text-align: left;
+}
+.prompt, .answer, .extra { overflow-wrap: anywhere; }
+.answer { margin-top: 1rem; }
+.answer ul, .answer ol { margin: 0.5rem 0 0; padding-left: 1.2rem; }
+.answer li { margin: 0.25rem 0; }
+.extra { margin-top: 1rem; color: #526078; font-size: 0.82em; }
+.extra a { color: #2456bd; text-decoration: none; }
+.extra a + a { margin-left: 0.9rem; }
+.divider { border: 0; border-top: 1px solid #cad2df; margin: 1rem 0; }
+.kicker {
+  color: #5d677b; font-size: 0.62em; font-weight: 800;
+  letter-spacing: 0.13em; text-transform: uppercase; margin-bottom: 0.5rem;
+}
+code { background: #e8edf4; border-radius: 0.25rem; padding: 0.08em 0.3em; }
+cloze { font-weight: 700; color: #2456bd; }
+@media (prefers-color-scheme: dark) {
+  .card { background: #111827; color: #e5e7eb; }
+  .extra { color: #aab4c5; }
+  .extra a { color: #8ab4ff; }
+  .divider { border-top-color: #384459; }
+  .kicker { color: #97a3b8; }
+  code { background: #253148; }
+  cloze { color: #8ab4ff; }
+}
+.nightMode .card { background: #111827; color: #e5e7eb; }
+.nightMode .extra { color: #aab4c5; }
+.nightMode .extra a { color: #8ab4ff; }
+.nightMode .divider { border-top-color: #384459; }
+.nightMode .kicker { color: #97a3b8; }
+.nightMode code { background: #253148; }
+.nightMode cloze { color: #8ab4ff; }
+</style></head><body>
+<h1>Lesson deck — card preview</h1>
+<p class="lede">Rendered from the production templates and CSS. Check that no front reveals its answer.</p>
+<section><h2>u1l1::http-policy-boundary <small>definition_to_name</small></h2><div class="pair"><div><h3>Front</h3><div class="card"><div class="kicker">Name it</div><div class="prompt">Which component exposes the supported HTTP API, applies request policy and conversion, and serves reads and watches — the boundary every other component coordinates through?</div></div></div><div><h3>Back</h3><div class="card"><div class="question-recap"><div class="prompt">Which component exposes the supported HTTP API, applies request policy and conversion, and serves reads and watches — the boundary every other component coordinates through?</div></div><hr class="divider"><div class="answer"><b>kube-apiserver</b>. Components talk to <i>it</i>, not to each other and not to storage.</div><div class="extra"><a href='https://kubernetes.io/docs/concepts/architecture/'>📖 Cluster architecture</a><a href='https://www.youtube.com/watch?v=gjk82Y2vyro&t=900s'>▶ Handling a create request</a></div></div></div></div></section><section><h2>u7l1::name-pause-container <small>plain_phrase_to_name</small></h2><div class="pair"><div><h3>Front</h3><div class="card"><div class="kicker">Name it</div><div class="prompt">"The container that runs no application code and exists only to hold the Pod's shared namespaces open."</div></div></div><div><h3>Back</h3><div class="card"><div class="question-recap"><div class="prompt">"The container that runs no application code and exists only to hold the Pod's shared namespaces open."</div></div><hr class="divider"><div class="answer">The <b>pause container</b>, PID 1 of the Pod sandbox. It is what the network attachment belongs to before any app container joins.</div><div class="extra"><a href='https://www.youtube.com/watch?v=PLCt3lSoXOw&t=389s'>▶ pause is PID 1</a></div></div></div></div></section><section><h2>u2l1::gate-order <small>cloze</small></h2><div class="pair"><div><h3>Front</h3><div class="card"><div class="kicker">Complete it</div><div class="prompt">Gate order for a write: authenticate → authorize → <cloze>[...]</cloze> → <cloze>[...]</cloze> → persist and notify watchers.</div></div></div><div><h3>Back</h3><div class="card"><div class="answer">Gate order for a write: authenticate → authorize → <cloze>mutating admission</cloze> → <cloze>validating admission</cloze> → persist and notify watchers.</div><hr class="divider"><div class="answer">Mutation runs before validation so what gets validated is the final object. Persistence is last, and only then do watchers learn anything.</div><div class="extra"><a href='https://kubernetes.io/docs/reference/access-authn-authz/'>📖 API access control</a><a href='https://www.youtube.com/watch?v=jqelVFwhx4g&t=176s'>▶ Why mutating runs before validating</a></div></div></div></div></section><section><h2>u6l3::three-mechanisms <small>discrimination</small></h2><div class="pair"><div><h3>Front</h3><div class="card"><div class="kicker">Discriminate</div><div class="prompt">Scheduler preemption vs kubelet eviction vs API eviction — actor and trigger for each.</div></div></div><div><h3>Back</h3><div class="card"><div class="question-recap"><div class="prompt">Scheduler preemption vs kubelet eviction vs API eviction — actor and trigger for each.</div></div><hr class="divider"><div class="answer"><ul><li><b>Scheduler preemption</b> — removes lower-priority Pods so a pending higher-priority Pod can be placed. Trigger: a pending Pod.</li><li><b>Kubelet eviction</b> — terminates Pods under local memory or disk pressure. Trigger: the node itself.</li><li><b>API eviction</b> — voluntary disruption, honours PDBs. What a drain uses.</li></ul></div><div class="extra"><a href='https://www.youtube.com/watch?v=-QAyxUWI7Fs&t=0s'>▶ Pod priority and how it drives preemption</a></div></div></div></div></section><section><h2>u12l2::ninety-second-answer <small>name_to_definition</small></h2><div class="pair"><div><h3>Front</h3><div class="card"><div class="kicker">Explain it</div><div class="prompt">Give the 90-second Kubernetes architecture answer.</div></div></div><div><h3>Back</h3><div class="card"><div class="question-recap"><div class="prompt">Give the 90-second Kubernetes architecture answer.</div></div><hr class="divider"><div class="answer">Clients declare intent through a policy-enforcing API that persists canonical objects in etcd. Controllers reconcile those objects toward the declared state; the scheduler binds Pods to nodes; kubelets coordinate the runtime, networking and storage that make a Pod real. Services and DNS expose the endpoints that are ready. Every stage is asynchronous, observable and retryable, and the whole system is protected by ownership rules, quorum, flow control and rehearsed recovery.</div><div class="extra"></div></div></div></div></section><section><h2>u10l2::claim-to-mount <small>cloze</small></h2><div class="pair"><div><h3>Front</h3><div class="card"><div class="kicker">Complete it</div><div class="prompt">Claim to mount: PVC → external-provisioner calls <cloze>[...]</cloze> → PV created and bound → external-attacher drives <cloze>[...]</cloze> → node plugin runs <cloze>[...]</cloze> then <cloze>[...]</cloze> → container sees the mount.</div></div></div><div><h3>Back</h3><div class="card"><div class="answer">Claim to mount: PVC → external-provisioner calls <cloze>CreateVolume</cloze> → PV created and bound → external-attacher drives <cloze>ControllerPublishVolume</cloze> → node plugin runs <cloze>NodeStageVolume</cloze> then <cloze>NodePublishVolume</cloze> → container sees the mount.</div><hr class="divider"><div class="answer">Stage happens once per node; publish happens per Pod target path. Knowing which failed tells you whether the problem is the device or the bind mount.</div><div class="extra"><a href='https://github.com/container-storage-interface/spec/blob/master/spec.md'>📖 CSI specification</a></div></div></div></div></section><section><h2>u9l1::api-ndots <small>api_to_name</small></h2><div class="pair"><div><h3>Front</h3><div class="card"><div class="kicker">Name it</div><div class="prompt">Which resolver option sets the dot threshold below which a name is tried against every search suffix first?</div></div></div><div><h3>Back</h3><div class="card"><div class="question-recap"><div class="prompt">Which resolver option sets the dot threshold below which a name is tried against every search suffix first?</div></div><hr class="divider"><div class="answer"><code>ndots</code>. Raise it and external lookups pay several failing round trips before the correct absolute query is sent.</div><div class="extra"></div></div></div></div></section><section><h2>u10l1::api-wait-for-first-consumer <small>name_to_api</small></h2><div class="pair"><div><h3>Front</h3><div class="card"><div class="kicker">Give the exact token</div><div class="prompt">Which binding mode delays provisioning until a Pod is scheduled, so the volume lands in a reachable topology?</div></div></div><div><h3>Back</h3><div class="card"><div class="question-recap"><div class="prompt">Which binding mode delays provisioning until a Pod is scheduled, so the volume lands in a reachable topology?</div></div><hr class="divider"><div class="answer"><code>volumeBindingMode: WaitForFirstConsumer</code>. Under it a Pending PVC with no consumer is the designed state, not a fault.</div><div class="extra"></div></div></div></div></section><section><h2>u8l2::clusterip-timeout <small>name_to_definition</small></h2><div class="pair"><div><h3>Front</h3><div class="card"><div class="kicker">Explain it</div><div class="prompt">DNS resolves but the ClusterIP times out. Trace it.</div></div></div><div><h3>Back</h3><div class="card"><div class="question-recap"><div class="prompt">DNS resolves but the ClusterIP times out. Trace it.</div></div><hr class="divider"><div class="answer"><ul><li>EndpointSlices and Service ports — are there ready backends at all?</li><li>Hit a ready Pod IP directly: if that works, it is Service translation, not the workload</li><li>Node data plane: kube-proxy rules or BPF maps, and conntrack</li><li>Routing, MTU, NetworkPolicy</li><li>Last: is the app actually listening on that port?</li></ul>A correct data plane delivering to a closed port looks identical from the client.</div><div class="extra"></div></div></div></div></section>
+</body></html>

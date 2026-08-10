@@ -1,0 +1,181 @@
+If you've been working with Kubernetes
+for a while, you've probably heard about
+admission controllers. And if the term
+sounds complicated, don't worry. The
+idea is actually much simpler than it
+sounds.
+Think about what happens when someone
+creates a resource in Kubernetes. Maybe
+they create a pod, deploy an
+application, or create a service.
+Kubernetes receives that request through
+the API server.
+Now, imagine the API server as the
+security gate of a large office
+building.
+Before anyone is allowed inside, someone
+checks the request. Is it valid? Does it
+follow company rules? Does it need any
+modifications?
+That is exactly where admission
+controllers come into the picture.
+Admission controllers are special
+plugins that intercept requests after
+authentication and authorization, but
+before the object is actually stored in
+Kubernetes.
+In simple terms, they act as the final
+checkpoint before Kubernetes accepts a
+resource.
+Let's understand this with an example.
+Suppose a developer creates a pod
+without specifying CPU or memory limits.
+Technically, Kubernetes can allow it.
+But your organization may have a rule
+that every pod must have resource
+limits.
+An admission controller can
+automatically add those limits or reject
+the pod entirely.
+This helps maintain consistency and
+prevents bad configurations from
+entering the cluster.
+Now, there are two major types of
+admission controllers.
+The first type is mutating admission
+controllers.
+As the name suggests, these controllers
+can modify the request.
+For example, they can inject sidecar
+containers, add labels, add annotations,
+or apply default values before the
+resource is created.
+A famous example is service mesh
+technologies like Istio.
+When a a is created, a mutating
+admission controller can automatically
+inject a sidecar proxy into that pod.
+The developer never has to manually add
+it.
+The second type is validating admission
+controllers.
+These do not change anything.
+Instead, they check whether the request
+follows the required rules.
+If the request violates a policy,
+Kubernetes rejects it.
+For example, if a pod tries to run with
+privileged access, a validating
+admission controller may deny the
+request.
+So, remember this simple difference.
+Mutating controllers modify.
+Validating controllers verify.
+Now, let's walk through the complete
+request flow.
+A user sends a request to create a pod.
+First, Kubernetes authenticates the
+user.
+It verifies who is making the request.
+Next comes authorization.
+Kubernetes checks whether that user has
+permission to perform the action.
+After that, admission controllers are
+triggered.
+Mutating controllers run first.
+They can modify the resource.
+Then, validating controllers run.
+They verify the final version of the
+resource.
+If everything looks good, Kubernetes
+stores the object in etcd, and the
+resource gets created.
+This sequence is important because
+validation should happen after all
+modifications are completed.
+Otherwise, Kubernetes could validate one
+version of the object and store a
+different version.
+Now, let's talk about some commonly used
+admission controllers.
+One of the most popular is LimitRanger.
+It helps enforce resource limits and
+requests.
+If developers forget to specify them,
+LimitRanger can apply defaults.
+Another important one is resource quota.
+Imagine multiple teams sharing a
+cluster.
+Without limits, one team could consume
+all available resources.
+Resource quota prevents this by
+restricting how many resources a
+namespace can use.
+Then there's namespace lifecycle.
+This controller ensures resources are
+created only in valid namespaces.
+It prevents accidental deployments into
+namespaces that do not exist.
+Another well-known controller is default
+storage class.
+If a developer creates a persistent
+volume claim without specifying a
+storage class, Kubernetes can
+automatically assign a default one.
+This improves the user experience and
+reduces configuration mistakes.
+In modern Kubernetes environments,
+you'll also hear a lot about admission
+webhooks.
+These are extremely powerful.
+Instead of relying only on built-in
+controllers, organizations can create
+their own custom logic.
+When a request arrives, Kubernetes sends
+it to an external webhook.
+That webhook decides whether to modify
+the request or approve it.
+This allows companies to implement
+organization-specific policies.
+For example, a company might require
+every workload to contain specific
+labels.
+Or they may enforce security standards
+before applications are deployed.
+Admission webhooks make these kinds of
+policies possible.
+Now you might be wondering why admission
+controllers are so important.
+The answer is governance.
+In small clusters, people can manually
+follow best practices.
+But in large organizations with hundreds
+of developers and thousands of
+workloads, manual enforcement becomes
+impossible.
+Admission controllers ensure that rules
+are applied automatically and
+consistently.
+They improve security.
+They improve compliance.
+They reduce configuration mistakes.
+And they help maintain operational
+standards across the entire cluster.
+So, if you remember only one thing from
+this video, remember this.
+Admission controllers are Kubernetes
+gatekeepers.
+Every resource request passes through
+them before entering the cluster.
+Some controllers modify requests.
+Some validate requests.
+Together, they help ensure that only
+safe, compliant, and properly configured
+resources are allowed into Kubernetes.
+And once you understand admission
+controllers, you'll realize they are one
+of the most important building blocks
+for running Kubernetes securely and
+efficiently at scale.
+If you found this helpful, hit that like
+button and subscribe for more.

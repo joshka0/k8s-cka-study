@@ -1,0 +1,658 @@
+[Music]
+Here's something outrageous. Most people
+using Kubernetes do not actually
+understand how it works. They know how
+to write YAML files and run cube control
+apply. But when things go wrong, and
+they always do, they're completely lost.
+Why? Because they do not understand
+controllers. Controllers are the beating
+heart of Kubernetes. They're what make
+your pods automatically restart when
+they crash. What scale your applications
+up and down and what make custom
+resources feel like native parts of the
+platform. Without understanding
+controllers, you're just throwing YAML
+at the wall and hoping that it sticks.
+In this video, we're going deep into how
+controllers actually work. Not just the
+basic concepts, but the real mechanics.
+We will explore how they consume and
+emit events, how they coordinate with
+each other, and why understanding this
+will make you infinitely better at
+building and debugging Kubernetes
+systems. Whether you're just using
+Kubernetes or building your own
+controllers, this knowledge will
+transform how you think about the
+platform.
+So what exactly is a Kubernetes
+controller? At its heart, a controller
+is a piece of software that implements a
+continuous control loop. It's constantly
+watching what's happening in your
+cluster, comparing that reality with
+what you declared you want, and then
+taking whatever actions are necessary to
+bridge that gap. Think of it like a
+thermostat in your house. It monitors
+the temperature, compares it to what
+you've set, and turns the heating or
+cooling on or off to maintain your
+desired temperature. This brings us to
+the fundamental principle that makes
+Kubernetes so powerful. You have
+declarative configuration where you
+describe what you want your system to
+look like, not how to get there. Then
+you combine that with reactive
+reconciliation
+controllers that automatically respond
+to changes and drift. When you put those
+two concepts together, you get something
+pretty damn cool. You get self-healing
+systems. Your applications don't just
+run. They actively maintain themselves
+in the state you declared even when
+things go wrong. But how does this
+actually work? The magic happens in what
+we call the control loop. And it's
+beautifully simple. The controller
+observes the current state of the
+resources it's responsible for. Then it
+compares that current state with the
+desired state you declared. At this
+point, it asks a simple question. Do
+those two match? If the states don't
+match, the controller takes corrective
+action to close that gap. But if
+everything is already in the desired
+state, it simply waits for the next
+event or change to occure. Either way,
+the process loops back to the beginning
+and starts over. It is an endless cycle
+of observing, comparing, deciding, and
+acting when necessary. Now, here's a
+critical requirement that trips up a lot
+of people when they're writing their own
+controllers.
+Potency. This means that your controller
+must be able to run the same operation
+multiple times without screwing things
+up. Think about it. If your controller
+crashes or restarts, or if it processes
+the same event twice, it shouldn't
+create duplicate resources or put your
+system in an inconsistent state. The
+operation should produce the same result
+whether you run it once or 100 times.
+But here's what's really interesting.
+We've been talking about this control
+loop like it's constantly running, but
+how does the controller actually know
+when something changes? You may think
+it's pulling the API server every few
+seconds or every few minutes, but that
+would be incredibly inefficient. The
+real answer is much much more elegant.
+Now let's dive into how controllers
+actually consume events. This is a
+crucial aspect that many people
+overlook. Controllers don't just emit
+events, they also consume Kubernetes
+events as first class resources to react
+to cluster changes. Think of it as a
+two-way street where controllers both
+listen to what's happening and announce
+what they're doing. So here's how the
+event consumption pipeline works. It all
+starts when something happens in your
+cluster and an event is created by the
+Kubernetes API. This could be Cublet
+generating an event when it pulls an
+image. The scheduleuler creating an
+event when it can't place a pod or any
+other cluster component broadcasting
+what it's doing. Controllers on the
+other hand set up event watching to
+monitor specific event resources. They
+don't just blindly consume every event
+in the cluster. That would be chaos.
+Instead, they use field and label
+selectors to watch only the events they
+actually care about. When they're
+watching for events, controllers need to
+understand the event types they are
+dealing with. Kubernetes has only two
+types. Normal events, which
+areformational messages like pulled or
+started, and warning events, which
+indicate potential issues like failed
+scheduling or back off. For example, a
+cluster autoscaler controller might
+watch for failed scheduling warning
+events and react by adding more nodes to
+a cluster. Now, where do those events
+actually come from? Event sources are
+all over your cluster everywhere. The
+cublet generates events when it pulls
+images or starts containers. Theuler
+creates events when it can place a pod
+and other controllers emit events about
+their operations. Basically, every major
+component in your cluster is constantly
+broadcasting what is doing through those
+events. Now, with all those events
+flying around, controllers need smart
+event filtering to focus on what
+matters. They can filter by event type,
+but like warning and normal, by specific
+event reasons like for example fail
+scheduling or pulled, by the kind of
+object involved such as pod or
+deployment, and even by namespace scope.
+Without this filtering, your controller,
+any controller, would drown in
+irrelevant noise. But filtering isn't
+enough. You also need the duplication to
+prevent processing the same event
+multiple times. Controllers use unique
+keys to track which events they've
+already handled. This is crucial because
+the same event might come through
+multiple times due to network issues or
+controller rests and you don't want your
+controller taking the same action
+repeatedly. Finally, there is rate
+limiting. Implementing backup strategies
+to avoid overwhelming external systems.
+If your controller is reacting to a
+flood of events, you don't want it
+hammering your APIs or external
+services. Smart rate limiting helps your
+controller be a good citizen in the
+cluster ecosystem. After all those
+checks and filters, the controller
+finally processes the event, taking
+whatever action is appropriate based on
+the event type and content. This might
+mean scaling up nodes, sending alerts,
+updating metrics, or triggering
+remediation workflows.
+Now, let's flip the script and look at
+the other side. Event emission.
+Controllers don't just consume events.
+They also emit their own events to
+provide observability, create audit
+trails, and enable communication with
+other controllers. This is how
+controllers broadcast what they're doing
+to the rest of the cluster ecosystem.
+So, here's how the event emission
+process works. It starts when your
+controller performs a controller
+operation which could be creating a
+deployment, scaling a replica set,
+updating a service or any other action
+your controller is responsible for
+managing anything. As part of this
+operation, the controller uses event
+recording through the event recorder
+interface to create events. Think of
+this as your controller's way of writing
+to a shared log book that everyone
+everyone in the cluster can not
+necessarily does but can read.
+Controllers typically emit different
+event categories depending on what's
+happening. You've got operational events
+for normal controller operations like
+for example deployment created when a
+controller creates a new deployment or
+pod scheduled when the scheduler assigns
+a pod to a node. Success events
+celebrate when things go well, like
+image pool succeeded, when a container
+image downloads successfully. And error
+events signal failures and warnings like
+failed to create a pod uh when a pod
+cannot be created or insufficient
+resources when there aren't enough
+cluster resources available. When those
+events are emitted, they trigger
+reactions through the cluster ecosystem.
+A monitoring controller might see failed
+create pod and fire off an alert to your
+slack channel. For example, a cluster
+autoscaler might catch insufficient
+resources and spin up additional nodes.
+A nodited controller could log all
+deployment created events for compliance
+tracking. This is how controllers
+coordinate and create that self-healing
+behavior we talked about earlier. Now
+when controllers decide to emit an event
+based on the operation result they need
+to structure it properly. Every event
+has four key components. The object
+which resource the event relates to the
+type normal or warning. The reason a
+machine readable uh cause like failed
+scheduling or image pool succeeded. And
+finally the message which is a human
+readable description that explains what
+actually happened. For example, if a pod
+fails to schedule, you might get an
+event with object pointing to that
+specific pod type as warning reason and
+failed scheduling and message as zero
+out of three nodes are available in
+sufficient memory for example. Now, one
+thing to keep in mind about event life
+cycle is that events do not stick around
+forever. Kubernetes automatically cleans
+them up after one hour by default. This
+prevents your cluster from getting
+clogged up with old event data. But it
+also means if you need long-term event
+history for compliance or debugging, you
+will want to ship them to a data store
+like Elastic Search or Prometheus or
+Influx DB or anywhere else. Kubernetes
+also handles event aggregation to reduce
+noise. If the same event keeps happening
+repeatedly, it will group them together
+instead of spamming you with identical
+events. For example, if a pod keeps
+failing to pull an image, instead of
+creating 50 separate image pool error
+events, Kubernetes will create one event
+and increment the counter sharing or
+showing to be more precise that it
+happened 50 times. And once the event is
+properly structured, the controller
+evaluates the operation result to
+determine what type of event to emit.
+Whether it is normal event for
+successful operations or a warning event
+for problems and errors. From there on
+the event gets stored in the API server
+making it available throughout the whole
+cluster ecosystem where it can be
+consumed by monitoring tools, other
+controllers and administrative commands
+like cube control events. Anything can
+listen to them.
+Now let's dive into the heart of how
+controllers actually work. the
+reconciliation loop. This is where all
+the magic happens where your controller
+continuously ensures that reality
+matches your desired state. So what
+kicks off this reconciliation process?
+There are several trigger sources that
+can wake up your controller events from
+the cluster like uh pod failing,
+periodic recuing your cluster checking
+things on a schedule, direct resource
+changes like someone updating a
+deployment or external web hooks like
+that could be let's say monitoring
+system detecting an issue. Essentially,
+anything anything that can might affect
+the desired state of your resources can
+trigger reconciliation. Anything. Now,
+when any of those triggers fire, they
+all funnel into a single reconcile
+function. Think of it as the main entry
+point that handles all resource state
+changes. No matter what triggered the
+reconciliation, whether it was an event,
+a timer, or a user action, it all goes
+through this one function, this design
+keeps things clean and ensures
+consistent behavior regardless of what
+woke up your cluster. All in all, here's
+how the reconciliation process unfolds
+step by step. First, reconciliation is
+triggered by one of those trigger
+sources we just discussed. Maybe a user
+scaled up a deployment or a pot crashed
+or your controller's periodic timer went
+off. Next, the controller needs to fetch
+the resource from the API server to get
+the current state. It uses the namespace
+name, basically the resource name and
+the namespace to identify exactly which
+resource triggered this reconciliation.
+For example, if someone updated my app
+deployment in the production name space,
+that's what gets fetched. Next, the
+controller then checks the crucial
+question. Does this resource still
+exist? If someone deleted the resource,
+the controller needs to handle cleanup.
+If the resource is gone, it performs any
+necessary cleanup actions and wraps it
+up. But if the resource still exists,
+then then only then the real work
+begins. This is where the core logic
+kicks in. Comparing current versus the
+desired state. The controller looks at
+what the resource spec says it should
+look like, the desired state, and
+compares that with what it actually
+looks like right now, which is the
+current state from the API server. For
+example, if the deployment spec says
+there should be five replicas, but the
+current state shows only three pots
+running, there's a mismatch that needs
+to be fixed. Now based on this
+comparison, the controller asks another
+key question. Does the state differ? If
+everything matches perfectly, the
+desired replica count matches the actual
+running pods, all the right labels are
+in place, the container image is
+correct, and so on and so forth, then
+there might not be much to do except
+maybe update the status. But if there is
+a difference, oh boy, that's when the
+controller springs into action. When the
+state differs, the controller moves into
+action planning mode. It needs to figure
+out exactly what actions are required to
+bridge the gap between the current and
+the desired state. This might mean
+creating new pods, updating existing
+ones, deleting old resources, or
+modifying configurations. The controller
+builds a plan of what needs to happen to
+get from where things are to where they
+should be. Once the plan is ready, it's
+time to execute those actions. This is
+where the controller actually makes
+changes to the cluster, creating that
+missing pod, updating the service
+configuration, or whatever else needs to
+happen. The controller carries out each
+step in its plan, making API calls to
+modify resources as needed. After
+executing the actions, the controller
+needs to know were the actions
+successful. Did the new pod get created?
+Did the configuration update take
+effect? This determines what happens
+next in the reconciliation process. Now,
+regardless of whether the action
+succeeded or failed, the controller
+needs to update the status of the
+resource to reflect the current
+situation. If everything went well, it
+updates the status to show success. If
+something went wrong, it records the
+error in the status so you can see what
+happened when you check the resource
+later. Finally, the controller handles
+the result by deciding what to do next.
+This means deciding whether the
+reconciliation succeeded or failed and
+whether it should try again later. If
+everything is good, it might be done
+until something changes. If there was an
+error, it might schedule a retry after a
+delay using exponential backoff to avoid
+helling the system. Now you might be
+wondering, hey, with all those events
+and reconciliation loops happening, how
+does Kubernetes handle dozens of
+controllers all watching the same
+resources without overwhelming the API
+server? The answer involves some
+seriously clever engineering.
+Okay, now that we understand the
+reconciliation loop, let's dive deeper
+into how controllers actually watch for
+changes in the cluster. This is the
+infrastructure that makes the whole
+reactive system work. At the foundation,
+the Kubernetes API server provides a
+watch API through special endpoints that
+stream resource changes in real time.
+Instead of your controller constantly
+pulling, hey, did anything change? The
+API server pushes notifications whenever
+something happens. When someone creates
+a new pot, scales a deployment or
+updates a service, your controller gets
+notified immediately through these watch
+streams. However, row watch streams
+would be pretty overwhelming for
+controllers to handle directly. That's
+where informers come in. Think of them
+as a smart client side caching layer
+that sits between your controller and
+the watch streams. Informers maintain a
+local copy of the resources you care
+about and provide clear event
+notifications when things change instead
+of dealing with the row API events. Your
+controller gets nice organized
+notifications about what happened. Now,
+here's where it gets really clever.
+Instead of every controller creating its
+own informer, which would mean multiple
+watch streams for the same resources,
+Kubernetes uses shared informers. One
+informer can be shared across multiple
+controllers. So if you have three
+controllers, let's say that all need to
+watch deployments, they can all use the
+same underlying informer. This is way
+more efficient and reduces load on the
+API server. The shared informer
+maintains a local cache of all the
+resources it's watching, so controllers
+can quickly access current state without
+hitting the API server every single
+time. When changes come in, the informer
+notifies multiple event handlers, one
+for each controller that's interested in
+those resources. Those event handlers
+then put the relevant changes into
+separate work cues, one per controller.
+So each controller gets its own stream
+of events to process. Finally,
+each controller processes events from
+its own work at its own pace and it is
+triggering reconciliation when or if
+needed. There's also a safety mechanism
+called the reync period. By default,
+every 10 hours, the informer triggers a
+full reconciliation of all resources it
+is watching, even if nothing has
+changed. This catches any event that
+might have been missed due to network
+issues or bugs or other problems. It's
+like doing a periodic sanity check to
+make sure your controller's view of the
+world matches reality. Okay. Now, what
+types of events flow through this
+system? Controllers receive five five
+main event types. Added when a new
+resource is created, like when you
+deploy a new pod. Modified when an
+existing resource changes, like scaling
+a deployment from three to five
+replicas. Deleted when the resource is
+removed. Bookmark for periodic
+checkpoints to help with
+recynchronization
+and error when something goes wrong in
+the watch stream itself. To keep
+everything consistent and handle
+conflicts properly, Kubernetes tracks
+resource versions. Think of them like
+version numbers that increment every
+time a resource changes. If your
+controller tries to update a deployment
+based on version 42, just to save some
+number, but someone else already updated
+it to version, let's say 43, the API
+server will reject your change and you
+will need to reconcile based on the
+newer version. This prevents different
+controllers from accidentally
+overwriting each other's changes.
+And finally, here's where controllers
+become truly powerful. They can extend
+Kubernetes with entirely new resource
+types through custom resource
+definitions. Think about it. When you
+use cube control apply with an ingress
+resource or create a certificate for TLS
+or deploy a git repository for GitHubs,
+you're interacting with custom resources
+that controllers understand and manage.
+CRDs or custom resource definitions are
+how controllers make themselves feel
+like native parts of Kubernetes. The
+foundation of any CRD is its schema
+definition. This open API v3 schema
+defines exactly what structure your
+custom resource can have and what values
+are valid. For example, if you're
+building a database cluster controller,
+the schema defines that users must
+specify things like replicas, storage
+size, and version, for example, while
+preventing them from setting invalid
+combinations that would break their
+database. So, here's how the whole
+relationship works in practice. First,
+you define a CRD that describes a new
+resource type. Let's say a database
+cluster that defines what fields users
+can specify like database type, replica
+count, and storage size. Then users
+create custom resources or CRS, which
+are actual instances of that type like I
+want a posgusql cluster with three
+replicas and 100 GB storage. Then your
+controller watches for those CRs and
+sees hey someone wants a posgressql
+cluster. The controller then creates the
+real resources posgressql pots to run
+the database services for network access
+persistent volumes for data storage and
+so on and so forth. Then the controller
+updates the custom resource status to
+show progress like hey database is
+provisioning or database cluster is
+ready. Finally the user sees the ready
+status and knows that their database
+cluster is available for use.
+Okay. So far we looked at individual
+controllers doing their thing. But
+here's where it gets really interesting.
+Controllers rarely work alone,
+constantly coordinating with each other,
+like a team of specialists working on
+different parts of the same project.
+When you deploy an application with an
+Ingress, for example, you're actually
+triggering a chain reaction across
+multiple controllers that need to work
+together while still not being even
+aware of each other. The primary way
+controllers communicate is through
+event-driven coordination. When you
+create an ingress resource, it triggers
+events that multiple controllers are
+watching for. The ingress controller
+sees it and creates the necessary load
+balancer configuration. Search manager
+notices the TLS annotation and
+provisions a certificate. The DNS
+controller updates records to point to
+the new endpoint and so on and so forth.
+Each controller does its specialized job
+triggered by events from the others.
+Controllers can also share ownership of
+resources through shared custom
+resources. Multiple controllers can
+watch the same custom resource each
+responsible for different aspects. For
+example, a database controllers custom
+resource might be watched by one
+controller that provisions the database
+pods, another that handles backups and a
+third that manages monitoring. Each
+controller handles its specialized
+aspect of the resource. They coordinate
+not directly but by updating different
+parts of the status and by doing that
+they're avoiding conflicts through
+careful API design. The most elegant
+coordination happens through labels and
+annotations. Controllers use labels to
+signal their intent to address like hey
+I'm managing this or hey this needs
+backup or ready for traffic. Annotations
+carry metadata between controllers
+configuration details, state information
+or instructions that other controllers
+can read and act upon. Then other
+controllers read those signals and take
+appropriate action. It's like leaving
+notes, postits, right, for your
+teammates on shared resources.
+So there you have it. Controllers are
+what make Kubernetes feel magical. When
+you execute cube control apply a
+deployment and watch pods automatically
+appear and scale and heal themselves,
+you're seeing controllers at work. When
+you create a custom resource that
+suddenly have complex applications
+managed as easily as built-in resources,
+that's the power of controller pattern.
+So think about everything we covered.
+The endless reconciliation loops
+ensuring your desired state become
+reality. the sophisticated event system
+letting controllers react instantly to
+changes. The custom resource definitions
+that let you extend Kubernetes with your
+own concepts and the elegant
+coordination between controllers that
+make complex multicomponent applications
+work seamlessly. What makes this pattern
+so powerful is its simplicity.
+Controllers just watch, compare, and
+act. Yet this simple pattern scales from
+managing a single pot to orchestrating
+entire distributed systems. Every
+controller follows the same fundamental
+approach. Whether it's the built-in
+replica set controller ensuring you have
+the right number of pods or your custom
+database cluster controller provisioning
+complex stateful workloads. So now that
+you understand how controllers actually
+work, you can design better systems,
+debug issues more effectively, and make
+informed decisions about when to build
+custom controllers versus using existing
+solutions. When something goes wrong in
+your cluster, you will know to look at
+controller logs, check reconciliation
+loops, and understand the event flow.
+This knowledge transforms you from
+someone who just uses Kubernetes to
+someone who truly truly understands it.
+Thank you for watching. See you in the
+next one. Cheers.

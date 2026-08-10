@@ -1,0 +1,691 @@
+hi everybody welcome to my presentation
+at kubiconcloud.com north america 2020
+virtual
+the topic here today is api priority and
+fairness
+could be ips overflow control protection
+before we are getting started i need to
+say that
+because this presentation is held online
+virtually
+so i enrich the contents of this
+powerpoint service so that you can check
+out the details after it's finished
+in the topic is about a
+new feature gate introduced into
+kubernetes 118 release named api
+priority and fairness
+and earlier this year in april there is
+a official blog on the kubernetes sites
+named api priority and furnace alpha
+which basically tells you what's
+happening
+in the alpha releases and if you don't
+got
+any backgrounds or any other
+informations about this feature
+i highly recommend you to with this vlog
+it's
+only gonna take you like five minutes
+so for for folks who are interested in
+the
+design or implementation details
+there is also a cap under the
+kubernetes cvp machinery folder
+it's gonna take you have a deeper
+insight of this feature um
+and the things you might be interested
+um when in terms of further customizing
+for your cluster
+um then i'm gonna have a brief
+introduction about myself
+i mean i'm working at um ounce group
+as a software engineer and i've been
+working as
+the api machinery for about three years
+and i'm also a kubernetes c api
+machinery subject owners
+covering several subjects my github
+analysis ue 994488q
+the same name is also my gmail account
+if you got any questions after this
+presentation please feel free to contact
+me
+by either the email or the names on the
+kubernetes slack channels
+so um the the team the squad building
+this feature
+covers many different developers from
+different countries
+in different um companies and my
+uh so there's mike from ibm daniel from
+google
+david from red hats and there are also
+other
+contributors so far uh aaron johnson
+bruce lee monge thank you for all your
+contributions so far
+then let's take a look at the agenda of
+our
+presentation today um we're gonna show
+you the
+background and motivation of this
+feature then there's going to be a
+visit virtual inspection of system
+design
+and and next i will also show you the
+r for the offer station implementation
+uh which
+basically covers the api models in uh
+a and and the systems the implementation
+sources
+and then we move on to the demo
+in which i will show you how to
+customize flow control settings for your
+own clusters
+mostly we are using a kmd cluster
+which is just created by me um
+in the virtual um um not not in a
+virtual website
+it's um just a new brand new cluster
+so that you can easily reproduce that
+you can easily
+rerun that in your local environment and
+at last i will show you there's a few
+planned enhancements for the data stage
+okay let's move on to the first part the
+background and motivation
+basically there are two higher goals of
+our future
+the first one is the self-protection
+um which basically covers two points
+the first is prioritize cluster critical
+requests for self-maintenance
+and the second one is prevent spamming
+clients or buggy controllers from
+stunning the whole cluster
+the the first one is basically saying
+that we are going to sort all the client
+requests into different priorities and
+the second one is saying that we are not
+um we are not allowing any client
+request to
+spoil all the clusters there will be a
+vanilla
+isolation between clients um
+as for protection we are actually
+protecting cool bfa servers from
+incoming client requests
+so we should start by understanding
+there are different kinds of client
+requests being served by the
+typical kubernetes servers there are ips
+server
+loopbacks delegated requests from a
+aggregated api server or
+mission reports there are also
+controller requests
+and there are email requests
+um as for kubernetes server loopbacks
+so the coolback server instance will be
+requesting against itself even if there
+are no client requests at all
+such as um there's a informal factory
+instance
+singleton in each of the google play
+server process
+uh basically the cool web server need to
+know the actual status of
+each clusters by accessing the
+object cache provided by the informal
+factory
+all of these informers will keep raising
+a list and watch requests
+against the cool web server until it's
+down
+and there are also several embedded
+controllers inside equipment
+server uh for example there's cluster ca
+rotators
+and there are crd related controllers um
+and there are also api server
+application related controllers
+all of these controllers should be
+regarded as
+first-class citizens in the kubernetes
+world because
+they are strongly connected with the
+house status of whole cluster
+if you are failing the cluster loopbacks
+then there's gonna be bigger problems in
+your clusters
+um the your clusters is very very likely
+to be crashing down
+and as for the delegated request from
+aggregate api server and mission
+notebooks
+so basically the google server provided
+us some
+extensibilities to allows us
+to add new results to the cluster
+and also intercept some of the resources
+these extensions will be invoked during
+the time when the curriculum
+server serving a incoming request for
+example if you add a
+mission web box on the powder resource
+then
+when you are start starting a request
+against
+kubernetes server on portal resource
+then the kubernetes server will raise
+another request against the
+emission reports um the secondary
+request should be should have a higher
+priority than the original request
+otherwise there is going to be a
+deadlock in the request chain which is
+going to cause some problems in the
+clusters
+and there are also controller problems
+uh we had a situation where a bug in the
+deployment controller
+caused it to run a mac under certain
+certain circumstances
+usually issuing requests in the types
+loop
+so we'd like these um controller parts
+not to take the whole system down
+um these controllers
+can also be some custom controllers
+which is
+developed by elaborating some
+scaffolding tooling for example
+computers
+playing with the custom resource
+definitions and
+if if these buggy controllers can have
+these
+new behaviors um it's going to be a harm
+to recruitment
+server as well
+so the there can be controller
+singletons
+and there can be also daemons it can be
+a
+couplet proxy or other per node
+controllers
+um if there are bugs in these
+per node controllers the impact the
+influences on the system is gonna
+be multiplied from the uh controller
+singleton
+so we definitely want to avoid them
+um on the other hand these
+uh the issues from daemons doesn't
+necessarily connect it with a bug it can
+be the cluster reaching its scalability
+limits
+for example if you have too many nodes
+in the cluster
+then your cluster will be reaching the
+scalability
+settings but we don't we don't know the
+ceilings until we actually reach it so
+um but at least at least
+we don't want the newly added node to be
+um taking the whole system down um
+there should be a way to make the
+cluster keep running
+even if there's too many demands added
+to the passer
+there's another higher proposed
+multi-tenancy
+which demands us to provide
+guaranteed capacity for controllers that
+are considered
+less important and the tenants in the
+same priority band
+sharing the cluster should get an equal
+share of their service
+um so i believe that kubernetes is
+designed to be shared by multiple
+tenants
+there are many different kinds of
+tenants definitions so far uh a tenant
+can be a namespace can be a user
+can be several users sharing a prefix
+or several users having the same
+host in the same group and don't forget
+that there's another
+subproject under kubernetes 6 named
+multi-tenancy
+which has a brand new definition of
+tenants which is basically
+a group of name spaces
+there are also non-goals of our
+future background there will be no
+coordination between the api server
+now is a external load balancer
+and will be also not to attempt auto
+tuning the capacity
+we will not attempt to reproduce the
+functionality
+of the existing event we're limiting
+emission plugin
+the mission plugin is basically
+intercepting the request against
+event resource by using a token bucket
+filter
+so this one is basically saying that we
+are not generalizing the
+token bucket filters to all the
+resources or something like that
+let's move on to the second part the
+system design retrospective
+so uh we need to know their um basics
+about
+flow counter algorithms um there are
+basically two kinds of flow control
+algorithms the first one is that the
+source or the client side
+and the second one is that the gateway
+or server services
+um this client-side re-limiting is
+already supported
+because uh could observable about
+the the kubernetes triangle provides a
+token bucket re-limiter for muzzling the
+clients
+and there was even a dedicated emission
+controllers for
+limiting the re-limiting the events but
+there are still
+a few known defects the first one is
+that user can opt out
+from the limiting by granting the
+token buckets minus or infinite capacity
+and also it's um sometimes it's tough to
+control the granularity if there are
+multiple controller multiple clients uh
+in
+building in the same components in the
+same core processes
+for example we want a higher um
+a loose a loose control limiting for one
+controller
+and tighter for another then it's going
+to be
+a bit tough to configure
+um then let's take a look at the
+existing limiters in the kubrick
+servers um there are two dimensions
+to to do the limits the first one is
+by configuring max mutating requesting
+flights
+max request in flight flex which allows
+you to
+set the limits of required concurrency
+request count
+on either mutating requests or
+non-mutating requests
+and you can also apply a timeout for
+non-wrong running requests
+which is basically the non-watch
+requests
+then let's move on uh learn from the
+linux
+qt's systems
+because it's going to be really helpful
+for us to understand
+how the um the
+linux networking system really limiting
+systems which is already proven to be
+successful
+um there are basically two kinds of
+qdisk in linux networking the first one
+says
+classless and class 4
+there are there are a few outstanding
+algorithms from robbing codel tbf
+under the classless q disk and actually
+there
+there's a longer list of it but
+we're not showing every algorithms just
+a few
+uh outstanding algorithms um
+anyway the in the class list qdisk every
+request will be regarded
+equally um but in the kubernetes
+api server um there's already a system
+of authentication
+authorization so there is already a
+abstract
+of user identities um so
+we need the task force in building the
+google
+server there there's
+a few um class for queue this
+algorithms building in the linux
+networking systems
+um there's deficits wrong grouping
+and hierarchical token buckets
+to mention one thing to mention is that
+we are learning a lot from the both
+algorithms i remember we spent like
+several meetings discussing um the
+differences from
+that deficit from robin uh and there's a
+few other algorithms
+especially the hierarchical token
+buckets it's a bit
+complicated but um it's it's proven to
+be working
+well for most of the use cases
+so um here's a obstruction of
+a flow control system class for flow
+control system
+we want to build in the google web
+server they're basically gonna be
+three abstract components the first one
+is the rule-based classifier
+then a queue assigner then a queue
+scheduler
+the three components is basically
+working like a
+lambda functions classify a maps request
+through a
+request class a keyword signer puts a
+request in a request class into into
+certain queues
+then secure scanner applies delays to
+the queues
+where the um where the request is
+waiting um
+then let's move on to the to what we can
+do in the classifier
+um we extend the obstruction of class
+from linux tc systems to priority levels
+in the cloud web server in the new flow
+control system
+a priority level is a priority level
+band that request in higher priorities
+should have
+a higher should be executed in prior to
+lower priorities and a priority level
+is a request class in which all of these
+matching requests will be handled
+equally and
+a parameter level is also a pro a
+request class
+where we applies the same rejection
+strategy
+so to classify the request into proper
+priority levels
+the informations we can get from the
+crew backup server
+request contacts is um
+for the first one is client side
+identity uh for now there are two kinds
+of
+useful identities the first one is the
+user or username
+then the user groups like a list of tags
+on the users
+then there are requesting targets
+um which basically covers the requesting
+name spaces and other request metadata
+from example the works
+then the targeted resource types etc
+um so so we know that what we are doing
+in the keyword designer is basically
+uh mapping a request to
+a priority level using the identity
+of this
+then let's move on to the keyword
+designer um
+so each priority level contains a group
+of
+request cues for scheduling uh the pro
+the question is how to map a request to
+one of the cubes
+um one way one easiest way or
+intuitive way is to map one cube per
+user
+um if you have um 10 users then you're
+going to have
+10 qs in the for one priority levels
+but there are going to be problems if
+you have tens of thousands of users
+there if you have tens of thousand
+skills in your product level then
+there's gonna be a
+uh significant memory cost um
+to avoid that we use another technique
+named the shuffle shading
+um the shuffle shading helped us to
+bounce
+the memories into um
+into a fixed number a constant number uh
+in the bar
+in this picture i showed you a shuffle
+shouting of hand size q
+and basically
+the users from user one for example is
+started
+in a round round-robin manner to both q1
+and q2
+so that's the other users
+um the this picture also showed
+you that when the uh there's some
+problem with the
+user user 1 then
+the impacts will be spread to q1 and q2
+so the user 3 number 3 will not be
+affected at all
+and but user two and user four will be
+partially
+impacted um the higher
+a higher number of uh handsets you have
+the um the impact will be shouted lesser
+and as for the q scheduler um
+we we have we are we're using a
+algorithm named fair queueing
+which is basically aiming at achieving
+the following goals
+or when s4 scanning requests form kills
+the first one is the even distribution
+of
+service capacity and the other is the
+maximum fairness
+there are a few i got a few uh details
+about the fair killing
+but we are not expanding them today
+because
+of because the time is limited um
+so uh if you got interested in the fair
+curing algorithms you can
+uh revisit this slides afterwards
+um so we had a variant of fair querying
+for server requests
+to solve these um limitations for google
+server
+the first one is dispatching requests to
+be served
+rather than packages to be transmitted
+second one is multiple requests can be
+served at once
+the third limitation is actual service
+time is not known
+until a request is done being served
+um so we made a few
+mutations variants to the fair queuing
+algorithm so that
+we can adapt to the code before server
+um i'm still not going to expand it
+to save our time so this is um
+the our flow control system gonna be
+located
+uh there's a priority level
+classifier and shuffle sharding can be
+fair qe
+then let's take a look at the alpha
+level uh
+api definition models uh you can acquire
+the
+new feature by enabling the feature
+gates and
+add a new flags to the qrp servers
+starting flex um
+this is the exam flow schema
+where you can see we we uh it matches
+uh uh then when
+a user in the group sees the masters
+uh accessing everything in the cluster
+then it will be
+matching the exam flow schema there is
+also a catch all
+flow schema one thing different is that
+it has a distinguisher method
+if you've got interested in
+distinguishable method and
+you can you can take a take a look at
+the caps to
+know how what what what this is doing
+and uh in the priority level
+configurations
+uh you have places to configure the
+hand sizes for shuffle sharding which we
+just talked about and then i'm gonna
+have a
+demo of customizing this
+so i'm using a cluster
+so um
+you can you can create a new kmd cluster
+using these settings
+and here we got a um
+gravity level named workload medium
+we are creating this to the cluster
+and we create a new uh flow schema
+which matches and then the users from
+demo user
+um
+then we can take a look at this graphene
+dashboard
+in this panel uh it shows you the
+capacity limit
+of this priority level and the
+qps of each proto level
+how the requests of each protein level
+are killed i've been waiting
+in the actual executing time cost
+of each party level or all of this um
+pans are calculated
+by using pp50
+p90 p99 um
+um in this example the
+um medium the workload medium current
+level configurations only has a
+concurrency
+shares of one uh
+now we give it a higher concurrency
+share
+for example 15.
+then we apply then we apply this to the
+cluster
+um then you can see
+the concurrency shares are recalculated
+um the uh
+the medium the medium workload product
+level configuration
+now gets a capacity limit of 120
+um yeah and
+um because the time is limited so i i
+can't
+show you how everything works
+um uh if you if you've got questions i
+can
+give you a detailed demo
+after or offline
+let's let's give on
+move on to the presentation
+uh then it's the planned enhancements
+for better stage
+there are a few there are blocking items
+and non-blocking items planned for
+better stage
+as for blocking items um
+um it's um improving the observability
+and robustness
+um we added a debug uh we're adding a
+debug
+endpoints to the api server which is
+already done i believe it's
+already published in kubernetes 119
+release
+and
+there's also a few new metrics added to
+the system
+which is definitely helpful
+but i'm not showing them to you in this
+presentation because it's
+uh basically used for debugging
+and if you've got interested i can
+answer that in the q a section
+and um the second one is providing
+approaches to
+opt-out client-side we're limiting uh
+i'm not sure if it's
+um done so far but um
+the ultimate goal is to remove the
+client side we're limiting
+um to move them onto the server side
+or at the gateway and then the third one
+is we are doing necessary e2e tests
+um this is uh our current progress
+we are adding e2e tests um
+hopefully before 120 release
+and as for non-blocking items
+here's a few optional goals the first
+one is
+supports concurrency limits on loan loan
+running request
+and the second one is allow constant
+concurrency
+and relative shares in priority level
+api model but for now it's only a
+proportion of api shares api concurrency
+shares
+we hope to allow users to
+configure a fixed uh concurrency or
+preserved concurrency for a priority
+level
+um the third one is automatic
+automatically manages versions of
+mandatory
+and suggested configurations um this one
+is basically saying that we are
+providing a better user experience
+um for users to roll out
+to update upgrade system presets
+flow control settings um
+flexibly and the first one
+is discriminate paginated list request
+this is um what we are
+trying to achieve before one twenty
+release
+because um i'm paginated release request
+is uh very likely to harm the cluster
+and and it's almost happening every day
+in our production classes so uh
+we hope to prevent this from happening
+um so this is what we are
+going to do non-blocking items for
+bigger stage
+uh for more uh graduating criterias
+for better stage you can also read them
+from the cap
+and thank you for um visiting my
+presentation then let's move on to the q
+a
+session thank you

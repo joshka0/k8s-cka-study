@@ -1,0 +1,177 @@
+{
+  "title": "Four Different Promises",
+  "subtitle": "Module 04 — workload controllers, autoscaler conflict, and what a PDB really covers",
+  "series": {
+    "module": 4,
+    "unit": "u4",
+    "spineSegment": "controller queue",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/content.js unit u4.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 26,
+      "narration": "Still on segment three, one level up. The pilot showed a Deployment becoming a ReplicaSet becoming Pods. This module is why you would pick something other than a Deployment, and what happens when two autoscalers disagree.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE with segment three lit, annotated 'the objects controllers create'."
+      }
+    },
+    {
+      "id": "four-promises",
+      "n": 1,
+      "stage": null,
+      "title": "Pick by invariant",
+      "lane": "control",
+      "estSeconds": 60,
+      "narration": "Four workload kinds, four different promises. A Deployment manages ReplicaSets of replaceable Pods and gives you controlled rollouts. A StatefulSet adds stable ordinal identity, ordered lifecycle, and a claim per Pod. A DaemonSet targets eligible nodes rather than a replica count. A Job targets a number of successful completions. Choose by the invariant your application actually needs, not by what it stores.",
+      "visual": {
+        "type": "workloadMatrix",
+        "spec": "NEW. Four cards side by side. Each names its promise in large type and its replacement rule underneath: replaceable / identity + order / one per eligible node / retry until success. Animate one Pod failing in each and show the four different responses."
+      }
+    },
+    {
+      "id": "statefulset-limit",
+      "n": 2,
+      "stage": null,
+      "title": "What a StatefulSet does not do",
+      "lane": "control",
+      "estSeconds": 52,
+      "narration": "The most common wrong answer is that a StatefulSet makes an application stateful-safe. It does not. It provides identity and ordering primitives. Replication, consistency and failover are properties of the software running inside the Pod. A StatefulSet cannot turn a single-writer database into a cluster. It can only guarantee that the Pod which comes back is recognisably the same one, with the same name and the same volume.",
+      "visual": {
+        "type": "statefulLimit",
+        "spec": "NEW. A StatefulSet with three ordinals. Kill Pod 1; it returns with the same name and the same PVC bound. Alongside, a callout showing what did not happen: no data replicated, no leader elected — greyed and struck."
+      }
+    },
+    {
+      "id": "daemonset-job",
+      "n": 3,
+      "stage": null,
+      "title": "Coverage versus completion",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "DaemonSet and Job are the pair people conflate least often but explain worst. A DaemonSet guarantees coverage. It tracks the set of eligible nodes, so it adds a Pod when a node joins and removes one when a node leaves. A Job guarantees completion. It tracks a success count and retries until it reaches it. One follows the cluster. The other follows a target.",
+      "visual": {
+        "type": "coverageVsCompletion",
+        "spec": "NEW. Left: nodes joining and leaving, DaemonSet Pods appearing and disappearing to match. Right: a Job with a target of five successes, Pods failing and retrying until the counter fills."
+      }
+    },
+    {
+      "id": "hpa-vpa",
+      "n": 4,
+      "stage": null,
+      "title": "Two autoscalers, one number",
+      "lane": "control",
+      "estSeconds": 62,
+      "narration": "HPA changes the replica count based on metrics. VPA changes the resource requests on the Pod. Run both against CPU or memory and they fight, because utilisation is usage relative to requests. VPA moves the requests. The same real usage then reports a different utilisation. HPA scales on a number that VPA keeps redefining underneath it. Neither is broken. They are simply sharing a variable.",
+      "visual": {
+        "type": "autoscalerConflict",
+        "spec": "NEW. A utilisation gauge with usage on top and requests as the denominator. VPA raises requests; the gauge falls without usage changing; HPA scales down; load per Pod rises; the gauge climbs again. Let the oscillation run long enough to read as a fight."
+      }
+    },
+    {
+      "id": "hpa-vpa-fix",
+      "n": 5,
+      "stage": null,
+      "title": "Removing the shared signal",
+      "lane": "control",
+      "estSeconds": 46,
+      "narration": "The fix is to stop sharing the variable. Scale horizontally on something VPA does not touch, such as queue depth or requests per second, and let VPA own resource requests. If you must keep both on CPU, bound VPA's update mode so it cannot evict Pods whenever it likes. Test the disruption before you rely on it.",
+      "visual": {
+        "type": "autoscalerFix",
+        "spec": "NEW. Same diagram, resolved: HPA's input line moves to a queue-depth metric, VPA keeps the requests line. The two arrows no longer meet. The oscillation flattens."
+      }
+    },
+    {
+      "id": "pdb",
+      "n": 6,
+      "stage": null,
+      "title": "What a budget actually buys",
+      "lane": "control",
+      "estSeconds": 58,
+      "narration": "A PodDisruptionBudget is narrower than most people think. It constrains voluntary disruption through the Eviction API. A node drain respects it. That is genuinely useful during upgrades. It does not stop a node losing power. It does not stop the kubelet killing a Pod under memory pressure. It does not stop somebody running kubectl delete. A PDB is a safety rail for planned maintenance, not an availability guarantee.",
+      "visual": {
+        "type": "pdbScope",
+        "spec": "NEW. A PDB drawn as a gate. A drain request approaches and is held at the gate. Then three other events approach from other directions — power loss, OOM kill, direct delete — and pass straight through, bypassing the gate entirely."
+      }
+    },
+    {
+      "id": "preempt-vs-evict",
+      "n": 7,
+      "stage": null,
+      "title": "Three ways a Pod dies",
+      "lane": "control",
+      "estSeconds": 50,
+      "narration": "Three mechanisms get collapsed into one word. Scheduler preemption removes lower-priority Pods so a pending higher-priority Pod can be placed; the trigger is a pending Pod. Kubelet eviction terminates Pods because that node is under memory or disk pressure; the trigger is local. API eviction is voluntary disruption and honours budgets; a drain uses it. Different actors, different triggers, different logs.",
+      "visual": {
+        "type": "threeDeaths",
+        "spec": "NEW. One Pod, three arrows arriving from three different sources, each labelled with its actor and trigger. Show which logs you would read for each."
+      }
+    },
+    {
+      "id": "rollout",
+      "n": 8,
+      "stage": null,
+      "title": "How a rollout actually moves",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "A Deployment rollout is two ReplicaSets and a pair of numbers. maxSurge sets how many Pods you may run above the desired count. maxUnavailable is how many you may be missing. The Deployment controller scales the new ReplicaSet up and the old one down within those bounds. It waits for readiness at each step. If new Pods never become ready, the rollout does not fail loudly. It stalls. progressDeadlineSeconds is what eventually turns that stall into a reported condition.",
+      "visual": {
+        "type": "rolloutMechanics",
+        "spec": "NEW. Two ReplicaSets, old and new, with surge and unavailable bounds drawn as a band around the desired count. Step the rollout through. Then replay with new Pods never going ready: the rollout freezes inside the band and a condition appears after the deadline."
+      }
+    },
+    {
+      "id": "readiness-gates-rollout",
+      "n": 9,
+      "stage": null,
+      "title": "Readiness is the throttle",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "Which makes readiness the throttle on every rollout you run. The controller only continues when new Pods report ready. A readiness probe that returns success too early lets a broken version replace a working one at full speed. A probe that is too strict stalls a rollout that is actually fine. Most bad deploys are not deploy bugs. They are readiness definitions that do not mean what the author thought.",
+      "visual": {
+        "type": "readinessThrottle",
+        "spec": "NEW. The same rollout twice. First with an honest readiness probe: it advances in controlled steps. Then with a probe that passes immediately: all replicas replace at once and error rate spikes."
+      }
+    },
+    {
+      "id": "job-semantics",
+      "n": 10,
+      "stage": null,
+      "title": "Completions and parallelism",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "A Job has two numbers worth knowing. completions is how many successes you need. parallelism is how many Pods may run at once. Set completions without parallelism and it runs one at a time. Set parallelism higher and it fans out. backoffLimit then decides how many failures it tolerates before giving up. Get that last one wrong and a Job that should have alerted you instead retries quietly until someone notices the bill.",
+      "visual": {
+        "type": "jobNumbers",
+        "spec": "NEW. A Job with completions and parallelism as dials. Turn parallelism up and watch Pods fan out. Then show a failing Job consuming its backoffLimit and finally marking itself failed."
+      }
+    },
+    {
+      "id": "close",
+      "n": 11,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 38,
+      "narration": "Controllers create the objects. What they cannot do is choose a node. That is the next segment, and it is where Pending lives. Module five: the scheduler, and why free CPU on a dashboard proves nothing.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: segment four lights to preview scheduling."
+      }
+    }
+  ]
+}

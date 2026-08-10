@@ -1,0 +1,192 @@
+Hey guys, welcome back to another
+Kubernetes video. Today I'll be talking
+about pod priority. This is a
+continuation of the scheduling series
+that I'm currently doing
+and we will dive a little bit into how
+pod priority can be used to evict other
+pods as well. So let's uh jump right
+into it. First of all, pod priority is
+how we indicate the importance of pods
+relative to each other.
+Lower priority pods can be preempted for
+higher priority pods. And preeemption is
+the process of evicting a node, a pod
+from a node in order to then schedule a
+new pod.
+Priority class dictates pod priority. So
+priority class is an object in
+Kubernetes that we can use to define the
+level of priority of a pod or a set of
+pods.
+And then within our pod definition, we
+will use the priority class name field
+in order to refer to the priority class.
+So you can imagine may have uh a group
+of pods that all share the same priority
+class. We may have um multiple
+deployments even that all share the same
+priority class. So this is a a useful
+way of kind of grouping those entities
+and not having uh replicated logic
+within all of our our pods definitions.
+Now what are the fields in a priority
+class? The first one to be aware of is
+the value field. This is a integer
+between 0 and 1 billion. So as you can
+see here it's set to a million in this
+this case.
+Global default. This is an optional
+field that is uh by default it's set to
+false. But
+if you set it to true, essentially what
+it'll do is it will set all of the uh
+fields all of the pods in the cluster to
+have the priority that we have defined
+in this particular priority class. we
+can only set one uh priority class to be
+the global default at any one time and
+by default pods actually have a priority
+of zero. So it can be we can override
+that if we want to uh we just need to
+set uh this field to true.
+[clears throat]
+description uh obviously is just
+information about what the priority
+class is used for and whatever
+information you want to put in there uh
+for your uh fellow Kubernetes admins to
+to be aware of what the purpose is.
+Then we have preeemption policy. So when
+we are setting up priority class, we can
+decide to either allow preeemption,
+which means uh if we have a higher
+priority pod being scheduled, it will
+potentially evict lower priority pods in
+order to be scheduled.
+But we can also uh choose not to do
+that. So if we have higher priority
+pods, they will actually be still be
+given preference in terms of the uh
+scheduling queue. But if we set
+preeemption policy to never they won't
+actually go away and evict lower
+priority pods. So uh that is one
+important setting that you'll have when
+you're setting up your priority class.
+Now what does the pod definition itself
+look like? Uh really it's a standard pod
+definition. The only difference is we
+have this priority class name field
+which refers to the
+priority class.
+In fact this field here metadata name
+high priority. If we had one called high
+priority then that's what we would be
+referring to here.
+Okay fairly simple that one.
+Now preeemption.
+So if no node is found that satisfies
+pod requirements then we will trigger
+preempt preeemption logic.
+And what the what that logic does is it
+looks for a node where the eviction of a
+pod or multiple pods will result in the
+ability for theuler to schedule the pod
+we are currently trying to schedule.
+So it's not the case that we just go
+around and remove a pod and then check
+if we can schedule and then remove
+another pod, check if we can schedule
+and so on. The calculation is done
+beforehand to ensure that we're not just
+evicting pods with no benefit.
+We terminate these pods and schedule the
+high priority pods. That's uh obviously
+the last step after we've determined
+where we can actually uh evict pods with
+the result being um the ability to
+schedule the new pod.
+Now there are a few additional
+considerations that we should take into
+account when talking about preeemption.
+The first one is the pod disruption
+budget. So if we have defined a pod
+destruction budget for our application,
+uh this this first of all will
+set parameters as to the maximum amount
+of pods within our uh replicated
+application like a deployment or replica
+set that can be offline due to uh
+voluntary interruptions by the
+Kubernetes system. So let's say we have
+an application that's running 10
+different pods
+and we want to say okay we want at least
+eight of these running at any given time
+regardless of what's happening in the
+cluster. So the preeemption process and
+the priority process tries to take all
+of this into account but it is not
+guaranteed. So at the end of the day,
+higher priority pods will always take
+precedence over lower priority pods,
+even if those lower lower priority pods
+are part of a deployment or a replica
+set that has defined a pod disruption
+budget.
+Next, interpod affinity on lower
+priority pods. So there may be a
+scenario where we are trying to schedule
+a pod onto a node that has another pod,
+but we're dependent on that pod based on
+affinity. So if you're trying to
+schedule a a pod onto a node that is
+dependent on an existing pod on that
+node. Now you may run into a scenario
+where the only way you can actually fit
+that new pod onto the node in terms of
+resource requirements or some other
+scheduling requirement is to evict the
+other pod. Well, in that case, we won't
+evict the other pod. we just won't
+schedule uh the new pod that we're
+trying to schedule because if we evicted
+the other pod then we're going to break
+uh the pod affinity rule and we're
+basically back in square one were uh
+violating the constraints that we have
+set for our application. So we we will
+not schedule the pod in that situation.
+Then there is cross node preeemption. So
+we may have a scenario where we are
+trying to deploy
+uh a pod and the only way that we can
+deploy the pod is if a pod on another
+node is evicted.
+And this uh may be the case if we have
+set up uh crosszone affinity or if we
+have set up topology spread constraints
+and I've talked about topology spread
+constraints in a prior video but for
+example if we have uh reached our our
+limit of
+pods in a particular zone and we're
+trying to um add a new pod and that pod
+can only beloyloy deployed to this
+particular zone for some reason then our
+only option would be to remove a pod on
+on another node potentially essentially
+that functionality isn't supported. So
+um cross node preeemption is something
+that is not going to take place if we
+run into a situation where it's required
+the the pod will simply not be
+scheduled. So uh these are just things
+to to bear in mind when you are using uh
+preeemption and pod priority. So I hope
+that was useful.
+If you have any questions, please do
+leave a comment. I'll get straight back
+to you. Please like and subscribe and I
+will talk to you in the next

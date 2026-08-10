@@ -1,0 +1,1737 @@
+and hi hi all uh welcome um
+uh don't call out because it might
+interrupt me never mind
+uh in a virtual world there is no
+audience uh but
+please please please feel free to uh
+type in questions
+and uh naveema is gonna that the
+instagram is gonna moderate for me
+and i'll try and answer the questions if
+they come up during the talk but
+uh i welcome everything um this is a
+tour de force
+talk i'm gonna cover a lot of material
+um
+a lot of different technologies um
+because kubernetes is
+touches a lot of things and kubernetes
+storage does just even more things
+um uh again as my background i'm
+president at aura store but i'm a
+hands-on president
+uh uh and and uh have written
+the kubernetes csi driver um so
+without further ado i'm gonna share my
+screen
+and uh
+and uh naveen can you confirm
+that my screen is up
+somebody
+somebody confirm my screen is up i'm
+going to assume it's up then
+because nobody's saying anything hey
+sorry i was on mute um yes your screen
+is up
+great great okay so i'll uh let me get
+going now
+and uh before i do let me just do a
+little time check
+and um
+yep i just one of my co-workers
+said it was up and
+okay there you go so now you're you're
+you're um
+you're seeing my my entry side uh before
+i get started
+uh in case you missed a talk uh earlier
+today 1 30 on the eastern
+eastern time and 10 i guess 11 30 in
+central time
+uh tracy demarco white who's at goldman
+sachs
+gave a really good talk on software and
+software deployment bigger on the inside
+where she talked extensively about how
+they distributed software in particular
+using um uh
+an afs family product called aura store
+file server
+uh or fs which happens to be the product
+that my company
+produces but i recommend uh taking with
+tracy's talk i know it's already online
+recorded
+so i'm going to cover a lot of stuff i'm
+going to cover containers
+i'm going to cover kubernetes a little
+brief introduction to kubernetes
+and i'm going to do a deeper
+introduction of what's the kubernetes
+api model
+i'm going to give a little history of
+kubernetes storage which is uh
+pretty ugly but now it's pretty um
+and then i'm going to go the big chunk
+of the talk about
+understanding kubernetes storage i'm
+going to then talk a little bit about
+the android file system family of
+uh distributed file servers afs and aura
+store fs open af-s
+um tracy gave a little bit of us uh it's
+actually probably deeper
+coverage of it than i did uh i'm gonna
+kind of do more of a hand wavy one
+um and then i'm gonna really dive into
+what i learned and what's going on the
+inside uh of the uh uh writing a
+container storage unit of
+kubernetes driver um uh for those of you
+who ever have seen me talk before
+uh you'd know that i have a a a
+philosophy
+of uh software because you know i've
+built a lot of distribution
+but even when i'm using any software um
+i
+have a philosophy never use any software
+that you don't know how to write
+not that you're gonna write it but that
+you could write it um
+and a corollary to that is you
+never learn an api you discover the apis
+that you know have to be there
+and uh it took a lot of unwrap
+unwrapping
+to uh get that depth of understanding
+with kubernetes but i'm going to share
+some of that
+perspective uh and that's going to be
+invaluable
+in understanding how to build debug
+maintain uh devops uh administer
+uh kubernetes clusters in particular
+having to do with storage
+so for those of you who know
+approximately nothing about containers
+um uh here's my my one slide
+coverage of containers containers are
+actually
+there's a lot of noise around containers
+but really fundamentally it's about
+software distribution
+you know we've traditionally we've had
+software we've had a tar file
+and we put the tarp file on some server
+we untar it and we start something so
+it's a way of
+getting things distributed um
+the so so it's analogous to a tar file
+plus a runtime framework so that
+compressed image uh in the container
+world is called a container image
+and that's the unit of deployment it's
+just a bunch of bytes
+it's just a bunch of bytes you then have
+a container run time for example
+docker which is what most people are
+familiar with or pod men coming out of
+red hat
+um that know how to take that bunch of
+bytes and
+create a running container based on that
+image
+um and uh it
+for those of you don't understand why
+containers uh
+containers kind of are like as if you
+were running a vm
+but on your local host without the heavy
+expense of maintaining a vm
+or startup cost so what it really does
+is that there's a whole bunch of setup
+setting up your network setting up your
+disk setting up your file system
+to look like you're on your own machine
+and then once the setup is complete
+it just calls the linux init function
+so that's why you can have any linux
+deployment
+because every linux boots up the kernel
+and then calls a nit
+you know the linux init function you
+create an image which has an init
+function
+but you don't have to do the setup
+because you're relying on the kernel
+that's on your host system um uh
+and uh and and so basically it's just
+run its processes uh on your local host
+on your local machine on the host
+machine um
+and uh and inside the running container
+it appeals it appears as if you're on
+your own host
+disk network etc and again this is done
+with
+linux namespace magic so now that we're
+experts on containers
+let's have a containers and storage um
+if you think about it when you design an
+application
+you design an application to run and it
+often expects some files to be there
+configuration files data files
+executable files whatever
+it expects the files to be there but um
+if if so the idea with containers is
+you have that bundled container image
+which which
+encapsulates a frozen snapshot and time
+of what the disk
+looked like on a system um but
+so you have all of those files available
+at runtime but if you but you don't want
+to necessarily bundle everything in
+because you'd have to have uh this
+version of my app with this
+configuration file
+this version of my app with this data
+file that would be way too many
+containers so what there is this idea
+that you
+can also mount volumes
+to a designated path in your container
+um
+so uh
+this is the first use of the word volume
+volume is such an overloaded term in
+in storage and i'm going to use volume
+many times
+in many contexts and they don't always
+mean the same thing i'll try to be clear
+um so so when you design an application
+there's two aspects the application
+author knows where it's expecting a
+directory to be that's going to have
+files
+that it's going to read now what's in
+that
+can be determined in the container world
+by an administrator
+that can mount into the container
+uh something else so for example look at
+this
+uh in the green below um i assume you
+can see my cursor
+uh i just happen to have a local
+directory called zoo on my on my on my
+home
+path it has bears monkeys and zebras in
+it
+um for those who know how to run docker
+you say docker run
+blah blah dash v tilde zoo
+colon slash animals
+so what is that actually saying
+um it's saying that sorry um
+uh excuse me i wanted to uh actually run
+this
+and i realize i need to get in my copy
+buffer
+uh sorry about that
+um so what does that statement say it
+says run
+an image of fedora
+plain jane fedora but i want to have a
+path animals in the launched vm
+and i want what's in animals in my
+container
+to be have the contents of actually
+be my local directory zoo and the commit
+the last bit is the command you can run
+so let me let me um
+let me
+uh
+of course somewhere there you go
+all right i'm gonna bring in
+this and
+so there's that command and notice
+that i'm running not in a directory with
+my animals
+dang i forgot where i put my animals so
+i'll make a directory animals
+uh i'll make a directory zoom i'm sorry
+zoo
+oh oh it is there never
+okay uh touch zoo slash
+monkey what the hell is going on
+demo land okay um
+i think i know why um
+fine uh make their uh
+cages we'll cage our animals touch
+i'm not gonna explain what's going on
+it's a permission thing uh
+cages flash monkey
+and cages slash uh
+bear and uh now i will
+run the command that i had a second ago
+and i run that command that i had a
+second ago here it is
+except because i i was having trouble
+i'm going to have it mount my local
+directory called
+cages
+and now if i look on this machine
+there's a
+there's an animals directory and if i
+allow us animals
+lo and behold there's the files and in
+fact if
+i don't remember what how i set it up
+with permission but if i touch
+animals uh
+uh giraffe
+uh
+and i exit the vm and i look at my cages
+uh lo and behold there's a giraffe so i
+basically said
+take that local directory and mount it
+as if it was
+uh in that place in my running container
+um we're gonna revisit that a lot in the
+kubernetes world um and again it didn't
+have to be a local
+directory it could have been some nfs
+mouse it could have been uh anything i
+just happened to
+link in a local machine political
+directory so now for those of you who
+know
+approximately nothing about kubernetes
+it's a framework
+for um uh for launching and managing
+containers
+so it's a distributed system running
+across a bunch of clusters they've i've
+got all i've got these
+end machines that i want to be able to
+distribute
+some number you know a flexible dynamic
+set of containers uh in this kubernetes
+cluster
+based on some restrictions and
+requirements etc
+and kubernetes does the management so
+that's really all it is is a management
+system
+but it does a lot of very cool stuff to
+do it it does the scheduling it sets up
+overlay networks there's load balancing
+auto scaling monitoring
+um lots of good stuff um if in this talk
+or anywhere in the world you see the
+letters
+the initials k not the
+k8s is kubernetes okay so
+if i see if i wrote that you'll know
+what i'm talking about okay
+so now kubernetes we're really used to
+um uh imperative apis you know you
+call a function and whether it's a local
+function or a remote function
+or a rest call and you're blocked until
+it returns
+that's what an imperative function is
+and that's a really not
+well suited uh way to do
+things uh that are things that are
+like things that administrator would do
+because think of what kubernetes doing
+is doing a lot of the work
+a system administrator would do it um so
+for example one of the reasons you don't
+want uh
+an imperative api is things may take a
+long time to schedule
+or set up or they may never be scheduled
+or they may
+need some interaction so you want to say
+like run and then you're kind of blocked
+until something happens resources for
+you up etc
+so what the kubernetes model is instead
+using what's called a declarative
+api and what a declarative api
+is um again everything uses the word
+objects
+um uh in the design pattern of a
+declarative api
+you have an object that has three
+fundamental properties actually in this
+case is five but
+um uh first is what kind of object is it
+and a specification for the state i
+would like
+that object to be it the state that i
+would like it to be
+not the state it's in the state i would
+like it to be
+and we'll revisit that in a minute um uh
+but uh what you see here is collapse the
+ammo um
+so now in kubernetes kubernetes uses
+a a a a declarative api and it has
+objects and one of the daunting things
+about kubernetes to get started
+is there are 55 different kinds of
+kubernetes objects
+in the current version 1.19 some of them
+aren't really used anymore but
+you know they're on the way being
+deprecated but 55 is a large
+number um of things that you that can be
+specified
+now it turns out a lot of them are done
+behind the scenes or created
+for you but um what i have here is a
+list of ones that you really should
+kind of be aware of uh uh
+and it's still a lot um they're ones
+that do the actual creation of
+containers and i'll go back into that
+later
+um pods deployments stateful sets daemon
+sets replica sets cron jobs and jobs
+um uh where where you know deployments
+where pot is sort of a single unit run
+and run until it stops
+deployment is run n of these things a
+staple set is run an
+ordered set of n of these things so that
+you can do things like remapping
+storage damon said is run one of these
+on each of your
+the worker notes in your in your uh
+cluster et cetera et cetera now storage
+is particularly
+complicated too because there's a lot of
+storage objects
+there's persistent volume claims there's
+persistent volumes there's volumes of
+attachments the storage classes the csi
+drivers cs nodes volume snaps just
+oh my um it's hopefully at the end of
+this talk you'll
+uh understand this a lot better um
+but the things in red i don't know if i
+do have an example with
+i'll only show events if i have a
+problem with my demo but um
+the things in red will be touching so
+these are all different kinds of
+kubernetes objects
+so
+there's no container object in
+kubernetes
+no container object which seems really
+odd because it's a container
+orchestration system
+and um what is there is instead is a pod
+which is the basic unit of management um
+a pod can have
+one or more containers and that kind of
+makes sense
+um for certain things like um
+uh you might want in the same pod
+one container that's downloading
+weather content and and generating
+images and the web server that's serving
+it
+so you just kind of deploy them together
+because they're kind of you know
+bound together um the thing about
+containers
+uh pods is uh when they're running in
+the thing when you run two
+two or more containers in the same pod
+they share local like localhost
+so you can't use the same port by two of
+the containers in the same pod
+um and you can mount storage like we
+just talked about
+and that storage can be available to one
+or more of those containers
+and i just mentioned that the kubernetes
+objects that create
+uh pods are deployments blah blah
+stateful sets are the ones that are
+mostly used
+with storage uh related things and
+that's
+historical and i'm not going to go so
+deeply into that because i want to talk
+about
+storage itself so talking about
+kubernetes
+so you've got an api well if you have an
+api you need a server for that api and
+in kubernetes there's an api server
+and uh the two basic ways to access it
+or with a command line tools
+called cube cuddle k uh
+uh kub ectl um and then there's a rest
+api
+and every there's a binding for java and
+python and perl and go and blah blah
+blah
+um but effectively it's a restful api um
+that you take these objects that i just
+showed earlier a yamaha object and a
+json object can kind of be converted to
+each other one to one
+so there's a race for a restful api
+where you you create an object you post
+it to the server
+um you can also post updates you can
+watch for changes you can delete objects
+et cetera et cetera et cetera you post
+these objects
+um that are stored in a persistent uh
+key value store
+there's a zillion of them out there but
+they use one called xd
+uh if you're familiar with it and the
+only thing the api
+the ips server does nothing
+the api server does nothing
+except respect that restful api
+with one exception there's a hook in it
+that you can
+for every kubernetes object you can hook
+what are called admission controllers
+and all these emission controllers do is
+when they when it when
+a for example a new kubernetes object
+was posted to the api server
+before it gets to sd it goes through a
+series of validating admission
+controllers
+and uh what they do is they just make
+sure it's well formed
+you know are there in fields i don't
+understand other fields within
+with invalid options um
+they can't do a deep study of it but it
+can do sort of a well-formedness
+study um and then there's something
+called mutating uh
+admission controllers so for example um
+the you don't want to do validating in
+general on your server you want to
+get like totally populated input
+so for example if there's defaults that
+you don't want the user to have to
+specify but you have a mutating
+admission controller that will sort of
+poke in the defaults
+if the object that was posted didn't
+have the defaults
+um so so we now have a system that does
+nothing
+so what goes along with the declarative
+api is something called the operator
+pattern
+and with the operating pattern you have
+these helper things
+that help move your objects from your
+desired
+specification into
+from from the from the specification
+move the object towards the desired
+specification
+and this it's a state machine and it
+stores the state in the status
+okay so the status is where the object
+is the spec is where you want it to be
+and so what these operators do is
+they'll listen to these objects
+and let's say oh there's a new that kind
+of object uh
+hmm what does it need to to move towards
+its state
+oh some helper objects need to be
+created so i'll create those helper
+objects and i'll
+post them to the api server and wait
+till they're ready and when they're
+ready
+i'll then take that object that i uh uh
+that the original object
+and i'll and i'll um patch it on updated
+state
+and so it moves it along uh its state
+um so the thing so that's the operator
+pattern it's just these external
+con operators that are kind of act like
+software
+administrators um and uh they move them
+along
+uh their way um there are two other
+things that watch the api server
+uh uh arguably they're just another
+example of an operator
+one is the kubernetes scheduler like
+when did things get
+saying okay now it's ready to run this
+pod on that node um
+and the cubelet and what the cubelet is
+is that's the the thing that actually
+creates the containers on your local
+on the each of the worker nodes um
+uh and uh you'll see here the word
+controller
+um historically in the kubernetes world
+controllers are operators that
+are core kubernetes operators um and
+then they realize hey
+and it used to be one model at that
+location and slowly but surely you're
+taking all the controllers and making
+them into
+external operators um so the system is
+easier to maintain and etc
+so there you go so uh
+so uh there you go there's a uh
+an example of of the elements in
+your system you have the uh over to the
+right the worker nodes so for example
+the two node kubernetes pop
+up uh cluster there's a cubelet
+on each of them that can create pods uh
+locally um what the api server does is
+it
+it's get somebody posts a request to the
+api server
+things happen things happen it's
+schedules watching it your controller so
+we'll move it
+further along or the internal
+controllers your external operator is
+moving along and eventually they'll say
+aha i'm in a good state to
+actually be run um a pod is now in the
+state to be run
+the cubelet notices it and launches the
+pod and one of the things that happens
+is moving it along is
+deciding which worker node it would run
+on okay
+so now now that we're experts in
+kubernetes
+um i want to um share with you this
+the kubernetes storage journey because
+if you've been following kubernetes at
+all
+um you may read thing you may be looking
+at things
+at from a point in time that's no longer
+appropriate so um
+take one the idea was the original
+version
+vision of kubernetes is containers your
+cattle who needs persistence
+you know they're just they'll just start
+and stop and who cares
+so the take one of kubernetes was
+storage who needs storage
+take two they realize uh you know people
+really need storage to do real things
+and so they did
+these stupidest possible thing they
+hard-coded
+the drivers into the kubernetes
+core every single driver
+every single one an nfs driver uh
+a a amazon driver a flocker driver
+a cef driver they were in the court
+what's
+what could go wrong well what can go
+wrong is
+your release cycles don't make sense you
+know you want to update your storage
+driver you don't want to have to wait
+until the next update
+of kubernetes um the other thing is if
+you if you want to make a new storage
+driver you're running inside kubernetes
+and again what could go wrong when
+you're running in memory
+with somebody else's distributed system
+the answer is a lot of bad things can
+happen so that's a really really bad
+idea
+so they said okay well take three woods
+we'll do something called flex volumes
+um and flex ups are very short-lived
+they're like one or
+they they're popular with like one or
+two versions with kubernetes it was kind
+of a cool g idea
+well well the some standards are being
+fleshed out and so now we're at take
+four which
+is the stable where we're going into the
+future which is something called the
+container storage initiative
+which provides a mechanism for writing
+storage drivers
+that can be dynamically made available
+to your kubernetes cluster
+so that's what we're going to talk about
+effectively you should think of every
+kubernetes
+um uh storage uh
+driver as being a csi driver
+some are still built in there's local
+houses empty dirt
+but you could you should still think of
+this model of csi that i'm i'm going to
+be discussing today
+um going back to step stage two in this
+in in stage two and take two when they
+had all this hard-coded stuff the
+kubernetes uh uh
+uh persistent volume object the pre
+we'll we'll learn better what a
+precision volume object is later but
+that's sort of
+the thing that actually is kind of bound
+to whatever the local storage is whether
+it's nfs or it's localhost whether it's
+sap or etc um has
+lots and lots and lots of specific
+things to drivers that used to be there
+those are being pulled out and they will
+disappear soon
+but right now if you um if you actually
+uh uh there's a kubernetes command
+cube cuddle explain
+uh pv is a shorthand for persistent
+volume
+uh it just shows you the ammo and notice
+it goes on
+and on and on so there's the flocker
+driver the flex driver
+the fiber channel driver uh the gce
+driver the gloucester driver the host
+pass driver
+the nfs driver the uh qobike driver some
+of these don't exist anymore
+um scaleio port works et cetera et
+cetera very dumb
+a lot of those parts of the api are
+going to disappear
+um so going back to our presentation
+um so finally let's get started
+let's get started um not quite simplest
+example well actually is the simplest
+example
+um based on what i said earlier that csi
+is kind of the way to go
+a pod is the unit of deployment so let's
+just keep our example simple to just a
+pod um so what i'm saying here is i
+would like a pod
+to be running i'm going to call it
+simple pod example i want to create a
+pod called simple pod example it's gonna
+have a
+it's gonna have a container uh
+uh named my app that's gonna be based on
+the busy box which is a linux
+distribution
+and i would like to mount i would like
+to mount like
+i did earlier with um docker i'd like to
+have a
+something something like something
+mounted to
+slash data remember i said the
+application designer
+knows what they want uh where they want
+it
+what actually happens it's determined at
+runtime
+okay and i've run the very exciting
+command called
+sleep uh for a long time um
+so um
+what is going on volume mount is
+a uh an element in the yaml
+for a pod but it's not it doesn't
+necessarily it's not
+it's not a kubernetes object but what it
+does is it's an indirect reference
+to this area of the gamma of volumes and
+the reason you
+you do this in direction is um in this
+case i only have one container but
+if this was something that had multiple
+containers but i wanted the same volume
+mounted to more than one container
+it gives you a way to to do the
+interruption better so it's
+it's in direction for a case that is not
+being shown here but
+everything there's a ton of interruption
+in kubernetes
+so what it's saying is i am i'm saying i
+want
+to mount to slash data something
+that i'm referring to as my data volume
+and what does this say my data volume is
+it says well my data volume volume
+is this described
+is in a persistent volume claim
+so what a persistent volume claim is is
+it's a claim to say
+i want storage i want a persistent
+volume
+what does that mean do i want it big
+small do i want it on an ssd do i want
+an existing one with with data sets and
+populated on it
+uh i don't know well that claim
+i just i just know this application
+claims it wants the storage
+and the claim the description of what it
+wants is in a separate object
+called the persistent volume claim
+object so here we see the
+hot object oh so i'm sorry one more
+slide so effectively what it's saying is
+once you've figured out what's what's
+that my data volume is going to be
+i want to do just like i did before i
+want to run
+whatever whatever gets resolved to the
+my data pvc we'll see that later at data
+blah blah blah so it's just as if i was
+doing this but
+i can't run until i've resolved what's
+that my data pvc
+oh and by the way and also what
+kubernetes node i want this run on
+so here you go so so here we now
+go from the pawn object to the precision
+volume claim object
+so again the pawn object refers to the
+excuse me refers to the persistent
+volume claim object
+i'm saying i'm looking for persistent
+volume claim object with the name my
+data pvc
+here's the one with the name mypbc and
+it says
+something something something these make
+much more sense if you create scratch
+volumes
+um but i'm in this case i want to mount
+uh a data set
+so i want to so i say okay in the
+position you can
+claim i'm it's going to be reconciled
+with something called my data storage
+class my data sc again
+why is this in direction there oopsie
+oopsie
+sorry about that um
+these two objects are what are defined
+by the end user the programmer the
+developer on his desktop
+he'll figure out how to reconcile him
+in a test environment he'll reconcile
+what that storage class is and we'll
+we're a little ahead of the cart here um
+ahead of the horse here but at run
+runtime it's going to be totally
+different it's been done by some
+administrators
+access some some credentials and all
+this much more complicated things so at
+run
+at deployment time the storage cost the
+cluster storage administrator
+specifies the storage class so what it's
+saying here is
+oh that thing you want mounted
+use the aura store driver and again
+here's the my data storage class
+here's the storage class object my data
+storage class using the aura store
+driver
+and these parameters mount that
+mount that so for example if it was nfs
+you would the parameters would specify
+the machine and and maybe some other
+parameters
+uh seth specifies everything so the
+parameters are
+very much specific to the provider the
+provider is the
+person who wrote the driver so think of
+the private provider the driver's
+name the advisor typing it okay so it's
+saying
+i want to reconcile this so again the
+pod wants to something a volume up that
+slash data
+um in the persistent claim it's it says
+i it needs to be resolved by
+the storage class object which says i
+want to use the provisioner
+afs.csi.com providing parameters to
+the driver the csi driver so that's
+where the indirection
+you know triggers things in the
+background
+and uh then lo and behold the driver
+says okay i know what you want a bunch
+of csi magic happens
+and a persistent uh volume object is
+created
+bound to that persistent volume claim
+bound to that's the
+persistent volume claim so it's resolved
+so now uh and and pardon posture with
+that it's also scheduled
+the note to a pod we're going to go
+deeper into this
+later but that's sort of the cycle that
+when your pot is running
+it cannot even be run it cannot be
+scheduled until
+the persistent volume claim is resolved
+to a persistent
+volume um so
+oh and here i just say again this is
+what i said earlier
+so let's assume it's picked some node if
+the driver says
+okay the driver actually tells us to
+then what local
+mount directory uh is gonna be mounted
+and they the driver does some local
+mounting
+and then there's a secondary indirection
+where uh kubernetes when it's launching
+your pod
+does the equivalent of the docker run
+okay
+uh as i described earlier
+full stop breath
+now for me to talk about
+more go deeper into uh uh
+storage i want to talk about the the afs
+uh family of
+uh file systems uh for those who don't
+know afs
+listen to tracy's talk because she
+talked a lot more than i do about the
+history etc but effectively uh
+the andrew pro system was the original
+cloud file system it dates back to the
+early
+80s and it really was designed for
+what we're doing now distributed
+processing uh
+multi-cloud hybrid cloud it just does it
+for free it does all that stuff for free
+um it's wonderful um and
+uh you know the in the in the urs uh
+androphosis and family
+there's effectively three one that you
+unless you work for ibm you're never
+gonna see which is the internal the ibm
+the original ibm afs it was an ibm
+product for well
+um it's still maintained internally but
+they don't sell it as a product the open
+af-s
+uh and the or store fs which is
+grade that says a lot of cool stuff that
+the other one doesn't do
+um so what is the android pro system
+there's really a couple of pillars one
+is a global name space a zero client
+configuration global name space
+what do i mean by that
+it if you are on a system with an air or
+an afs or a client um
+you can just do this cat slash aff plus
+cs
+with zero configuration dns resolve all
+magic happens
+you just say i've never told anything
+about this but i happen to know that
+some
+some file at the university of wisconsin
+um
+the unit of uh administration is called
+the cell so slash afs slash the cell
+name and the cell name is
+cs.wisconsin.edu
+there's a they they have something
+called common orientation demo.
+so this just works so this just works so
+it's it's as it's as if it's a local
+file you just you just use it
+um there's no mounting there's no uh
+we'll talk about authentication and
+credentials in a little bit but uh it's
+just
+really really cool and i'm gonna go back
+to that
+uh in a little bit oh yeah sorry now
+sorry the second thing is platform
+independence
+um one of the problems with uh
+distributed storage
+things like uh nfs and sifs is they have
+their own
+model of how things are going to be done
+so you know sips is really
+you know samba is you know really wants
+to be windows
+nfs really wants to be unix if you're
+crossing the line or you're using
+simultaneously by different kinds of
+clients
+it's kind of funky um nfs is really hard
+to
+deal with security because it's based on
+user ids and group ids which vary from
+each host
+so you do this funky mapping um
+afs is platform independent linux
+windows mac solaris
+um there's clients for it um
+it uses a different concept of user
+identity
+um based on kerberos credentials so you
+can use the same identity
+across all different machines regardless
+of what your host whether you're on a
+windows linux or mac and uh as of a year
+or so ago thank you david howells at red
+hat
+um there is now a kernel
+afs driver that's deployed with some not
+all yet
+but some unixes uh linuxes
+uh it's called kfs or caps it's
+currently deployed with fedora debbie
+and ubuntu kali
+raspbian pure os more soon
+um and uh and if you're if you're using
+any of those
+you just create a vm install one of
+those
+you might have to uh activate it by just
+saying sudum says control start
+afs.mount
+but then you can just you'll if you do
+that oh
+sorry even without the mount if you have
+pseudo dash mount
+dash type afs percent uh
+said you call in oops
+something's missing i cut and paste did
+wrong
+um uh you can you can get something in
+um but if you want the global namespace
+uh you just type the assist the start
+sys
+cuddle start afs so now
+so your platform business security if
+you're going to have things that are
+accessible all over the world by all the
+users
+you really need security and the
+security model in afs
+is very cool um i'm not going to go so
+deeply into it some of these are only in
+rs rfs
+um it has its own access control model
+again it's based
+on on uh afs
+kerberos credentials um uh or a circular
+support something called combined
+identity
+which says i want to only be able to
+access this data if i'm authenticated as
+this user authenticated this process
+running on that machine it doesn't mean
+that combined identity
+it has pluggable wire privacy where the
+default is 80 250 fixed but if you're
+the nsa
+it's just if you have a g you know you
+you just you probably have a gss
+implementation of your
+advanced security it just works uh and
+things like the cursor rest can be done
+and
+and um and the idea is every afs cell
+and the cell is sort of that
+administrative domain uh is its own
+security realm
+and if you're mounting things under the
+global namespace the cell is what you
+see under slash
+afs cell name so now now the meaty stuff
+volume definition number two uh this
+volume has nothing to do with container
+volumes and there's nothing to do with
+kubernetes volumes these are afs volumes
+and what an afs volume is is a unit of
+management
+and policy in afs
+all it is is a rooted directory tree of
+data all it is
+is a rooted directory of data that can
+be mounted into the global
+any place you want onto the global name
+uh cloned onto the global namespace
+uh it can be mounted directly onto a
+local directory on your home system
+um and uh uh everything
+the volume you know within within a
+directory tree of a volume you can
+hard link afs link mounts to another afs
+thing and it can be doing
+a different cell or your own cell as
+long as you have access
+uh to it um so it's just a directory
+tree
+but it's a policy container it's a
+policy container what do i mean by
+policy i can say
+okay you know this this volume
+um can only be have this quota
+or this volume really should be running
+because it's really used by a lot of
+people
+i really want to run it on four file
+servers in my new york office
+two in my london office one in my
+shanghai office or
+i might want to say uh you know what
+this data set this volume
+really cannot be housed on a server
+outside the us
+so you label your file servers and you
+and you put that constraint on the
+volume and if some administrator tries
+to move it there
+it just won't go um
+and uh so that's that's what an amp is
+volume is
+again i've given it a very short shift
+but um
+uh it's it's it's really
+the thing behind the magic of afs and
+what tracy said er in her talk with each
+afs volume
+logically actually is an object store
+but that is a detail um
+it looks like a file system as far as
+all the client use
+the users are concerned the the
+but because it's that it doesn't have
+the problems that nfs has where you're
+actually
+exp you're not exporting a drive you're
+exporting your
+volume uh directly
+um all right so what
+what's an example of some what you would
+put in volume i mean what you know so
+what's the volume i don't just have one
+volume for my whole organization
+well again their unit of mana their
+units of management
+the units of policy oh i left a very
+cool thing called maximal access control
+if you've ever been a system
+administrator you have two choices
+you can either give all users the
+ability to change the uh
+the apples on on your files or you can't
+and if you give them permit if you can't
+if you don't allow them to change apples
+then what happens you're getting a
+ticket every time they want
+axles change to change the ankles on the
+other hand if you give them permission
+to change the apples
+they say hey can you see the file now
+how about now you can't see
+the i'll set the permission to all can
+you see now great but so can everybody
+on the
+in the internet and the organization so
+what you want to be able to do is take
+your data set a volume and give it a
+maximal access control so i'm going to
+say let's say i have a data set
+that's going to be bound to hr and i'm
+going to maximize the control of h
+people in the hr group for example and
+that way if any
+you can set you can try to set the
+permission to something inside that
+volume to be
+everybody but it's capped by that
+maximal access control
+that's a very cool thing that uh is that
+or story is not an open
+affair um so what would be in a volume
+could be anything
+a user's home directory it could be a
+data set it could be
+a research a project a research
+directory for shared stuff it could be a
+web page
+you know the content of a web page that
+gets cloned onto somebody's web server
+a lot of universities do that um that's
+how every
+every every user has their own web page
+uh they do it by mounting the afs volume
+inside the web server uh it's the
+application binaries it could be
+have scratch space you could use it for
+backup for logs configuration
+whatever you want but it then becomes
+your unit of management
+all right the next afs thing is local
+cache consistency
+what that means is that when you
+read something for the very first time
+from an aft volume
+it's stored in a local cache as
+and feds the application the next time
+you do the read
+it's going to read from the local cache
+so without the network i o
+um why that's and and this cache
+actually survives reboots
+the reason it works is because um
+there's a uh cache consistency
+capability that the
+file server has a lease with the cl
+every client
+that is requested a leak on that data so
+that if anybody if that data if that
+file or
+region of a file changes it tells the
+client
+whatever's in your cache is dirty um
+what's really cool about that is i i
+know of at least one organization that
+actually
+boots their machines off of afs
+so for example uh they have a nice big
+cache
+and all of linux is booted from the
+cache
+if for some reason they upgrade or patch
+their unix that all that only then does
+it actually go to the network
+to get that so you can have a whole rack
+and boot up you know
+100 vms and have almost no network
+traffic even though
+logically it's remotely being booted
+um and the cache can be large it'd be
+gigabytes it could be terabytes
+uh and you would pick that based on your
+use um
+okay so now finally we're ready for our
+very first demo
+um and uh
+and i i don't know how far i am in my
+slides the slides are posted to the
+slack channel by the way
+so again the pod wants a volume call
+mounted at slash data it gives a permit
+system volume claim
+to resolve that to be resolved by a
+storage class
+and it provides parameters that are in
+the storage class object
+specific to the storage class type to
+the csi driver
+so here you see um before we saw
+matt so here we see the the mapping from
+the
+persistent claim object that says i get
+i get
+this this personality claim object is
+set by the application developer
+the storage class is by the
+administrator and he says
+i want to mount it to an afs driver and
+here's some parameters to help you
+figure it out great
+um oh demo time um
+if i these are short hands i use i have
+aliases and scripts on my machine
+i don't like typing cube cuddle uh or
+cute cuddle exec
+to do a shell so these are just some
+some
+abbreviations i have so going to the
+demo
+in uh
+all right great so what i want to do
+here is
+i am going to uh what i have here
+is uh i'm watching all
+a bunch of different kubernetes objects
+i'm watching all the pods that are
+running
+all the volumes that have been created
+all the storage classes the persistent
+volume claims something called the
+person environment kind of attachment
+daemon sets and
+and and and uh
+uh stateful sets
+you'll see that i have a controller pod
+running and a node partnering i'm going
+to get back to that soon assuming i
+don't want to run out of time
+um and so what i'm going to do is i'm
+going to say okay
+so i'm going to say uh i want to launch
+that uh uh let me start with my
+my pvc object
+and it's i do that and pus it now
+should magically appear there it is
+and it's pending it has a storage class
+but it's not it's pending because it
+can't resolve it to the storage class
+much
+less resolve it to an actual volume so
+now let me apply
+the uh uh storage class object
+uh mydata
+sc.yamo
+puff now there's a storage class object
+and um
+he's resolved but he can't do anything
+yet and the reason he's not doing
+anything yet is
+well in this case i only have one node
+running in my kubernetes cluster but if
+i
+uh which node
+the pod gets scheduled on is a function
+of many things
+does i need a gpu i need this i need
+that i need four cpus i need this much
+memory but it also
+is constrained by this by the storage
+because some storage can't be accessible
+by
+some nodes someone you want to prefer
+preferably do it on some nodes
+so until i i go ahead and
+uh uh
+[Music]
+launch my partner i'm saying create the
+pod so now we see
+boom there's a pod that's being created
+but the minute i do that
+did that um the kubernetes scheduler
+uh if you notice it's scheduled to be on
+that machine
+but it did that aft and we'll go into
+this
+deeper it bound the claim with a brand
+new persistent volume object that was
+created
+in essence with the help of the driver
+and now that it's running if i uh if i
+go into
+simplepod.yaml uh oh no
+uh uh simple pod example
+and again this is some of my shorthand
+described the piece so now i'm in that
+container and i go ls data
+and lo and behold there's data there and
+that data was actually coming from
+a c an aura store volume okay
+so great
+so that's our first demo um so what does
+a store
+need to do um it needs to help determine
+which nodes in the cluster
+uh can support the requested persistent
+volume the thing that has to be
+reconciled with volume claim
+um and once that's resolved and
+scheduled
+on the cluster node itself it actually
+has to do the mounting
+i'm not going to read it deeply now
+because i know i'm running out of time
+so
+um the way this is done is it's done
+with two driver specific nodes
+a controller service pod or a controller
+pod that does the logic
+for interacting with kubernetes that
+helps
+signal determine provide nougats so that
+the scheduler can help determine which
+node is a good node to run this on uh
+there's only one
+controller active at any time though you
+could have many running
+using elections um uh uh
+you know leader elections and then
+there's a certain node pod running on
+every node
+it's actually running on each node and
+it ha and that's the guy that does the
+mounting it has to run on every node
+because it has to be done by a local
+linux mount you can't do that remotely
+so you need something running
+on each node and that's the node service
+so
+um so the controller pod has actually
+both of them have something called an
+identity service which gets some plug-in
+information oopsie and capabilities
+the controller uh has to be able to
+answer three
+these questions via our grp their grpc
+calls
+create a volume publish a volume
+unpublish your volume delete the volume
+the node server stage your volume on
+publish volume unstage your volume and
+unpublish your volume and we'll get into
+that in a minute
+um uh but so here's the like cycle
+um the boxes describe the state's
+potential
+states of a persistent volume that's
+being created presented by an
+object there's an object the kubernetes
+object not the physical storage
+so the driver the controller service is
+asked to create the
+create the volume um
+one and one and it once it answers that
+uh it gets published it goes to no ready
+state then
+then it goes to the node itself and it's
+a stage it on the node
+and then finally it's published in the
+node and when it's deleted it does the
+same thing in the opposite
+uh direction so let's um
+but you see it's just like everything in
+kubernetes everything is ephemeral
+you know your your your controllers
+and your node uh uh uh controllers
+uh uh uh uh can just die
+um so what happens is they in the csi
+api there's a
+a a kind of a key value a name a name
+value
+pair name string string pair called the
+volume context
+that gets passed along gets created and
+passed along and each of the steps we
+just saw there's also something called
+the published context
+so what happened is remember our storage
+class object
+it had some parameters what happens is
+kubernetes once it sees aha there's a
+precision volume claim that's
+bound locked to a to a uh
+uh uh that has a valid storage class
+object
+it takes the two it creates a uh
+in in growth you know uh
+uh you know in the process of being
+under the
+to existence they princesses volume
+object it has a name it has an id
+passes that information to your
+creates volume method of your controller
+what it then does is it then builds that
+volume context
+and typically in a driver you you'll
+take some of the parameters and put them
+in the context
+so you move the parameters contacts
+you'll do some validation etc
+um and so the the input of these
+the output of the volume context at some
+point later it decides
+it decides it's ready you know the
+scheduler says okay
+oh and in that in that i also give them
+uh
+nuggets uh uh uh crumbs to help to
+that will help the schedule decide what
+node to run
+to schedule the pod on so it takes this
+simple it
+so it so it takes my crumbs it finally
+decides
+that it's time to schedule that pod so
+it says
+hey volume hey uh i'm gonna um
+augment the volume context that you gave
+me a little bit i've decided on the node
+and i go
+hey controller i'm going to publish this
+and this is the node it's going to be
+going on
+so the first one i don't know what node
+now it's resolve the node
+the schedule has resolved the node and
+it creates at that point a published
+context
+which is dangled later on
+then the on the node
+it calls the node services node stage
+volume with this augmented volume
+context
+and that's where it sort of does some
+validation this is this is
+i'm not going to go into that and then
+finally publish
+and when it says publish it says and
+this is the path i want you to mount
+your storage
+on so that i could then
+mount that to the container
+so um
+[Music]
+so remember what the pod wanted the pod
+wanted to uh
+uh have something put it data and what
+did the storage class want it said i
+wanted some storage
+some an af some some aura store storage
+with these parameters
+so you mix them together and what
+happens is so the bottom of that thing
+is this data goes into dot that dot onto
+the local node everything's resolved
+notice the volume contact has some
+storage parameters
+and the target path right so what
+happens is
+he takes that and during the storage
+driver's node publish
+it actually does the mount
+it actually does the mount remember my
+parameters were
+uh or cell
+and or volume this is this is how you
+mount it or restore volume
+uh on the on that cell and that volume
+name
+to the target path they gave me and when
+i returned from publish kubernetes now
+aha now i'm ready to go so uh
+it creates and you know the crew quickly
+it doesn't create the the you i now have
+a ready persistent volume object
+so on that local node worker node it can
+actually do
+the equivalent of docker run that
+directory it told me that the target
+path
+to sorry the slash data
+okay so that's how it works um
+so uh you know just uh fleshing out
+that that whole diagram together the pod
+wants something method of data
+a transient persistent cleanup
+described by a volume claim which is
+resolved by a storage class
+which provides parameters to the driver
+um and uh with some kubernetes
+some some crumbs about topology and
+other things
+uh uh the persistent volume gets into
+its ready state
+when it's in it's an array state and
+it's bound to represent volume claim and
+there's an
+an object in the milk called the
+persistent attachment volume attachment
+and uh um and uh you may have
+noticed that that if i go up here i have
+my persistent volume claim
+my persistent volume my personal volume
+attachment
+and my storage class and so um
+i don't have the full display but the
+way it works is the persistent volume
+object has effectively a reference to
+the persistent volume claim
+the precision volume attachment which
+make the volume attachment has an
+internal reference to the persistent
+volume the storage class can be used
+over and over again the storage class
+can be
+used with many many volume claims
+all right so that's a one-to-many
+relationship everything else is a
+one-to-one relationship um okay
+so that is the bulk of my talk um
+and i've got a few minutes left um so
+what i'd like to do now
+is talk about some special unique
+capabilities of aurastor
+um so here is sort of a fleshed out all
+the parameters oopsie
+you know all the parameters uh uh
+or some all the interesting parameters
+some of the interesting parameters
+for an aura store uh uh
+uh promised to create an uh mountain
+restore volume to a kubernetes pod
+um there's a volume type a cell name a
+volume name
+volume proximity required huh schedule
+deferred type huh and volume prefix
+huh what's going on here well normal
+is just i want to mount
+the or store volume called jerko in that
+cell
+to wherever you get it resolve it
+if i want scratch memory that's scratch
+storage that's going to be deleted when
+i'm done um
+the ties say the type is scratch but
+because
+scratch is kind of created locally and
+it generates a name
+the driver generates a name so you wanna
+for manager purposes give a prefix
+for that name so be scratchy dash you
+know abcd01
+okay so i don't specify a name but i do
+specify the cell
+i just specified prefix
+stateful sets are the things can they
+can scale up and scale down
+and they're ordered so if you run a
+staple set with
+five replicas there is a one number zero
+number one number two number three
+number four number five
+and you wanna make sure the member the
+data the disk gets mapped to the right
+one so for example if you have five
+running and you've allocated five
+and then three dimes when three gets re
+restarted you wanted to be mapped to the
+storage
+that the one that died was mapped to so
+um here i'm just saying what's the
+volume type
+it's a type create if it doesn't exist
+um
+and uh and i want uh
+a um uh uh here i'm specif i'm not
+saying a volume name
+like before but i'm saying about volume
+prefix my data set
+so it's assuming there'll be an error
+volume called mydataset
+0-1-2-3-4 alternatively you can provide
+a list of names
+so you know it will map the 0s1 to new
+york data set the first one to miami
+data section the second one the data
+salt lake um the last demo and i think
+i'm very
+close to being over but i have two more
+slides um
+this is a very cool thing because you
+might you have you know file servers all
+over the world not every file server is
+running a
+kubernetes cluster you might be running
+your kubernetes cluster you know in aws
+but you have
+perhaps some volumes that are in my data
+center
+so i might say look i want to run a job
+but i don't want this job
+started unless that volume is
+lo needs some definition of near the pod
+in the cluster so i might have a file
+server in my cluster
+so what happens is when you give the the
+the claim that i want proximity
+and i'm willing to wait your
+your pod won't get scheduled until that
+data has been replicated
+from wherever it was into
+whatever the definition you've given
+from near
+uh the file server is so that's great
+it's deferred
+it's deferred um uh starting
+alternatively because remember fs is
+transparent so you can actually
+access the volume as it's being
+relocated from one place to the other
+so you can say i want to do exactly that
+but start immediately
+so it'll be slower because it's it's
+accessing the data
+over the network all the way back to new
+york and i'm running in
+chicago um but it's in the background
+bringing that into my into my um
+cluster and once it's there it'll then
+do the i o faster
+into the cluster so it's kind of a you
+know start right away but
+you you just know you're gonna get
+faster once the data has been migrated
+um unless it's already there in which
+case you start immediately all right i
+think that's my last slide
+um a couple of links um
+you know our store file system
+kubernetes documentation csi
+specifications
+my email feel free to reach out to me
+either by email
+or right now in the uh slack channel for
+room four
+um or ask questions now because yes
+naveen hasn't kicked me out yet sure
+thank you
+joey it's it's a great presentation

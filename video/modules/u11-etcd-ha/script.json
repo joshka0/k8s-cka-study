@@ -1,0 +1,177 @@
+{
+  "title": "A Backup You Have Restored",
+  "subtitle": "Module 11 — two availability models, quorum arithmetic, and what a snapshot leaves out",
+  "series": {
+    "module": 11,
+    "unit": "u11",
+    "spineSegment": "admission / storage",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/content.js unit u11. The spine segment is admission / storage because that is where etcd sits on the pilot's spine; this module has no segment of its own.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "Back to segment two of the spine, and underneath it. Every write you have followed through this series ended in etcd. This module is what keeps etcd available. Why that differs from keeping the API server available, and what a backup does not contain.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the admission / storage segment lit, and etcd drawn beneath that segment as the layer this module descends into."
+      }
+    },
+    {
+      "id": "two-models",
+      "n": 1,
+      "stage": null,
+      "title": "Two different availability models",
+      "lane": "control",
+      "estSeconds": 46,
+      "narration": "API-server replicas and etcd members are not the same kind of thing, and confusing them is the most common HA mistake. API servers are stateless and replaceable. Any one of them can serve any request, so you put a load balancer in front and add more. etcd members hold replicated state. They form a consensus group, and they are not interchangeable.",
+      "visual": {
+        "type": "twoAvailabilityModels",
+        "spec": "NEW. Two groups drawn with visibly different structure. Left: API servers as identical interchangeable units behind a load balancer — remove one, traffic redistributes, nothing else changes. Right: etcd members as a bonded consensus group with links between them — remove one and the remaining members must still agree. Do not draw a load balancer in front of etcd; that mistake is the beat."
+      }
+    },
+    {
+      "id": "quorum-maths",
+      "n": 2,
+      "stage": null,
+      "title": "Majority, exactly",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "A write is durable only once a majority commits it. Majority means floor of N over two, plus one. In a five-member cluster that is three. Which also tells you the tolerance: five members survive two failures, three members survive only one. The arithmetic is the whole design, and it is worth being able to do out loud.",
+      "visual": {
+        "type": "quorumMaths",
+        "spec": "NEW. A three-member and a five-member cluster side by side, each with its majority threshold shown as a real count. Fail members one at a time and show the threshold being met, then missed. Put the tolerance under each — three tolerates one, five tolerates two — derived on screen from the formula rather than asserted."
+      }
+    },
+    {
+      "id": "fourth-member",
+      "n": 3,
+      "stage": null,
+      "title": "The fourth member buys nothing",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "Which is why adding a fourth member is a trap. Four members need three to commit, exactly like three members do. You have paid for another member in replication and coordination cost, and bought no additional tolerance at all. Five is the next number that actually changes anything.",
+      "visual": {
+        "type": "fourthMember",
+        "spec": "NEW. Three, four and five members in a row, each with its majority and its tolerance. Make three and four visibly identical in tolerance despite the extra member, and mark the fourth member's cost — more replication, more coordination, no benefit. The equality between three and four is the image."
+      }
+    },
+    {
+      "id": "leases-not-consensus",
+      "n": 4,
+      "stage": null,
+      "title": "Hot standbys, not members",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "The scheduler and controller-manager are replicated differently again. They are not consensus members. They use leader election through a Lease so exactly one is the active writer at a time, and the others wait. That is a third availability model in the same control plane, and naming it correctly is worth doing out loud.",
+      "visual": {
+        "type": "leaderElection",
+        "spec": "NEW. Three scheduler replicas, one holding a Lease and doing work, two idle but ready. Expire the Lease and show another replica acquiring it and becoming active. Contrast it explicitly against the etcd group beside it — one active writer versus a majority agreeing. Three models now on screen: replaceable, consensus, leader-elected."
+      }
+    },
+    {
+      "id": "quorum-loss",
+      "n": 5,
+      "stage": null,
+      "title": "When the majority is gone",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "Lose etcd quorum and writes stop cluster-wide, however many API servers are still healthy. Every one of them will accept your connection and fail your write. This is the sharpest version of a pattern from module one. The thing that looks up is not the thing that is broken. The number of healthy replicas in front tells you nothing.",
+      "visual": {
+        "type": "quorumLoss",
+        "spec": "NEW. Three healthy API servers behind a load balancer, all green, all accepting connections — and a degraded etcd group below them without a majority. Send a write: it passes the API servers and dies at the storage layer. Keep every API server green throughout. The green front and the failed write together are the beat."
+      }
+    },
+    {
+      "id": "untested-backup",
+      "n": 6,
+      "stage": null,
+      "title": "A backup is a hypothesis",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "An untested backup is a hypothesis. Take the snapshot, verify the snapshot, then rehearse the restore into an isolated environment. Snapshot status reporting a valid file proves that the file parses. It says nothing whatsoever about whether your cluster comes back, because the file is only one of the things recovery needs.",
+      "visual": {
+        "type": "backupHypothesis",
+        "spec": "NEW. Three stages with honest labels: snapshot taken (a file exists), snapshot verified (the file parses), restore rehearsed (a cluster actually came back). Show most people stopping at stage two and treating it as done. The gap between 'parses' and 'comes back' is the point — draw it as the wide gap it is."
+      }
+    },
+    {
+      "id": "snapshot-omits",
+      "n": 7,
+      "stage": null,
+      "title": "What the snapshot does not hold",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "An etcd snapshot captures API state and nothing else. Not your certificates. Not your static Pod manifests. Not your load balancer configuration. Not the actual data inside your volumes. Recovery needs the whole control-plane context, and a plan that assumes the snapshot is sufficient will fail at exactly the moment you need it.",
+      "visual": {
+        "type": "snapshotOmits",
+        "spec": "NEW. The snapshot drawn as a container holding API objects, and beside it everything recovery also needs, visibly outside it: certificates, static Pod manifests, load balancer configuration, volume data. Give the outside items equal weight to the inside — the omissions are the content of this beat, not a caveat."
+      }
+    },
+    {
+      "id": "delete-the-data-dir",
+      "n": 8,
+      "stage": null,
+      "title": "The deceptive minutes",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "Delete the etcd data directory on a single-member control plane and watch what happens. Cluster state is gone, because it lived only there. And the running containers keep going. Traffic keeps flowing. It is the same deceptive pattern from module one, at its most extreme. The data plane outlives the control plane, and everything looks fine for a while.",
+      "visual": {
+        "type": "deceptiveMinutes",
+        "spec": "NEW. A timeline from the moment the data directory is deleted. Control-plane state gone immediately; workloads still serving; a clock running. Show the point where it stops looking fine — a node fails, or something needs rescheduling, and nothing responds. Put the elapsed time on screen so the delay reads as a duration."
+      }
+    },
+    {
+      "id": "supported-capture",
+      "n": 9,
+      "stage": null,
+      "title": "The supported way",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "There is one supported way to capture etcd state, and two things people substitute for it. A live filesystem copy is not a consistent snapshot. A kubectl export is a useful supplement, but it misses ordering, ownership, and every object you forgot to enumerate. Use the snapshot command, and keep the export as a supplement rather than a plan.",
+      "visual": {
+        "type": "supportedCapture",
+        "spec": "NEW. Three capture methods with an honest verdict on each: etcdctl snapshot (supported, consistent), live filesystem copy (not consistent — show a write landing mid-copy), kubectl export (useful supplement — show what it misses: ordering, ownership, unenumerated objects). Do not present them as equally valid options."
+      }
+    },
+    {
+      "id": "prove-recovery",
+      "n": 10,
+      "stage": null,
+      "title": "Proving it works",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "So how do you prove disaster recovery works. Restore a verified snapshot into an isolated or rehearsed environment. Restore to a new data directory, never over the live one. Rebuild API access, then validate that critical objects and controllers are actually there. Test workload and application-level data recovery, not just the control plane. And measure the whole thing against a documented objective.",
+      "visual": {
+        "type": "proveRecovery",
+        "spec": "NEW. A rehearsal checklist that builds as each step is named, each with the failure it would have caught: isolated environment, new data directory, API access rebuilt, critical objects and controllers validated, application data recovered, measured against RPO and RTO. Emphasise 'new data directory, never over the live one' — that one is destructive when got wrong."
+      }
+    },
+    {
+      "id": "close",
+      "n": 11,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 40,
+      "narration": "Segment two, underneath. A failure here has a signature: everything is green and nothing can be changed, or everything is green and a write silently did not persist. Both look healthy from the front. The last module is what protects this layer from the traffic above it, and how to prove which layer is actually at fault.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the admission / storage segment shrinks back into the spine, and the whole spine brightens slightly to preview the final module, which is about the spine as a diagnostic tool rather than any single segment."
+      }
+    }
+  ]
+}

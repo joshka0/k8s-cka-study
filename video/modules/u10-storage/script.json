@@ -1,0 +1,164 @@
+{
+  "title": "Two Halves, One Volume",
+  "subtitle": "Module 10 — claim, class and volume, the CSI split, and why storage decides where a Pod can run",
+  "series": {
+    "module": 10,
+    "unit": "u10",
+    "spineSegment": "CSI",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/content.js unit u10.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "Segment nine of the spine: CSI. A Pod needs a volume, and something has to create it, attach it and mount it. This module is the three objects that describe storage, the two halves of CSI that deliver it, and why storage can make a Pod unschedulable.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the CSI segment lit."
+      }
+    },
+    {
+      "id": "three-objects",
+      "n": 1,
+      "stage": null,
+      "title": "Claim, class, volume",
+      "lane": "node",
+      "estSeconds": 42,
+      "narration": "Three objects, three different jobs. A PVC is a namespaced request for storage, and it is what the application author writes. A PV is cluster-scoped capacity and its lifecycle. A StorageClass is the recipe: how to provision, and when to bind. Getting those three straight is the entry ticket to every storage question that follows.",
+      "visual": {
+        "type": "claimClassVolume",
+        "spec": "NEW. Three objects side by side, each labelled with its scope, which is the distinction people get wrong: PVC inside a namespace boundary; PV and StorageClass outside it, cluster-scoped. Draw the namespace boundary explicitly as a container so the PVC sits visibly inside it and the other two visibly outside. Under each, one line on its job."
+      }
+    },
+    {
+      "id": "wait-for-first-consumer",
+      "n": 2,
+      "stage": null,
+      "title": "Pending on purpose",
+      "lane": "node",
+      "estSeconds": 42,
+      "narration": "A PVC using WaitForFirstConsumer sits Pending with no Pod referencing it. That is not a bug. The binding mode exists so storage is created in a zone the Pod can actually be scheduled into. Pending is the designed state. Bind it early instead and you can end up with a volume in a zone that has no room for the Pod that needs it.",
+      "visual": {
+        "type": "waitForFirstConsumer",
+        "spec": "NEW. Two zones with different spare capacity. Immediate binding: the volume is created in zone A, then the Pod cannot be scheduled there and is stuck — a volume and a Pod in different places, both valid, together useless. WaitForFirstConsumer: the claim visibly waits, the Pod is scheduled to zone B, and only then is the volume created, in zone B. Label the waiting state as designed, not failed."
+      }
+    },
+    {
+      "id": "pending-evidence",
+      "n": 3,
+      "stage": null,
+      "title": "Four reasons, four checks",
+      "lane": "node",
+      "estSeconds": 44,
+      "narration": "When a claim really is stuck, the evidence has to distinguish causes. Is it waiting deliberately, because nothing consumes it yet. Is there no capacity. Was it rejected by quota. Or is there no topologically compatible node. Those are four different problems with four different fixes, and the replica count of your workload tells you nothing about any of them.",
+      "visual": {
+        "type": "pendingClaim",
+        "spec": "NEW. One Pending PVC at the top, four candidate causes fanning out beneath it, each with the specific evidence that confirms or eliminates it. Set a discarded non-signal apart — replica count — struck through, because reaching for it is the common mistake. Give each cause its distinguishing check at full type scale."
+      }
+    },
+    {
+      "id": "two-halves",
+      "n": 4,
+      "stage": null,
+      "title": "The split people merge",
+      "lane": "node",
+      "estSeconds": 48,
+      "narration": "CSI has two halves that people merge into one. On the control-plane side, four sidecars watch Kubernetes objects and call CSI Controller RPCs: provisioner, attacher, resizer and snapshotter. On the node side, a privileged plugin runs NodeStageVolume and NodePublishVolume so the kubelet can mount into the container. The two halves never call each other. They meet through API objects, the PV and the VolumeAttachment.",
+      "visual": {
+        "type": "csiTwoHalves",
+        "spec": "NEW. Two clearly separated halves with no direct arrow between them — that absence is the point. Left, control plane: the four named sidecars watching objects and calling Controller RPCs. Right, node: the privileged plugin running stage and publish. Between them, drawn as the only connection, the API objects they both touch: PV and VolumeAttachment. Name all four sidecars legibly."
+      }
+    },
+    {
+      "id": "privileged-half",
+      "n": 5,
+      "stage": null,
+      "title": "Only one half is privileged",
+      "lane": "node",
+      "estSeconds": 34,
+      "narration": "Only one of those halves has to be privileged and present on every node. Mounting is a node-local privileged operation. The controller half talks to the storage provider's API and can run anywhere the control plane runs. So a controller-side failure and a node-side failure look nothing alike.",
+      "visual": {
+        "type": "privilegedHalf",
+        "spec": "NEW. The node half drawn on every node, marked privileged; the controller half drawn once, anywhere in the control plane, unprivileged. Then the two failure signatures side by side: controller-side (nothing provisions, no PV appears at all) versus node-side (PV exists and attaches, the Pod still cannot mount). The contrast in symptom is the takeaway."
+      }
+    },
+    {
+      "id": "claim-to-mount",
+      "n": 6,
+      "stage": null,
+      "title": "Claim to container, in order",
+      "lane": "node",
+      "estSeconds": 46,
+      "narration": "End to end, the journey has a fixed order. The claim is created. The provisioner sees it and creates the volume with the storage provider. The attacher attaches that volume to the chosen node, and a VolumeAttachment records it. The node plugin stages the device on that node. It then publishes it into the Pod's target path. Only then does the kubelet start the container. Six steps, and each one has its own way of stopping.",
+      "visual": {
+        "type": "claimToMount",
+        "spec": "NEW. The six steps as one continuous journey filling the stage width: claim created → provisioner creates the volume → attacher attaches, VolumeAttachment recorded → NodeStageVolume on the node → NodePublishVolume into the Pod's target path → container starts. Show the object each step produces beneath it, and mark which side of the CSI split each step belongs to by colour, so the control-plane half and the node half are visible as regions of the same journey."
+      }
+    },
+    {
+      "id": "stage-vs-publish",
+      "n": 7,
+      "stage": null,
+      "title": "Stage once, publish per Pod",
+      "lane": "node",
+      "estSeconds": 40,
+      "narration": "The node half has two steps and the difference matters. NodeStageVolume happens once per node, and it makes the device usable. NodePublishVolume happens per Pod target path, and it bind-mounts that staged device into the container. Knowing which of the two failed tells you whether you are debugging a device or a bind mount.",
+      "visual": {
+        "type": "stageVsPublish",
+        "spec": "NEW. One node, one staged device, and two Pods each getting their own publish into their own target path. Show stage occurring exactly once while publish occurs per Pod. Then fail each independently: a stage failure leaves no usable device at all; a publish failure leaves a healthy staged device that never reaches one container. Two different logs, labelled."
+      }
+    },
+    {
+      "id": "topology-handshake",
+      "n": 8,
+      "stage": null,
+      "title": "Storage is not a later phase",
+      "lane": "node",
+      "estSeconds": 44,
+      "narration": "This is why storage is not a phase that happens after scheduling. With WaitForFirstConsumer the scheduler and the provisioner have to agree on a zone. The scheduler cannot place the Pod until it knows where the volume can exist. The provisioner will not create the volume until it knows where the Pod is going. That handshake is why storage topology can make a Pod unschedulable.",
+      "visual": {
+        "type": "topologyHandshake",
+        "spec": "NEW. Scheduler and provisioner facing each other, each visibly waiting on the other, with the zone constraint between them. Show the deadlock read as a negotiation rather than a bug: each is waiting for information only the other has, and the binding mode is what breaks the tie. Then resolve it — zone agreed, Pod placed, volume created there."
+      }
+    },
+    {
+      "id": "mount-stuck-trace",
+      "n": 9,
+      "stage": null,
+      "title": "Scheduled, and stuck mounting",
+      "lane": "node",
+      "estSeconds": 46,
+      "narration": "A Pod is scheduled and stuck mounting. There is an order. Check the VolumeAttachment first — did attach succeed at all. Then the CSI sidecar logs on the control-plane side. Then whether the node plugin registered on that node, and its logs. Then the kubelet's logs for stage and publish errors. Then credentials, device state, filesystem, and multi-attach constraints.",
+      "visual": {
+        "type": "mountTrace",
+        "spec": "NEW. An ordered trace, each step lighting as named, with the artefact you actually inspect beside it — the VolumeAttachment object, the sidecar log, the node plugin registration, the kubelet log, then the device-level checks. Emphasise step one: the VolumeAttachment splits control-plane problems from node problems in a single check. Rows that wrap; do not clip the longer checks."
+      }
+    },
+    {
+      "id": "close",
+      "n": 10,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 40,
+      "narration": "Segment nine, then. A failure here has a signature: the Pod exists, it has a node, and it never starts. The events say mounting. Which half is failing is a question you can answer in one command. Answering it first saves the twenty minutes people spend in the wrong logs. The next module is high availability and etcd.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the CSI segment shrinks back into the spine. Module order follows the course rather than the packet path, so do not light an adjacent segment — hold the spine whole and let the module counter advance to eleven."
+      }
+    }
+  ]
+}

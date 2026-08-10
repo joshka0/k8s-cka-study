@@ -1,0 +1,770 @@
+/* Kubernetes Beyond YAML — lesson engine.
+
+   Mastery model: a wrong answer is re-queued to the end of the lesson, so a
+   lesson only ends once every item has been answered correctly. Across
+   sessions a Leitner box schedules each item for review.                     */
+
+(function () {
+'use strict';
+
+const COURSE = window.COURSE;
+const KEY = 'k8s-course:v3';
+const BOXES = [0, 1, 3, 7, 21];        // days until an item is due again
+const CAP_REVIEW = 16;
+
+/* ---------- storage ---------- */
+
+const today = () => Math.floor(Date.now() / 86400000);
+
+const blank = { xp: 0, streak: 0, lastDay: null, done: {}, srs: {}, sound: true };
+let S;
+try { S = Object.assign({}, blank, JSON.parse(localStorage.getItem(KEY) || '{}')); }
+catch (e) { S = Object.assign({}, blank); }
+
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* private mode */ }
+  syncPush();
+}
+
+/* ---------- shared progress ---------- */
+
+const SYNC_URL = 'api/progress';
+const sync = { state: 'off', timer: null, inflight: false, pending: false, absent: false };
+
+function syncable() {
+  // A file:// page has no server to talk to, a browser without fetch cannot
+  // reach one, and a static deployment has no endpoint mounted — in every case
+  // fall back to this device's storage.
+  return !sync.absent
+    && (location.protocol === 'http:' || location.protocol === 'https:')
+    && typeof fetch === 'function';
+}
+
+function setSync(state) {
+  if (sync.state === state) return;
+  sync.state = state;
+  paintSync();
+}
+
+const SYNC_GLYPH = {
+  off:    ['\u25CB', 'This device only \u2014 open the course through the server to share progress'],
+  ok:     ['\u2601', 'Progress shared with every device using this server'],
+  saving: ['\u21BB', 'Saving progress\u2026'],
+  error:  ['\u26A0', 'Server unreachable \u2014 progress is being kept on this device']
+};
+
+function paintSync() {
+  const el = document.getElementById('syncStat');
+  if (!el) return;
+  const entry = SYNC_GLYPH[sync.state] || SYNC_GLYPH.off;
+  el.textContent = entry[0];
+  el.title = entry[1];
+  el.hidden = false;
+}
+
+/* Adopt whatever the server returns: it has merged our state with every other
+   device's, so its answer supersedes ours. `sound` stays a device preference. */
+function adopt(remote) {
+  if (!remote || typeof remote !== 'object') return false;
+  const before = JSON.stringify([S.xp, S.done, S.srs]);
+  S.xp = remote.xp || 0;
+  S.streak = remote.streak || 0;
+  S.lastDay = remote.lastDay === undefined ? null : remote.lastDay;
+  S.done = remote.done || {};
+  S.srs = remote.srs || {};
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ }
+  return JSON.stringify([S.xp, S.done, S.srs]) !== before;
+}
+
+function payload() {
+  return JSON.stringify({ xp: S.xp, streak: S.streak, lastDay: S.lastDay, done: S.done, srs: S.srs });
+}
+
+function syncPush() {
+  if (!syncable()) return;
+  if (sync.inflight) { sync.pending = true; return; }
+  clearTimeout(sync.timer);
+  sync.timer = setTimeout(flush, 700);
+}
+
+function flush() {
+  if (!syncable()) return;
+  sync.inflight = true;
+  setSync('saving');
+  fetch(SYNC_URL, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: payload()
+  })
+    .then(function (r) {
+      // A static deployment has no /api/progress at all. That is not an error
+      // state — it is this-device-only. Stop asking and say so honestly.
+      if (r.status === 404 || r.status === 405 || r.status === 501) {
+        sync.absent = true;
+        return Promise.reject({ absent: true });
+      }
+      return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status));
+    })
+    .then(function (remote) {
+      const changed = adopt(remote);
+      setSync('ok');
+      if (changed && !session) showPath();
+      else if (changed) setTop();
+    })
+    .catch(function (e) { setSync(e && e.absent ? 'off' : 'error'); })
+    .then(function () {
+      sync.inflight = false;
+      if (sync.pending) { sync.pending = false; syncPush(); }
+    });
+}
+
+/* Reconcile at boot by pushing local state up, so a device that studied
+   offline contributes rather than being silently overwritten. */
+function syncBoot() {
+  if (!syncable()) { setSync('off'); return; }
+  flush();
+}
+
+function touchStreak() {
+  const d = today();
+  if (S.lastDay === d) return;
+  S.streak = S.lastDay === d - 1 ? S.streak + 1 : 1;
+  S.lastDay = d;
+  save();
+}
+
+/* ---------- content index ---------- */
+
+const lessons = {};   // lessonId -> { lesson, unit }
+COURSE.units.forEach(u => u.lessons.forEach(l => { lessons[l.id] = { lesson: l, unit: u }; }));
+
+const keyOf = (lessonId, i) => lessonId + '#' + i;
+const graded = it => it.t !== 'teach';
+
+function dueItems() {
+  const d = today(), out = [];
+  Object.keys(S.done).forEach(lid => {
+    const rec = lessons[lid];
+    if (!rec) return;
+    rec.lesson.items.forEach((it, i) => {
+      if (!graded(it)) return;
+      const s = S.srs[keyOf(lid, i)];
+      if (s && s.due <= d) out.push({ item: it, lessonId: lid, idx: i, box: s.box });
+    });
+  });
+  return out;
+}
+
+function weakestItems(n) {
+  const out = [];
+  Object.keys(S.done).forEach(lid => {
+    const rec = lessons[lid];
+    if (!rec) return;
+    rec.lesson.items.forEach((it, i) => {
+      if (!graded(it)) return;
+      const s = S.srs[keyOf(lid, i)];
+      if (s) out.push({ item: it, lessonId: lid, idx: i, box: s.box });
+    });
+  });
+  out.sort((a, b) => a.box - b.box);
+  return out.slice(0, n);
+}
+
+const unitDone = u => u.lessons.every(l => S.done[l.id]);
+const unitCount = u => u.lessons.filter(l => S.done[l.id]).length;
+function unlocked(ui) { return ui === 0 || unitDone(COURSE.units[ui - 1]) || !!S.done['@open' + ui]; }
+
+/* ---------- dom helpers ---------- */
+
+function el(tag, attrs, children) {
+  const n = document.createElement(tag);
+  if (attrs) Object.keys(attrs).forEach(k => {
+    const v = attrs[k];
+    if (v === null || v === undefined || v === false) return;
+    if (k === 'html') n.innerHTML = v;
+    else if (k === 'text') n.textContent = v;
+    else if (k === 'on') Object.keys(v).forEach(ev => n.addEventListener(ev, v[ev]));
+    else if (k === 'cls') n.className = v;
+    else n.setAttribute(k, v === true ? '' : v);
+  });
+  (children || []).forEach(c => { if (c) n.appendChild(c); });
+  return n;
+}
+
+function shuffle(a) {
+  const r = a.slice();
+  for (let i = r.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [r[i], r[j]] = [r[j], r[i]];
+  }
+  return r;
+}
+
+const $ = sel => document.querySelector(sel);
+const screen = $('#screen');
+const fb = $('#feedback');
+const checkHost = $('#checkHost');
+
+/* The Check button sits below the item rather than inside it, so every
+   exercise type shares one target for the mouse, the keyboard and focus. */
+function mountCheck(cfg) {
+  checkHost.textContent = '';
+  checkHost.hidden = !cfg;
+  if (!cfg) return;
+  checkHost.appendChild(el('div', { cls: 'checkbar-inner' }, [
+    el('button', {
+      cls: 'btn wide', id: 'checkBtn', disabled: !!cfg.disabled, on: { click: cfg.onClick }
+    }, [document.createTextNode(cfg.label)])
+  ]));
+}
+
+/* ---------- sound ---------- */
+
+let actx = null;
+function beep(kind) {
+  if (!S.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const notes = kind === 'ok' ? [660, 880] : kind === 'no' ? [220, 175] : [520];
+    notes.forEach((f, i) => {
+      const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + i * 0.085;
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.075, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + 0.18);
+    });
+  } catch (e) { /* audio unavailable */ }
+}
+
+/* ---------- shared bits ---------- */
+
+function clipLink(clip) {
+  if (!clip) return null;
+  return el('a', {
+    cls: 'clip', href: 'https://www.youtube.com/watch?v=' + clip[0] + '&t=' + clip[1] + 's',
+    target: '_blank', rel: 'noopener'
+  }, [
+    el('span', { cls: 'play', text: '▶' }),
+    el('span', {}, [
+      el('span', { text: clip[2] }),
+      el('small', { text: 'Watch from ' + Math.floor(clip[1] / 60) + ':' + String(clip[1] % 60).padStart(2, '0') })
+    ])
+  ]);
+}
+
+function setTop() {
+  $('#xp').textContent = S.xp;
+  $('#streak').textContent = S.streak;
+  const n = dueItems().length;
+  const started = Object.keys(S.done).some(k => lessons[k]);
+  const b = $('#reviewBtn');
+  b.hidden = !started;
+  b.classList.toggle('due', n > 0);
+  $('#reviewLabel').textContent = n > 0 ? 'Review' : 'Practice';
+  $('#dueN').textContent = n > 0 ? n : '';
+  $('#soundBtn').textContent = S.sound ? '🔊' : '🔇';
+  $('#soundBtn').setAttribute('aria-label', S.sound ? 'Mute sound' : 'Unmute sound');
+  paintSync();
+}
+
+/* ---------- path screen ---------- */
+
+function showPath() {
+  session = null;
+  hideFeedback();
+  mountCheck(null);
+  setTop();
+  const totalLessons = Object.keys(lessons).length;
+  const doneLessons = Object.keys(lessons).filter(id => S.done[id]).length;
+  const pct = Math.round(doneLessons / totalLessons * 100);
+
+  const next = nextLesson();
+  const kids = [];
+
+  kids.push(el('div', { cls: 'hero' }, [
+    el('div', { cls: 'eyebrow', text: 'Senior platform / SRE preparation' }),
+    el('h1', { text: COURSE.subtitle }),
+    el('p', { text: '20 units built from 33 transcript-backed talks, 6 supplemental videos, and current upstream documentation. Short lessons, answered out loud, with the clip that teaches each idea one tap away.' }),
+    el('div', { cls: 'hero-actions' }, [
+      next ? el('button', { cls: 'btn', on: { click: () => startLesson(next.id) } },
+        [document.createTextNode(doneLessons ? 'Continue · ' + next.title : 'Start unit 1')]) : null,
+      el('a', { cls: 'btn ghost', href: 'reference.html' }, [document.createTextNode('Open the guidebook')])
+    ])
+  ]));
+
+  kids.push(el('div', { cls: 'overall' }, [
+    el('div', { cls: 'bar' }, [el('i', { style: 'width:' + pct + '%' })]),
+    el('small', { text: doneLessons + '/' + totalLessons + ' lessons' })
+  ]));
+
+  COURSE.units.forEach((u, ui) => {
+    const open = unlocked(ui), done = unitDone(u);
+    const head = el('div', { cls: 'unit-head' }, [
+      el('div', { cls: 'badge', text: done ? '✓' : open ? String(u.n) : '🔒' }),
+      el('div', {}, [
+        el('div', { cls: 'tag', text: u.tag }),
+        el('h2', { text: u.title }),
+        el('p', { text: u.blurb })
+      ]),
+      el('div', { cls: 'unit-meta' }, [el('span', { cls: 'ring', text: unitCount(u) + '/' + u.lessons.length })])
+    ]);
+
+    const body = [head];
+    if (open) {
+      body.push(el('div', { cls: 'lessons' }, u.lessons.map((l, li) => {
+        const d = !!S.done[l.id];
+        return el('button', { cls: 'node' + (d ? ' done' : ''), on: { click: () => startLesson(l.id) } }, [
+          el('span', { cls: 'dot', text: d ? '✓' : String(li + 1) }),
+          el('span', {}, [
+            el('span', { text: l.title }),
+            el('small', { text: l.items.length + ' steps' + (d ? ' · done' : '') })
+          ])
+        ]);
+      })));
+      body.push(el('a', { cls: 'guide-link', href: 'reference.html#' + u.ref },
+        [document.createTextNode('Guidebook: ' + u.title + ' →')]));
+    } else {
+      body.push(el('div', { cls: 'lessons' }, [
+        el('button', { cls: 'node', on: { click: () => { S.done['@open' + ui] = 1; save(); showPath(); } } }, [
+          el('span', { cls: 'dot', text: '↷' }),
+          el('span', {}, [
+            el('span', { text: 'Jump in anyway' }),
+            el('small', { text: 'Finish unit ' + ui + ' to unlock normally' })
+          ])
+        ])
+      ]));
+    }
+    kids.push(el('section', { cls: 'unit' + (done ? ' done' : '') + (open ? '' : ' locked') }, body));
+  });
+
+  render(kids);
+  window.scrollTo(0, 0);
+}
+
+function nextLesson() {
+  for (const u of COURSE.units) for (const l of u.lessons) if (!S.done[l.id]) return l;
+  return null;
+}
+
+function render(kids) {
+  screen.textContent = '';
+  kids.forEach(k => screen.appendChild(k));
+}
+
+/* ---------- lesson session ---------- */
+
+let session = null;
+
+function startLesson(lessonId) {
+  const rec = lessons[lessonId];
+  if (!rec) return;
+  session = {
+    kind: 'lesson',
+    lessonId: lessonId,
+    title: rec.unit.title + ' · ' + rec.lesson.title,
+    ref: rec.unit.ref,
+    queue: rec.lesson.items.map((it, i) => ({ item: it, lessonId: lessonId, idx: i, retry: false })),
+    total: rec.lesson.items.length,
+    cleared: 0,
+    right: 0,
+    asked: 0,
+    xp: 0
+  };
+  step();
+}
+
+function startReview() {
+  let pool = dueItems();
+  const practice = pool.length === 0;
+  if (practice) pool = weakestItems(12);
+  if (!pool.length) { showPath(); return; }
+  pool = shuffle(pool).slice(0, CAP_REVIEW);
+  session = {
+    kind: 'review',
+    title: practice ? 'Practice · weakest items' : 'Review · due today',
+    ref: null,
+    queue: pool.map(p => ({ item: p.item, lessonId: p.lessonId, idx: p.idx, retry: false })),
+    total: pool.length,
+    cleared: 0,
+    right: 0,
+    asked: 0,
+    xp: 0
+  };
+  step();
+}
+
+function step() {
+  hideFeedback();
+  if (!session.queue.length) return finish();
+  const cur = session.queue[0];
+  session.current = prepare(cur);
+  paint();
+}
+
+function paint() {
+  const pct = Math.round(session.cleared / session.total * 100);
+  const bar = el('div', { cls: 'lessonbar' }, [
+    el('button', { cls: 'iconbtn', title: 'Back to the path', 'aria-label': 'Back to the path', on: { click: leave } }, [document.createTextNode('✕')]),
+    el('div', { cls: 'bar' }, [el('i', { style: 'width:' + pct + '%' })]),
+    el('small', { cls: 'ring', text: session.cleared + '/' + session.total })
+  ]);
+  render([bar, el('div', { cls: 'kicker lesson-name', text: session.title }), session.current.node]);
+  const v = session.current;
+  if (v.isTeach) mountCheck({ label: 'Got it', onClick: v.advance });
+  else if (v.isRecall) mountCheck(null);
+  else { mountCheck({ label: 'Check', disabled: true, onClick: doCheck }); setReady(v, !!v.ready); }
+  const first = screen.querySelector('.opt, .chip, .recall-in, .btn');
+  if (first && window.innerWidth > 700) first.focus({ preventScroll: true });
+}
+
+function leave() {
+  if (session && session.cleared > 0 && session.cleared < session.total) {
+    if (!confirm('Leave this lesson? Answers you have already cleared are kept in your review schedule.')) return;
+  }
+  showPath();
+}
+
+/* ---------- item preparation & rendering ---------- */
+
+function prepare(entry) {
+  const it = entry.item;
+  const box = el('div', {});
+  const view = { entry: entry, item: it, node: box, ready: false, check: null, picked: null };
+
+  if (it.t === 'teach') {
+    box.appendChild(el('div', { cls: 'teach' }, [
+      el('div', { cls: 'kicker', text: 'Concept' }),
+      el('h3', { html: it.h }),
+      el('p', { html: it.p }),
+      it.flow ? el('div', { cls: 'flowstrip' }, it.flow.map(f => el('div', { text: f }))) : null,
+      it.note ? el('div', { cls: 'note', html: it.note }) : null,
+      clipLink(it.clip)
+    ]));
+    view.advance = () => { beep('tap'); award(2); clear(); };
+    view.ready = true;
+    view.isTeach = true;
+    return view;
+  }
+
+  box.appendChild(el('div', { cls: 'kicker', text: label(it.t) }));
+
+  if (it.t === 'mcq' || it.t === 'multi') {
+    box.appendChild(el('div', { cls: 'prompt', html: it.q }));
+    const correct = it.t === 'mcq' ? [it.a] : it.a;
+    const opts = shuffle(it.o.map((text, i) => ({ text: text, ok: correct.indexOf(i) >= 0 })));
+    const chosen = new Set();
+    const wrap = el('div', { cls: 'opts' });
+    opts.forEach((o, i) => {
+      const b = el('button', { cls: 'opt', type: 'button', 'aria-pressed': 'false' }, [
+        el('span', { cls: 'key', text: String(i + 1) }),
+        el('span', { html: o.text })
+      ]);
+      b.addEventListener('click', () => {
+        if (it.t === 'mcq') { chosen.clear(); chosen.add(i); wrap.querySelectorAll('.opt').forEach(x => x.setAttribute('aria-pressed', 'false')); }
+        else if (chosen.has(i)) chosen.delete(i);
+        else chosen.add(i);
+        b.setAttribute('aria-pressed', String(chosen.has(i)));
+        setReady(view, chosen.size > 0);
+      });
+      wrap.appendChild(b);
+    });
+    box.appendChild(wrap);
+    view.pick = n => { const b = wrap.children[n]; if (b) b.click(); };
+    view.check = () => {
+      const ok = opts.every((o, i) => o.ok === chosen.has(i));
+      opts.forEach((o, i) => {
+        const b = wrap.children[i];
+        b.classList.add('locked');
+        if (o.ok) b.classList.add('right');
+        else if (chosen.has(i)) b.classList.add('wrong');
+      });
+      return ok;
+    };
+    return view;
+  }
+
+  if (it.t === 'order') {
+    box.appendChild(el('div', { cls: 'prompt', html: it.q }));
+    const slots = el('div', { cls: 'slots', 'data-empty': 'Tap the steps below in order' });
+    const bank = el('div', { cls: 'bank' });
+    const placed = [];
+    const bankBtns = [];
+    shuffle(it.o.map((t, i) => ({ text: t, i: i }))).forEach(o => {
+      const c = el('button', { cls: 'chip', type: 'button' }, [el('span', { html: o.text })]);
+      c.addEventListener('click', () => {
+        if (c.classList.contains('used')) return;
+        c.classList.add('used');
+        placed.push(o.i);
+        const s = el('button', { cls: 'chip', type: 'button' }, [
+          el('span', { cls: 'n', text: String(placed.length) }), el('span', { html: o.text })
+        ]);
+        s.addEventListener('click', () => {
+          const at = placed.indexOf(o.i);
+          if (at < 0) return;
+          placed.splice(at, 1);
+          slots.removeChild(s);
+          c.classList.remove('used');
+          [].forEach.call(slots.children, (ch, k) => { ch.querySelector('.n').textContent = String(k + 1); });
+          setReady(view, placed.length === it.o.length);
+        });
+        slots.appendChild(s);
+        setReady(view, placed.length === it.o.length);
+      });
+      bankBtns.push(c);
+      bank.appendChild(c);
+    });
+    box.appendChild(slots); box.appendChild(bank);
+    view.pick = n => { const b = bankBtns[n]; if (b && !b.classList.contains('used')) b.click(); };
+    view.check = () => {
+      let ok = true;
+      [].forEach.call(slots.children, (ch, k) => {
+        const good = placed[k] === k;
+        ch.classList.add(good ? 'right' : 'wrong');
+        if (!good) ok = false;
+      });
+      slots.style.pointerEvents = 'none'; bank.style.pointerEvents = 'none';
+      if (!ok) {
+        box.appendChild(el('div', { cls: 'model' }, [
+          el('h4', { text: 'Correct order' }),
+          el('ul', {}, it.o.map((t, k) => el('li', { html: (k + 1) + '. ' + t })))
+        ]));
+      }
+      return ok;
+    };
+    return view;
+  }
+
+  if (it.t === 'cloze') {
+    const parts = it.q.split('___');
+    const slot = el('button', { cls: 'blank empty', type: 'button', text: '?' });
+    const line = el('p', { cls: 'cloze-line' });
+    line.appendChild(el('span', { html: parts[0] }));
+    line.appendChild(slot);
+    line.appendChild(el('span', { html: parts[1] || '' }));
+    box.appendChild(line);
+    const bank = el('div', { cls: 'bank' });
+    let chosen = -1, chosenBtn = null;
+    const opts = shuffle(it.o.map((t, i) => ({ text: t, i: i })));
+    opts.forEach(o => {
+      const c = el('button', { cls: 'chip', type: 'button' }, [el('span', { html: o.text })]);
+      c.addEventListener('click', () => {
+        if (chosenBtn) chosenBtn.classList.remove('used');
+        chosen = o.i; chosenBtn = c; c.classList.add('used');
+        slot.className = 'blank'; slot.innerHTML = o.text;
+        setReady(view, true);
+      });
+      bank.appendChild(c);
+    });
+    slot.addEventListener('click', () => {
+      if (chosenBtn) chosenBtn.classList.remove('used');
+      chosen = -1; chosenBtn = null;
+      slot.className = 'blank empty'; slot.textContent = '?';
+      setReady(view, false);
+    });
+    box.appendChild(bank);
+    view.pick = n => { const b = bank.children[n]; if (b) b.click(); };
+    view.check = () => {
+      const ok = chosen === it.a;
+      slot.classList.add(ok ? 'right' : 'wrong');
+      if (!ok) slot.innerHTML = it.o[it.a];
+      bank.style.pointerEvents = 'none'; slot.style.pointerEvents = 'none';
+      return ok;
+    };
+    return view;
+  }
+
+  /* recall — self-graded */
+  box.appendChild(el('div', { cls: 'prompt', html: it.q }));
+  const ta = el('textarea', { cls: 'recall-in', placeholder: 'Say it out loud first. Sketch the key points here if it helps — this is not marked.' });
+  box.appendChild(ta);
+  const revealWrap = el('div', { style: 'margin-top:16px' });
+  const reveal = el('button', { cls: 'btn wide', on: { click: () => {
+    revealWrap.remove();
+    box.appendChild(el('div', { cls: 'model' }, [
+      el('h4', { text: 'Strong answer covers' }),
+      el('ul', {}, it.pts.map(p => el('li', { html: p }))),
+      el('p', { html: it.model })
+    ]));
+    if (it.src) box.appendChild(el('p', { style: 'margin-top:12px;font-size:.87rem;font-weight:700' }, [
+      el('a', { href: it.src[1], target: '_blank', rel: 'noopener' }, [document.createTextNode('Reference: ' + it.src[0] + ' →')])
+    ]));
+    const cl = clipLink(it.clip); if (cl) box.appendChild(cl);
+    box.appendChild(el('div', { cls: 'selfgrade' }, [
+      el('button', { cls: 'btn good', on: { click: () => selfGrade(true) } }, [document.createTextNode('I had that')]),
+      el('button', { cls: 'btn ghost', on: { click: () => selfGrade(false) } }, [document.createTextNode('I missed parts')])
+    ]));
+    ta.setAttribute('readonly', '');
+  } } }, [document.createTextNode('Show the model answer')]);
+  revealWrap.appendChild(reveal);
+  box.appendChild(revealWrap);
+  view.isRecall = true;
+  return view;
+}
+
+function label(t) {
+  return t === 'mcq' ? 'Choose one' : t === 'multi' ? 'Select all that apply'
+    : t === 'order' ? 'Put these in order' : t === 'cloze' ? 'Complete the sentence' : 'Say it out loud';
+}
+
+function setReady(view, ready) {
+  view.ready = ready;
+  const b = $('#checkBtn');
+  if (b) b.disabled = !ready;
+}
+
+/* ---------- grading ---------- */
+
+function selfGrade(ok) {
+  const v = session.current;
+  session.asked++;
+  if (ok) session.right++;
+  scheduleSrs(v.entry, ok);
+  if (ok) { beep('ok'); award(v.entry.retry ? 4 : 10); clear(); }
+  else {
+    beep('no');
+    v.entry.retry = true;
+    session.queue.push(session.queue.shift());
+    showFeedback(false, 'Queued again', 'You will see this one more time before the lesson ends. Try it out loud again — the model answer is the shape to aim for, not the wording.', null, null);
+  }
+}
+
+function doCheck() {
+  const v = session.current;
+  if (!v || v.isTeach || v.isRecall || !v.ready || !v.check) return;
+  const ok = v.check();
+  const it = v.item;
+  session.asked++;
+  if (ok) session.right++;
+  scheduleSrs(v.entry, ok);
+  beep(ok ? 'ok' : 'no');
+  if (ok) award(v.entry.retry ? 4 : 10);
+  else { v.entry.retry = true; session.queue.push(session.queue.shift()); }
+  showFeedback(ok, ok ? pick(['Correct', 'Exactly', 'That is the one', 'Right']) : 'Not quite',
+    it.why, it.src, it.clip, ok);
+}
+
+function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+
+function clear() {
+  session.queue.shift();
+  session.cleared++;
+  step();
+}
+
+function award(n) { session.xp += n; S.xp += n; save(); setTop(); }
+
+function scheduleSrs(entry, ok) {
+  const k = keyOf(entry.lessonId, entry.idx);
+  const cur = S.srs[k] || { box: 0, due: today() };
+  // A lapse resets the box, and getting it right on the retry does not undo
+  // that — you did not recall it, you were shown it.
+  const box = (ok && !entry.retry) ? Math.min(cur.box + 1, BOXES.length - 1) : 0;
+  S.srs[k] = { box: box, due: today() + BOXES[box], t: Date.now() };
+  save();
+}
+
+/* ---------- feedback bar ---------- */
+
+function showFeedback(ok, title, why, src, clip, advance) {
+  const inner = el('div', { cls: 'inner' }, [
+    el('div', { cls: 'body' }, [
+      el('h4', { text: title }),
+      why ? el('p', { html: why }) : null,
+      (src || clip) ? el('div', { cls: 'links' }, [
+        src ? el('a', { href: src[1], target: '_blank', rel: 'noopener' }, [document.createTextNode('📖 ' + src[0])]) : null,
+        clip ? el('a', { href: 'https://www.youtube.com/watch?v=' + clip[0] + '&t=' + clip[1] + 's', target: '_blank', rel: 'noopener' },
+          [document.createTextNode('▶ ' + clip[2])]) : null
+      ]) : null
+    ]),
+    el('button', {
+      cls: 'btn ' + (ok ? 'good' : 'bad'),
+      on: { click: () => { if (advance) clear(); else step(); } }
+    }, [document.createTextNode(advance ? 'Continue' : 'Got it')])
+  ]);
+  fb.textContent = '';
+  fb.className = 'feedback ' + (ok ? 'ok' : 'no') + ' up';
+  fb.appendChild(inner);
+  fb.dataset.advance = advance ? '1' : '0';
+  const b = fb.querySelector('.btn');
+  if (b) b.focus({ preventScroll: true });
+}
+
+function hideFeedback() {
+  fb.className = 'feedback';
+  fb.dataset.advance = '';
+}
+
+/* ---------- summary ---------- */
+
+function finish() {
+  const acc = session.asked ? Math.round(session.right / session.asked * 100) : 100;
+  if (session.kind === 'lesson') {
+    const first = !S.done[session.lessonId];
+    S.done[session.lessonId] = { best: Math.max(acc, (S.done[session.lessonId] || {}).best || 0) };
+    if (first) award(15);
+  }
+  touchStreak();
+  save();
+  setTop();
+  mountCheck(null);
+  hideFeedback();
+
+  const rec = session.lessonId ? lessons[session.lessonId] : null;
+  const nxt = nextLesson();
+  const dueNow = dueItems().length;
+
+  render([el('div', { cls: 'summary' }, [
+    el('div', { style: 'font-size:3.2rem;line-height:1' , text: acc === 100 ? '🎯' : acc >= 70 ? '👏' : '💪' }),
+    el('div', { cls: 'big', text: acc === 100 ? 'Flawless' : acc >= 70 ? 'Lesson complete' : 'Lesson complete' }),
+    el('p', { cls: 'sub', text: session.kind === 'review' ? 'Review session finished.' : session.title }),
+    el('div', { cls: 'tiles' }, [
+      el('div', { cls: 'tile' }, [el('b', { text: '+' + session.xp }), el('span', { text: 'XP earned' })]),
+      el('div', { cls: 'tile' }, [el('b', { text: acc + '%' }), el('span', { text: 'first-try accuracy' })]),
+      el('div', { cls: 'tile' }, [el('b', { text: String(session.total) }), el('span', { text: 'items mastered' })])
+    ]),
+    el('div', { cls: 'actions' }, [
+      session.kind === 'lesson' && nxt
+        ? el('button', { cls: 'btn', on: { click: () => startLesson(nxt.id) } }, [document.createTextNode('Next lesson · ' + nxt.title)])
+        : null,
+      dueNow ? el('button', { cls: 'btn ghost', on: { click: () => startReview() } },
+        [document.createTextNode('Review ' + dueNow + ' due item' + (dueNow === 1 ? '' : 's'))]) : null,
+      rec ? el('a', { cls: 'btn ghost', href: 'reference.html#' + rec.unit.ref },
+        [document.createTextNode('Read the guidebook for this unit')]) : null,
+      el('button', { cls: 'btn ghost', on: { click: showPath } }, [document.createTextNode('Back to the path')])
+    ])
+  ])]);
+  session = null;
+  window.scrollTo(0, 0);
+}
+
+/* ---------- keyboard ---------- */
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  if (fb.classList.contains('up')) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fb.querySelector('.btn').click(); }
+    return;
+  }
+  if (!session || !session.current) return;
+  const v = session.current;
+  if (e.key === 'Escape') { e.preventDefault(); leave(); return; }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (v.isTeach) v.advance();
+    else if (v.isRecall) { const b = screen.querySelector('.btn'); if (b) b.click(); }
+    else doCheck();
+    return;
+  }
+  if (/^[1-9]$/.test(e.key) && v.pick) { e.preventDefault(); v.pick(parseInt(e.key, 10) - 1); }
+});
+
+/* ---------- boot ---------- */
+
+$('#reviewBtn').addEventListener('click', () => startReview());
+$('#soundBtn').addEventListener('click', () => { S.sound = !S.sound; save(); setTop(); if (S.sound) beep('tap'); });
+$('#homeBtn').addEventListener('click', showPath);
+
+showPath();
+syncBoot();
+})();

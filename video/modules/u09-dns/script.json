@@ -1,0 +1,177 @@
+{
+  "title": "Not The Name You Typed",
+  "subtitle": "Module 09 — resolver policy, the compiled plugin chain, and what Ready has not proven",
+  "series": {
+    "module": 9,
+    "unit": "u9",
+    "spineSegment": "DNS",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/content.js unit u9.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "Segment twelve of the spine: DNS. A Service has a name, and something has to turn that name into an address. This module is the resolver settings inside the Pod, the plugin chain inside CoreDNS, and why most DNS bugs live between the two.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the DNS segment lit."
+      }
+    },
+    {
+      "id": "not-the-name",
+      "n": 1,
+      "stage": null,
+      "title": "The query that actually leaves",
+      "lane": "pod",
+      "estSeconds": 42,
+      "narration": "The query that leaves the Pod is not the name you typed. The kubelet writes the Pod's resolver settings. Search domains and an ndots value then decide how a partially qualified name is expanded before anything is sent. So reading the actual resolv.conf inside the Pod is the first move in almost every DNS investigation. Not the Service. Not CoreDNS. The file.",
+      "visual": {
+        "type": "resolvConf",
+        "spec": "NEW. A typed name on the left, and the real resolv.conf contents in the centre — nameserver, search list, options ndots. On the right, the actual queries generated from it, in order. Show the typed name and the emitted queries side by side so the difference between them is the image. Render resolv.conf as a real file block at full type scale, not a caption."
+      }
+    },
+    {
+      "id": "ndots-cost",
+      "n": 2,
+      "stage": null,
+      "title": "What expansion costs",
+      "lane": "pod",
+      "estSeconds": 45,
+      "narration": "That expansion has a price. With a high ndots value a name like api.example.com is treated as partial, so the resolver tries it against each search domain first. Every one of those is a real round trip that fails before the correct absolute query is finally sent. Multiply that by every request an application makes and it becomes latency and load that nobody can attribute.",
+      "visual": {
+        "type": "ndotsAmplification",
+        "spec": "NEW. One external name entering, then four or five expanded queries firing in sequence, each returning NXDOMAIN, before the correct absolute query succeeds. Put a round-trip counter and accumulating latency on screen. Then multiply: show the same pattern across many requests so the waste reads as a rate, not a one-off."
+      }
+    },
+    {
+      "id": "trailing-dot",
+      "n": 3,
+      "stage": null,
+      "title": "One character",
+      "lane": "pod",
+      "estSeconds": 32,
+      "narration": "There is a one-character fix when you control the client. A trailing dot makes a name fully qualified, and a fully qualified name ends the search list. No expansion, no failed round trips, one query. It is the cheapest possible answer to search amplification.",
+      "visual": {
+        "type": "trailingDot",
+        "spec": "NEW. The same name twice, stacked. Without the trailing dot: the full cascade of failed expansions from the previous beat, collapsed small. With it: a single query, straight through. Make the trailing dot itself visually unmissable — it is the entire intervention."
+      }
+    },
+    {
+      "id": "nodelocal",
+      "n": 4,
+      "stage": null,
+      "title": "A cache on every node",
+      "lane": "pod",
+      "estSeconds": 40,
+      "narration": "NodeLocal DNSCache puts a cache on each node, and it genuinely helps. It relieves load on CoreDNS and it relieves conntrack pressure on the node. A strong answer also names the cost. You have added one more cache, one more listener, and one more configuration surface between your application and the truth.",
+      "visual": {
+        "type": "nodeLocalCache",
+        "spec": "NEW. Before: every Pod on every node querying CoreDNS centrally, with conntrack entries piling up. After: a node-local cache absorbing most queries, the central load visibly dropping. Then annotate the new surface honestly — one more cache, one more listener, one more config — as an added layer between app and truth, not as a downside footnote."
+      }
+    },
+    {
+      "id": "resolve-trace",
+      "n": 5,
+      "stage": null,
+      "title": "One name, end to end",
+      "lane": "pod",
+      "estSeconds": 42,
+      "narration": "Take payments.prod.svc.cluster.local. That name is already absolute, so search expansion does not apply at all. The resolver sends it to its configured DNS endpoint, which may be the node-local cache. CoreDNS answers from watched Service and EndpointSlice state. The reply travels back over the node network path. Four steps, and four different places it can fail.",
+      "visual": {
+        "type": "resolveTrace",
+        "spec": "NEW. The four steps as a horizontal journey with the name carried along it: absolute name (no expansion) → resolver to its endpoint, possibly NodeLocal → CoreDNS kubernetes plugin answering from watched state → reply back over the node network. Tag each step with its distinct failure. Fill the stage width; this is a journey, not a list."
+      }
+    },
+    {
+      "id": "dns-is-a-service",
+      "n": 6,
+      "stage": null,
+      "title": "The endpoint is itself a Service",
+      "lane": "pod",
+      "estSeconds": 42,
+      "narration": "One detail makes DNS failures confusing. The endpoint the resolver asks is normally the ClusterIP of the DNS Service. So resolving any name depends on Service routing already working, which is the data plane from the last module. When that path breaks, DNS appears broken and every symptom points at CoreDNS. CoreDNS is fine. The route to it is not. Testing a CoreDNS Pod address directly separates the two in one command.",
+      "visual": {
+        "type": "dnsIsAService",
+        "spec": "NEW. The resolver's query going to a ClusterIP, and that ClusterIP resolving through the same data plane taught in module 08 before it ever reaches a CoreDNS Pod. Break the data-plane hop: the query never arrives, CoreDNS stays visibly healthy, and the application reports a DNS failure. Then show the direct-to-Pod test bypassing the Service and succeeding, which is what isolates the fault. The healthy-but-unreachable CoreDNS is the image to land."
+      }
+    },
+    {
+      "id": "corefile-order",
+      "n": 7,
+      "stage": null,
+      "title": "Corefile order is not execution order",
+      "lane": "pod",
+      "estSeconds": 46,
+      "narration": "Inside CoreDNS the Corefile selects and configures plugins, server blocks and zones. It does not define the order in which they execute. That order is compiled into the binary, in plugin.cfg. So moving the cache line above the kubernetes line in your Corefile changes nothing about sequence. Genuinely reordering the chain means rebuilding CoreDNS. This is the single most misunderstood thing about it.",
+      "visual": {
+        "type": "corefileOrder",
+        "spec": "NEW. Two columns that must not be confused: the Corefile as written (editable, reorderable) and the compiled chain from plugin.cfg (fixed). Drag a line up in the Corefile column and show the compiled chain not moving. Then show the only thing that does change it — a rebuilt binary. The independence of the two columns is the beat."
+      }
+    },
+    {
+      "id": "watched-records",
+      "n": 8,
+      "stage": null,
+      "title": "Answers from a watch",
+      "lane": "pod",
+      "estSeconds": 40,
+      "narration": "The kubernetes plugin does not query the API for each request. It synthesises records from watched Service and EndpointSlice state. Which means DNS answers lag reality by exactly as much as that watch does. A stalled watch does not look like a DNS outage. It looks like stale records, and it will happily resolve names for things that no longer exist.",
+      "visual": {
+        "type": "watchedRecords",
+        "spec": "NEW. The plugin holding a local view fed by a watch, answering queries from that view rather than from the API. Stall the watch: the API's state moves on, the view freezes, and queries keep being answered — confidently and wrongly. Show a resolved name pointing at something that has already gone. Green, and wrong, at the same time."
+      }
+    },
+    {
+      "id": "fallthrough-vs-forward",
+      "n": 9,
+      "stage": null,
+      "title": "Fallthrough is not forwarding",
+      "lane": "pod",
+      "estSeconds": 38,
+      "narration": "Two words get used interchangeably and they are different mechanisms. Fallthrough is a plugin declining to answer and letting the next plugin in the chain try. Forwarding sends the query to an entirely different upstream server. Different path, different failure, different thing to check. Say one and mean the other, and you will look in the wrong place.",
+      "visual": {
+        "type": "fallthroughVsForward",
+        "spec": "NEW. One query, two clearly distinct paths. Fallthrough: movement sideways along the local plugin chain, staying inside CoreDNS. Forwarding: movement outward to a separate upstream server, leaving CoreDNS entirely. Draw the CoreDNS boundary explicitly so that staying inside versus leaving is the visual difference."
+      }
+    },
+    {
+      "id": "ready-proves-little",
+      "n": 10,
+      "stage": null,
+      "title": "What Ready has not proven",
+      "lane": "pod",
+      "estSeconds": 45,
+      "narration": "CoreDNS reports Ready. That has proven the process is up. It has not proven Service routing to the DNS Service. It says nothing about the freshness of its API watch, or the correctness of the records it synthesises. Nothing about upstream health for forwarded names. Nothing about cache freshness or the node-local path. And nothing at all about the resolver behaviour of the client that is asking.",
+      "visual": {
+        "type": "readyProvesLittle",
+        "spec": "NEW. One green Ready badge at the top, then the chain of things it says nothing about laid out beneath it, each with its own unknown state: Service routing, watch freshness, record correctness, upstream health, cache freshness, node-local path, client resolver. The single green light against seven unknowns is the whole argument — give the unknowns equal visual weight."
+      }
+    },
+    {
+      "id": "close",
+      "n": 11,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 40,
+      "narration": "Segment twelve, then. A failure here has a signature: the name is wrong, or the answer is stale, or the query never went where you assumed. All three look identical from the application, which only sees a connection that will not open. The next module is storage, and the handshake that decides where a Pod can even run.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the DNS segment shrinks back into the spine, and the CSI segment lights to preview module ten. Note that module order follows the course, not the packet path, so the previewed segment is not the adjacent one."
+      }
+    }
+  ]
+}

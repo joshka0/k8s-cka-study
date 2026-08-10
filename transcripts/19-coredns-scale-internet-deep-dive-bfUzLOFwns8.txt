@@ -1,0 +1,868 @@
+okay let's uh let's get started
+first of all thanks for everyone who
+joined this session my name is
+quoting as project young Tang is my
+GitHub Handle by the way if you have any
+questions after the session and do you
+want to ask you how please reach out to
+me in GitHub my GitHub profile also
+consists of my email so you can send me
+email as well if you like
+in today's session I'm going to discuss
+about several things first of all I'm
+going to give a brief introduction of
+coding as
+after that I will also discuss about the
+coding as projects Community as well as
+the latest update and then I will
+discuss about the service Discovery and
+the DNS especially about the how to use
+quoting as for service Discovery finally
+I will work through a goal on plugin for
+codeine as and show you how easy it is
+to write a Golan plugin for coding as in
+less than 100 lines of code
+as many of you know coding as is flex
+loading and server greeting in golang it
+has a focus on service Discovery
+the biggest difference between coding Us
+and other DNA server is that coding as
+has a plugin based architecture it can
+be easily extended
+what does that mean if you have any new
+feature or anything that you want and
+you are not able to find it in existing
+plugins you can actually write a plugin
+yourself as long as you know how to
+write and go long actually at the end of
+the session I will walk you through one
+demo plugin to show it
+according as has been the default DNS
+server since several years ago and
+because of that if you uh if you ever
+use kubernetes you'll certainly have
+already used according as
+according as uh is a DS server first and
+foremost so it is support DS it also
+supports some of the DNS related
+protocols like DSO TLS and DNS over grpc
+the latest development in DS is that
+there are some additional protocols like
+DNS over atp3 being discussed and being
+standardized we are working on to adding
+additional protocol support for the for
+coding asset level
+the biggest feature of coding as in
+comparison with other DNS DNS server is
+that the accordion has a very rich Cloud
+integration
+as you can see coding and support the
+different cloud
+data sync up with different Windows like
+AWS roughly three like AZ like a Google
+Cloud DNS
+the project of coding us was started by
+Mick jiben several years ago actually I
+think Nick started the project around
+the
+2016. it has been almost seven years
+so I'm going to say it's a successful
+project has been used widely across the
+cloud native ecosystem it also have
+other usage outside of kubernetes field
+and I will discuss a little bit in this
+session
+accordions has a very rich Community we
+have 300 more than 300 contributors so
+here I'm going to say big thanks to
+everyone who ever contributed to coding
+as project or whoever created a pull
+request we have 28 maintenance the
+reason we have so many maintenance is
+because the standard to be accepted as a
+maintenance is fairly low for quoting as
+uh if you ever create a significant pull
+request one significant request and if
+you can find a
+find a sponge find the maintainer as
+your sponsor we will add you as a
+maintainer that's why you see there are
+28 maintenance here we also have a 33
+public adopters
+the adopt the public adopter means if
+your institution or your company using
+coding us and you're building your
+company will institution willing to
+share the name in public you can add the
+your company's name in quoting as
+projects website and that is called the
+public adapter as we all know there are
+more than 33
+no institutions using coding as I'm sure
+I'm pretty sure about that however many
+companies didn't share the name in
+public that's why we don't have
+accessory but if your company are using
+that as another uh not concerned about
+sharing the name in public you can add a
+you can create a pull request including
+this project to add a public adapter
+that will also means you are going to be
+part of the coordinates contributes
+Community as well
+uh uh as of right now coding has already
+reached the 10 000 Stars which is a
+major Milestone if you have not done so
+I encourage anyone uh
+who has not started according as to to
+click a star now that let's see when we
+can reach the next milestone
+the codius project used to be a project
+lead based so essentially Mick jiben was
+the original supporting us and he
+started coordinates project in 2016. he
+has been the project leader since then
+last year Mick decided to stepping down
+you know we certainly respect his
+personal choice and as a result we
+converted the project the project
+structure from Project Lead model to a
+committee model the steering committee
+of the project will be uh always going
+to be elected by maintenance so if you
+want to be part of this committee you
+want to create a single request to be a
+maintainer for us then we can see what
+we what you can do to do more
+contribution to coordinates project
+I'm going to discuss a little bit about
+the project update especially since the
+last cubican several versions of
+coordinates have been released the
+latest release was
+1.10.1 which which was released in
+February
+2023 that's a couple months ago
+in this latest release it consists of
+several new uh several new things we
+introduced a new plugin that's a timeout
+we also introduced several new features
+like ACO allows you now allows you to
+drop Curry as action
+the template plugin allows you to create
+a request with extended the DNS address
+the load balancer plugin added a new
+weighted policy and finally the cache
+plugin give you the option to sell
+original record ttls from Cache
+one more thing I want to emphasize about
+the update is the security we all know
+security has been focused for the for
+the whole industry for the past several
+years for different reasons
+the accordion s has been built with
+Golan 1.19 since uh according s 1.10
+uh why that's important because like the
+older version of golang especially
+before
+1017.6 has several security issues uh if
+you're using all the coding as versions
+you may notice that the the coding has
+several Upstream related vulnerabilities
+you want to fix so that's why we
+encourage everyone who is using coding
+as to upgrade to the latest version
+ideally
+with 1.10 or Plus 1.10.1
+okay so next topic I'm going to discuss
+is about service discovery
+um for for things as we said Discovery
+many people ask a question actually in
+the past many people ask it asked a
+question about the DNS the usefulness of
+DNS in self-discovery some someone even
+asked me directly say
+in this day and age you have sdn sdn can
+pretty much do anything and you can use
+sdn to wind up any endpoint in any way
+you like like in your networking right
+software defined networking why would
+you still use DNS that's an interesting
+question right there are several reasons
+why DNC is important first of all Ds is
+pretty much a interaction
+but this is a nice interaction you
+actually want to have in order to have
+maximum flexibility
+the DNC itself if you configure properly
+it can be public facing which allows you
+to expose to the whole internet or you
+can configure the DNS to be within a
+certain Network so it's going to be
+internal
+Diaz is also easy and simple to change
+in fact any Innovations idea admin can
+probably change the DNS record for you
+right that's much easier than making any
+other adjustment if you are changing
+let's say cloud vendor if you change
+let's say cognitive event configuration
+it's the learning curve but this is too
+easy to change
+another thing people probably didn't
+realize
+is that the deal itself is a distributed
+system when we talk about distributed
+system
+people always refers to like a red
+protocol which seems to be quite
+complicated quite fancy but DS itself is
+also a discrete system and this is a
+massively scalable distributed system
+because the whole internet is backed by
+DNS right
+uh and also Diaz said one thing that's
+actually many people probably
+you know in in kubikan may not know this
+the DNS actually including how many
+people here uh building or operating a
+service that's actually custom facing
+you'll build a service you want the
+customer to use that but yes uh has a
+has a usage here but this also is part
+of the ID infrastructure
+so your your company's ID admin they are
+serving the cooperating Corporation data
+and in this case they are still using
+DNS that's uh that's the thing so in
+cubican you're talking about custom
+facing uh uh customer facing services
+but in it world you talk about Corporate
+Services as well
+because of that when we talk about DNS
+it still has a massive value in this day
+and age because
+the flexibility that's one another one
+is ease of use and the indirection of
+DNS itself will give you a lot more
+benefit in the long run
+okay next thing I'm going to discuss is
+the modic cloud
+uh many people already heard of
+multi-cloud and there are many people
+here probably using multi-cloud uh DNS
+it's actually nice tool to interact with
+multi-cloud
+so first of all why many people why many
+companies decide to go with the
+multi-cloud or hybrid Cloud there's
+several reasons the first reason is that
+in this in this world people are facing
+the data science and data residency
+restrictions
+if your your customer from certain
+countries were from certain you know
+like uh parts of the world there are
+legal restrictions and you'll have to
+place the data in certain regions you
+cannot just have one region to serve all
+your customers especially in Enterprise
+world
+and because of that
+you may not have a choice but to decide
+to go with multiple Cloud window or even
+with a hybrid model of cloud plus
+on-prem to serve different customers
+another reason multi-cloud has been
+interesting nowadays is the merger and
+acquisition that's something I noticed
+recently in different economic
+environment and conditions a company may
+have consolidations you know some
+companies acquire another company and
+the merger and that question should
+happen all the time
+if a model company are combined you'll
+probably realize that they're using
+different Cloud vendors and because of
+that because of the migration costs has
+been so high so a lot of times you are
+forced to operating in your environment
+with different Cloud windows
+and that's why the multi-cloud itself is
+important
+research to DNS again as I as I pointed
+out just a moments ago Dina is actually
+serves a diverse Diversified Source
+information
+to you know to devops and Engineers
+assistant in kubikan you're probably
+focusing on customer facing services but
+for it admins they probably more
+focusing on corporate Cooperative facing
+Services as well
+so that's uh information uh Bridging the
+word of I.T admin as well as devops and
+engineers
+in multi-cloud and
+you might if you are dealing with the
+cloud you probably want to use the data
+service from cloud vendor I do want to
+point out that the
+DNA service from cloud window may not be
+as reliable as they all believe
+as of right now that's what I know all
+three major Cloud vendors from AWS from
+Google cloud and ajds
+give you a 100 SLA that's 100 service
+license agreement however that's why
+it's very much misleading why that's
+misleading it's because what does it
+mean for 100
+if the the service disruption what will
+be the consequence the consequence as
+far Dyno is that they will give you a a
+refund
+for the loss of service but they will
+not give you a refund for the disruption
+of your service
+so think about how much money you are
+spending every year on DNS now you can
+figure out if your if let's say AWS or
+Google Cloud Azure DS has a service
+Interruption for let's say a day you
+probably can figure out the money is not
+that high and it's probably
+meaning is to you and if if you are
+building a very critical service in fact
+the company I work for several years ago
+actually a couple years ago encountered
+a service Interruption due to uh DNS
+outage from One Cloud window I'm not
+going to say who
+the conversation with the cloud window
+was not that Pleasant because after the
+calculation we realized we are only
+going to get a you know a service credit
+refund about you know 100 or so
+so the conversation the meeting with the
+cloud window was like okay you know do
+you guys really want that like a hundred
+dollars back or maybe we can give you
+some gift card
+yeah anyway so I'm just trying to point
+out say even though we rely on cloud
+Windows a lot of times the consequences
+may not be exactly what is expect unless
+you you know you'll go into the details
+of the agreement right
+that's why the company of we started
+thinking rethinking about our strategy
+and then we realized DNS itself is a
+very sensitive and critical service we
+are thinking about the potential just
+building our service uh you know just as
+a backup because we cannot afford to
+have a you know our critical service
+lost like millions of dollars but only
+got a you know a credit refund of like a
+hundred dollars right
+okay uh
+we we talk about quoting as a project
+and the one interesting about the
+quoting as is that coding is always have
+Cloud integration with all three windows
+people may ask why uh why you why you
+use the cloud Windows AP uh Cloud
+Windows API to do integration why not
+just directly communicating with DNS
+server from cloud open that's directly
+I mean certainly UDP you can you can
+just uh send the YouTube package to
+let's say rough Industries DNS server
+and they can exchange the data as well
+the reason we use cloud Windows API is
+that most of the API are HTTP space so
+it's a secure in comparison with the
+udpa and the cloud API normally have
+authentication and authorization which
+is much better than UDP which is almost
+available right and also TCP based
+protocol is certainly a lot more
+reliable and also give you a better
+error handling and finally the
+integration with Cloud vendors through
+the API
+allows us to separate the data sync up
+and dance query so you can have two
+channels one channel to serving your
+customer
+serving your let's say corporate
+corporate I.T world and another channel
+is it to query the cloud window like you
+know like graph 83 or like Google Cloud
+DNS to do the data sync up so again like
+I said the the good thing about coding
+ads is that you can consider coding as
+as a central of service Discovery to
+fetch other information from different
+sources from your it admin from
+kubernetes from different Cloud vendors
+and you can serve it at the server serve
+the DNS in one channel to every everyone
+so that's the advantage of coding us In
+This Cloud Integrations
+this is an example of actual a potential
+usage of using coding us to wire up
+different Cloud Windows data this
+example is going to give you a
+uh it's going to wind up for eight
+dollars rough history and Google
+clouding as as well as your local DNS
+record as you can see the you can you
+can have three plugins the first plugin
+is to use the rough history which will
+talk to AWS to get the DNS information
+from AWS and you can configure your
+coding as to follow through
+if the if the DS record is not available
+in rough history and it can fall through
+to Google Cloud DNS if the data is still
+not available in Google cloudiness you
+can serve the DS record yourself locally
+this is a simple profile that will
+gets the job done and you can see the
+whole profile it's like 10 lines of
+configuration and that will achieve the
+result of mixing uh DNS data from
+multiple windows as well as your local
+DS
+so that's a that's one example of coding
+as usage in service discovery
+I'm going to walk through another one
+that's going to be a demo plugin as I
+promised that at the beginning of the
+session I'm going to walk through a
+coding as a plugin that's written golang
+but this don't worry let's go down
+plugin is very simple uh what this
+plugin
+achieve is that it's a source IP based
+service discovery
+let's say you have a DNS server and you
+want your DN server to serve different
+result based on the source IP let's say
+you are in a company Network you want to
+say if the query is from within your
+corporate Network you want to return one
+value let's say 1.1.1.1 and if the uh
+let's see if the query from outside from
+internet you want to sell a different
+value so you you will have the same DS
+query name like example.org but the
+result will be totally different so how
+to achieve that
+and that's not going to be very
+difficult
+I'm going to show a demo plugin this
+plugin only consists of three major
+functions the first function that's a
+unit function will only do a one-time
+initialization it will register the
+setup function with study by the way
+for anyone I'm not familiar with the
+caddy or wondering why candy is in the
+picture
+Claudius was started as a work of
+heading okay
+it's a initial recording as what's
+called caddy DS so coding itself is like
+a plugin of CAD itself but then
+eventually it's
+evolved and
+converted to a DNS focused I know like a
+project but initially it was a
+Fork off cutting that's why you see some
+of reference of caddy here
+that's a unique plugin the setup plugin
+will do several things basically the
+setup plugin will pass the configuration
+will
+will be called once for each of the
+plugin in the profile so that
+your your plugin can be configured
+properly
+and finally the serving as is the uh is
+the main body of your plugin and you
+want to put the functionality within 70s
+to achieve what you uh achieve your goal
+I'm going to work through those several
+uh the the Golan code and you can see
+it's fairly straightforward you need
+plug-in which is several lines of code
+to con to register demo itself
+the setup plugin is to pass the the
+configuration but since the damn plugin
+is very simple because we talk about
+what we want to achieve we just want
+hard code so the
+the setup is very simple as well if you
+have additional configuration you
+probably need to go deeper but here we
+just make it simple
+and then finally the 70s plus served as
+function is via the the true logic
+happens
+you will receive the requests and the
+response you
+the state will get this data requests
+and this request will from the request
+you can get the query name
+as well as the source IPL request that's
+only two information you care in most of
+the cases
+as I explained we try to
+try to return different results based on
+the source ID so if the source IP is
+from internal address let's say 127 or
+172 then we are going to return a unique
+IP of 1.1.1.1
+and if the source IP is from outside the
+world then by default it will return
+8.8.8.8 I pick up those two numbers
+randomly so because those two numbers
+actually are not going to be very useful
+the 1.1.1.1 that's the cloud players DS
+server and the AAA that's Google DS
+server but that's just example you can
+certainly decide to go anywhere you want
+if you if you're serious about the
+writing a colon plugin but that's pretty
+much all you need to do to construct the
+demo plugin and you can build the
+uh plugin easily but before we talk
+about building the plugin you also want
+to have a core file associated with it
+but as I explained we try to hard code
+our configuration so the profile I'm
+going to do is just specify demo so that
+the demo plugin will be invoked
+and that's the steps to build the plugin
+the building the plugin is a little
+convoluted but I hear I give you one
+command line if you can copy this
+command line if you can run with Docker
+then it will build a plugin for you so
+this one command will give you
+everything and after you build the byte
+way you can just run locally with a DOT
+slash coding as anti-field which is a
+server need
+the demo plugin is available in coding
+as
+in Korea's website so you can certainly
+take a look I did account the Total Line
+of code is 80 lines so that's not a lot
+and
+interestingly serving
+interestingly uh seven different records
+are based on Source IPA is one of the
+most requested features by Community we
+didn't do that but we encouraged people
+to take a look at Gola and it's very
+simple right so you you probably would
+rather would rather write a goal and
+code yourself why we didn't support this
+is because the configuration can be very
+convoluted if we go with this Rod right
+people will say hey you have a
+you have a different configuration you
+have let's say the water will be a
+source IP or what it will be long is
+what kind of format you have to present
+we realized it's probably too convoluted
+to serve everyone's need but if you have
+specific requests say you just want to
+return different results based on the
+source ID and you know exactly so happy
+you can just copy the demo plugin and
+make some small modifications and it
+will serve your need
+okay so we are almost approaching to the
+end of the session so I wanted to uh
+just uh for anyone who are interested in
+coding as I want to make contributions
+there are several ways to make
+contribution first of all you can start
+coding Us in GitHub so let's see if we
+can reach to the next Milestone we are
+reach 10 000 Stars so maybe we can
+increase in number even further because
+that's the only thing matters in this
+day and age right
+you can also add the name of your
+institution or company to adopt the
+stuff MD
+that also means that you can create a
+pull request and
+you'll become a contributor yourself and
+finally if you want to be a maintenance
+as I'm explained you only need to
+contribute one significant pull request
+I mean a typo was some small bug fix may
+not matter unfortunately and then you
+can find one maintenance to sponsor you
+and you will be added as coding as
+maintainer and I do want to say the
+coding as the community has been fairly
+friendly if you contribute a second
+report request I can guarantee you you
+can find some sponsor to uh to introduce
+you as a maintainer
+okay I think that's pretty much it so
+maybe we can talk about any questions
+thank you
+and any questions
+hi at the beginning of your talk you
+mentioned some requests inside of a
+cluster might not D DNS you're it was
+like a section do you need DNS if any
+more within a cluster
+and you talked about how talking to
+external Services you still need it but
+um is that ringing any bells for you
+sorry I'm not sure about your question
+maybe you can
+elaborate a little like with some
+examples uh
+it was around service Discovery and
+um I I thought what you were saying is
+uh when one service is talking to
+another it might not need to make a DNS
+request for that because it's handled by
+a bunch of other stuff okay so I think
+uh you're talking about if this is
+necessary so in this day I age you know
+we have sdn software defined networking
+we software defined networking your IP
+can be wired up in any way you want the
+traditional way of you have a cluster it
+has been a certain side of block it has
+a restriction say slash 16 slash 24 it's
+not truly relevant anymore in sdn age
+because in sdn you can have one virtual
+machine side by side in another virtual
+machine they can be in totally different
+ID and you can even harder code machine
+with IP right
+but so that that's my reference to uh
+the Diaz versus the the so-called sdn
+was of static IDs you can just say okay
+I have one virtual machine I'm going to
+assign static IP I know this static ID
+is 1.1.1.1 it will never change
+so that's a question some people ask
+okay why do you still need dinners in
+this case but my answer was that
+even in this case you wanted to have
+dinners because dinners give you an
+indirection and the interaction is
+something
+you wanted to maintain and changing
+things is always going to be easy in
+comparison to change the sdn
+configuration even though sdn is a lot
+easier in comparison to like many years
+ago many years ago
+with your switch would rather you you're
+limited by your search router but
+nowadays it's the limitation of sdn is
+much less
+compare with so many years ago right so
+that's that's my comment about the
+esteem or the DNA is still relevant okay
+so the static IP would be like a cluster
+IP for your service is that
+uh in your cluster I mean normally in
+you know like in your uh let's say when
+you try to operate an individuality your
+cluster may still be within the same
+side of block right because that's easy
+because that's traditional way of how
+people maintaining the network but
+underlying if you look deeper you can
+if we want to go with a steering rod you
+can go anywhere you want
+your your cluster can be totally
+shuffled with different IP addresses and
+they can be totally unrelated but you
+can always have a point-to-point
+delivery from one you know package can
+be delivered from one to another and
+they can be totally outside of a default
+side block
+so that's why I'm saying like the
+Restriction is much less nowadays but
+uh what should I say because
+traditionally people operating in a way
+with some side developed restrictions
+with different hubs so if we are going
+to
+uh what should I say unless you're
+building something totally new you
+probably just want to add a DNS to allow
+you to have a certain flexibility and
+that flexibility it's going to reward
+you in case you make a change
+got it thanks okay
+any other questions oh okay
+hi great talk
+um I was wondering about the plugin
+system that you showed yeah the thing
+I'm wondering is if they are chaining
+together
+how do you know that they're not going
+to step on each other so how was a
+plug-in writer do you know where do you
+plug in compared to other plugins uh are
+you asking about questions about out of
+the plugin yeah
+okay so that is actually interesting so
+but you probably noticed that including
+us at least the plugin has to be
+compiled
+you cannot at least you cannot easily
+let's say Dynamic load a plugin that's
+actually by Design because sometimes you
+may need to recompile the code if you
+don't recompile the code this is the
+order that's better in plug-in.configure
+file and
+it will walk through one by one and
+that's one reason you see the init
+function to initialize and set up the
+plugin because if a plugin is not in use
+you probably even don't want them to go
+through the chain so like in
+let me show you one example like in this
+case if you only build a demo and the
+your coding as you recompile with only
+demo then
+in this case it will only work through a
+demo Plugin or other plugin will not
+even be touched
+but the order you can Define the the
+other is specified in the
+plugin.cfg file
+thank you okay
+okay okay
+um a security requirement in my cluster
+is that I may want one tenant
+application
+to have a short list of DNS zones which
+they are allowed to make lookups to and
+then I have another application with a
+different short white list of dnsos
+and I I was as a I saw your example
+plugin
+and I was wondering would it be possible
+to based on the color pods namespace and
+not the color pods IP to serve a
+different IP address for the same domain
+would it be feasible to write such a
+plugin okay so I I am asking a question
+of uh okay so in Dina's case the DNS
+normally have like a curry and their
+response and the query normally carries
+a a current name plus the suicide PM
+because that's only two reliable
+information right uh are you trying to
+say that if we manipulating the
+record-based on the the current name if
+a current name is in namespace based is
+that a question no no suppose the one
+DNS request that originates from some
+particular namespace and from that
+namespace I want that only lookups
+towards the google.com Zone should
+succeed whereas all other queries should
+be dropped
+Okay so
+that okay so that that might be a little
+uh little tricky so you know like when
+Diaz let's see the thing has see the the
+thing as Curry the only reliable
+information that I mentioned our current
+name and the source IP if you say you
+want the the thing as reply to be based
+on the namespace which which means the
+name so it's going to be within a
+kubernetes cluster I think that's
+question right in this case I think
+you first have to make sure different
+namespace are potentially pointing to
+different DNA servers right or maybe
+they point to the same server but you
+have to make sure they expose the uh a
+different let's say the DNS IP address
+so that you can distinguish them I've
+already written such an implementation
+but I was wondering if I had made things
+harder than they'd have to be
+uh
+I I I've got to say you probably need to
+go into the goal and to make some
+something happen I'm not sure you can
+just grab a call file and make some you
+know some profile manipulation to make
+this happen I think some goal
+implementation might be needed to
+achieve what you you want
+okay thank you okay any other questions
+okay
+um thank you very much for the great
+talk I was wondering whether you just
+said your plugins have to be compiled
+but is it possible to control accordion
+asset runtime for example using custom
+operators or custom resource definitions
+so basically I'm asking is it possible
+to write a code DNS plugin that watches
+custom resources and adjusts for example
+routing at runtime
+uh
+I think you mentioned the plug-in
+compile are you talking about a dynamic
+loading a plugin
+so no when when the plugin is already
+running in Korean s yeah is it possible
+that the plugin accesses the cube API
+and reacts to changes dynamically
+uh the the kubernetes plugin including
+as actually will will map the kubernetes
+uh the the kubernetes API is you know
+the backend the data so it are they
+achieving that if you have any
+special request a special need to
+manipulating those data
+many times it's already possible but you
+have to be a little creative in
+manipulating profile if you don't want
+to go with the Goldenrod otherwise you
+know for for some some of the uh at
+least the community members I noticed
+that they they feel like it's just a
+little you know like
+to what's too hardcore to go into
+manipulating different profile to get a
+little creative they just say okay so
+it's not difficult to write a comma so
+this is right go along because that's
+not too difficult to write a coordinates
+plugin as you can see right okay thank
+you very much okay
+any other questions
+okay if no other questions I think
+that's it for today thanks everyone for
+joining this session have a great day
+[Applause]

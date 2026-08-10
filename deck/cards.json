@@ -1,0 +1,1705 @@
+[
+  {
+    "id": "api-server::explain-policy-boundary",
+    "component": "api-server",
+    "platform": "01 Control Plane",
+    "type": "name_to_definition",
+    "front": "Why is <strong>kube-apiserver</strong> the cluster coordination and policy boundary?",
+    "back": "It exposes the supported API, applies request policy and conversion, persists canonical objects through etcd, and serves reads and watches. Other components coordinate through this contract rather than storage internals.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "01-control-plane",
+      "understanding"
+    ]
+  },
+  {
+    "id": "api-server::api-server-vs-etcd",
+    "component": "api-server",
+    "platform": "01 Control Plane",
+    "type": "discrimination",
+    "front": "<strong>API server</strong> vs <strong>etcd</strong>: which owns the public contract, and which persists state?",
+    "back": "The API server owns authentication, policy, validation, versioning, conversion, reads, and watches. etcd is the strongly consistent persistence layer behind it; clients should not bypass the API contract.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "01-control-plane",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "etcd::explain-persistence",
+    "component": "etcd",
+    "platform": "01 Control Plane",
+    "type": "name_to_definition",
+    "front": "What role does <strong>etcd</strong> play in Kubernetes?",
+    "back": "It is the Raft-backed, strongly consistent key-value store used by the API server for Kubernetes object persistence. Its quorum, disk latency, and health directly affect control-plane writes.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "01-control-plane",
+      "understanding"
+    ]
+  },
+  {
+    "id": "etcd::name-from-raft-store",
+    "component": "etcd",
+    "platform": "01 Control Plane",
+    "type": "definition_to_name",
+    "front": "Which distributed key-value store persists Kubernetes API state with strongly consistent, Raft-backed writes?",
+    "back": "<strong>etcd</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "01-control-plane",
+      "recall"
+    ]
+  },
+  {
+    "id": "controller-manager::explain-built-in-loops",
+    "component": "controller-manager",
+    "platform": "01 Control Plane",
+    "type": "name_to_definition",
+    "front": "What does <strong>kube-controller-manager</strong> do?",
+    "back": "It hosts many built-in controllers that independently watch API state and reconcile resources such as nodes, replicas, jobs, endpoints, namespaces, and service accounts toward their desired behavior.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "01-control-plane",
+      "understanding"
+    ]
+  },
+  {
+    "id": "controller-manager::name-from-controller-host",
+    "component": "controller-manager",
+    "platform": "01 Control Plane",
+    "type": "definition_to_name",
+    "front": "Which control-plane process hosts many built-in reconciliation loops for core Kubernetes resources?",
+    "back": "<strong>kube-controller-manager</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "01-control-plane",
+      "recall"
+    ]
+  },
+  {
+    "id": "scheduler::explain-placement",
+    "component": "scheduler",
+    "platform": "01 Control Plane",
+    "type": "name_to_definition",
+    "front": "What does <strong>kube-scheduler</strong> do—and not do?",
+    "back": "It watches unscheduled Pods, filters infeasible nodes, scores feasible ones, and records a binding. It chooses a node; it does not create containers or execute the Pod.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "01-control-plane",
+      "understanding"
+    ]
+  },
+  {
+    "id": "scheduler::name-from-filter-score-bind",
+    "component": "scheduler",
+    "platform": "01 Control Plane",
+    "type": "definition_to_name",
+    "front": "Which control-plane component filters and scores nodes for an unscheduled Pod, then records the chosen binding?",
+    "back": "<strong>kube-scheduler</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "01-control-plane",
+      "recall"
+    ]
+  },
+  {
+    "id": "kubelet::explain-node-realization",
+    "component": "kubelet",
+    "platform": "01 Control Plane",
+    "type": "name_to_definition",
+    "front": "What is the <strong>kubelet</strong> responsible for?",
+    "back": "It continuously syncs Pods assigned to its node, coordinating runtime, network, storage, secrets, probes, and status so durable API intent becomes node-local processes and mounts.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "01-control-plane",
+      "understanding"
+    ]
+  },
+  {
+    "id": "kubelet::name-from-assigned-pods",
+    "component": "kubelet",
+    "platform": "01 Control Plane",
+    "type": "definition_to_name",
+    "front": "Which per-node component realizes assigned Pods by coordinating runtime, networking, storage, probes, and status?",
+    "back": "The <strong>kubelet</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "01-control-plane",
+      "recall"
+    ]
+  },
+  {
+    "id": "authentication::explain-identity-stage",
+    "component": "authentication",
+    "platform": "02 API Path and Security",
+    "type": "name_to_definition",
+    "front": "What does Kubernetes API <strong>authentication</strong> establish?",
+    "back": "It establishes the caller's identity and groups from credentials. That identity becomes input to later policy stages; successful identity proof does not itself grant any requested action.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "02-api-path-and-security",
+      "understanding"
+    ]
+  },
+  {
+    "id": "authentication::authn-vs-authz",
+    "component": "authentication",
+    "platform": "02 API Path and Security",
+    "type": "discrimination",
+    "front": "<strong>Authentication</strong> vs <strong>authorization</strong>: what question does each answer?",
+    "back": "Authentication asks who the caller is and establishes groups. Authorization asks whether that established identity may perform the requested verb on the resource or non-resource path.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "02-api-path-and-security",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "authorization::explain-permission-stage",
+    "component": "authorization",
+    "platform": "02 API Path and Security",
+    "type": "name_to_definition",
+    "front": "What does Kubernetes API <strong>authorization</strong> decide?",
+    "back": "It decides whether an already authenticated identity may perform the requested verb on the target resource or path. RBAC is one authorizer; approval still leaves admission and validation gates.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "02-api-path-and-security",
+      "understanding"
+    ]
+  },
+  {
+    "id": "authorization::name-from-permission-decision",
+    "component": "authorization",
+    "platform": "02 API Path and Security",
+    "type": "definition_to_name",
+    "front": "Which request stage decides whether an established identity may perform a particular verb on a resource or non-resource path?",
+    "back": "<strong>Authorization</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "02-api-path-and-security",
+      "recall"
+    ]
+  },
+  {
+    "id": "admission-control::explain-post-authz-policy",
+    "component": "admission-control",
+    "platform": "02 API Path and Security",
+    "type": "name_to_definition",
+    "front": "What does Kubernetes <strong>admission control</strong> do?",
+    "back": "After authorization, it may default or mutate an object and then validate or reject it. This stage enforces object-level policy before persistence and can include built-in or external logic.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "02-api-path-and-security",
+      "understanding"
+    ]
+  },
+  {
+    "id": "admission-control::name-from-mutate-validate",
+    "component": "admission-control",
+    "platform": "02 API Path and Security",
+    "type": "definition_to_name",
+    "front": "What post-permission API processing may default, mutate, validate, or reject a resource request before persistence?",
+    "back": "<strong>Admission control</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "02-api-path-and-security",
+      "recall"
+    ]
+  },
+  {
+    "id": "admission-webhook::explain-synchronous-dependency",
+    "component": "admission-webhook",
+    "platform": "02 API Path and Security",
+    "type": "name_to_definition",
+    "front": "Why is an <strong>admission webhook</strong> an API-path reliability dependency?",
+    "back": "The API server synchronously sends matching requests as AdmissionReview objects to a network service. Broad rules, DNS, endpoints, TLS, latency, timeout, and failure policy can therefore affect many writes.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "02-api-path-and-security",
+      "understanding"
+    ]
+  },
+  {
+    "id": "admission-webhook::name-from-admissionreview-service",
+    "component": "admission-webhook",
+    "platform": "02 API Path and Security",
+    "type": "definition_to_name",
+    "front": "What synchronous network service receives <code>AdmissionReview</code> objects to mutate or validate matching API requests?",
+    "back": "An <strong>admission webhook</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "02-api-path-and-security",
+      "recall"
+    ]
+  },
+  {
+    "id": "optimistic-concurrency::explain-conflict-retry",
+    "component": "optimistic-concurrency",
+    "platform": "02 API Path and Security",
+    "type": "name_to_definition",
+    "front": "How should a client handle <strong>optimistic concurrency</strong> conflicts?",
+    "back": "Treat the stale resource version as evidence that state changed: fetch the latest object, recompute the desired delta, and retry with bounded backoff instead of overwriting another writer's changes.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "02-api-path-and-security",
+      "understanding"
+    ]
+  },
+  {
+    "id": "optimistic-concurrency::name-from-stale-write-detection",
+    "component": "optimistic-concurrency",
+    "platform": "02 API Path and Security",
+    "type": "definition_to_name",
+    "front": "What update discipline rejects stale object versions and requires a client to refetch and recompute before retrying?",
+    "back": "<strong>Optimistic concurrency</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "02-api-path-and-security",
+      "recall"
+    ]
+  },
+  {
+    "id": "reconciliation-loop::explain-convergence-cycle",
+    "component": "reconciliation-loop",
+    "platform": "03 Reconciliation",
+    "type": "name_to_definition",
+    "front": "Explain a Kubernetes <strong>reconciliation loop</strong>.",
+    "back": "It observes current state, compares it with desired intent, and applies one bounded, retry-safe correction. Repeated passes and fresh observations drive eventual convergence across asynchronous boundaries.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "03-reconciliation",
+      "understanding"
+    ]
+  },
+  {
+    "id": "reconciliation-loop::name-from-observe-diff-act",
+    "component": "reconciliation-loop",
+    "platform": "03 Reconciliation",
+    "type": "definition_to_name",
+    "front": "What repeatable process observes current state, compares it with intent, and applies a bounded corrective action?",
+    "back": "A <strong>reconciliation loop</strong> (control loop).",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "03-reconciliation",
+      "recall"
+    ]
+  },
+  {
+    "id": "level-based-reconciliation::explain-current-levels",
+    "component": "level-based-reconciliation",
+    "platform": "03 Reconciliation",
+    "type": "name_to_definition",
+    "front": "Why is <strong>level-based reconciliation</strong> resilient to missed notifications?",
+    "back": "Correctness comes from recomputing what should be true from current desired and observed levels. Notifications only schedule work, so relist, resync, or later changes can recover convergence.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "03-reconciliation",
+      "understanding"
+    ]
+  },
+  {
+    "id": "level-based-reconciliation::events-vs-current-state",
+    "component": "level-based-reconciliation",
+    "platform": "03 Reconciliation",
+    "type": "discrimination",
+    "front": "<strong>Events</strong> vs <strong>current state</strong>: which is authoritative for controller correctness?",
+    "back": "Current API state is authoritative. Events are lossy hints that reduce reaction latency; a correct controller does not require replaying every historical transition to reconstruct truth.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "03-reconciliation",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "list-watch::explain-snapshot-stream",
+    "component": "list-watch",
+    "platform": "03 Reconciliation",
+    "type": "name_to_definition",
+    "front": "Explain the Kubernetes <strong>list-watch</strong> pattern and recovery path.",
+    "back": "A list establishes current collection state and a resource version; a watch streams later changes. If retained history expires, the client relists and resumes rather than treating the stream as permanent.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "03-reconciliation",
+      "understanding"
+    ]
+  },
+  {
+    "id": "list-watch::name-from-snapshot-change-stream",
+    "component": "list-watch",
+    "platform": "03 Reconciliation",
+    "type": "definition_to_name",
+    "front": "What API consumption pattern obtains a collection snapshot and version, then streams later changes from that point?",
+    "back": "<strong>List-watch</strong> (list then watch).",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "03-reconciliation",
+      "recall"
+    ]
+  },
+  {
+    "id": "shared-informer::explain-cache-fanout",
+    "component": "shared-informer",
+    "platform": "03 Reconciliation",
+    "type": "name_to_definition",
+    "front": "What does a <strong>shared informer</strong> provide?",
+    "back": "It maintains a local object cache from list-watch and fans change notifications to handlers. Sharing reduces duplicate API traffic, while consumers must still respect eventual cache freshness.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "03-reconciliation",
+      "understanding"
+    ]
+  },
+  {
+    "id": "shared-informer::name-from-shared-cache",
+    "component": "shared-informer",
+    "platform": "03 Reconciliation",
+    "type": "definition_to_name",
+    "front": "What client mechanism maintains a shared local object cache from a change stream and distributes notifications to handlers?",
+    "back": "A <strong>shared informer</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "03-reconciliation",
+      "recall"
+    ]
+  },
+  {
+    "id": "rate-limited-workqueue::explain-key-queue",
+    "component": "rate-limited-workqueue",
+    "platform": "03 Reconciliation",
+    "type": "name_to_definition",
+    "front": "Why use a <strong>rate-limited workqueue</strong> of keys?",
+    "back": "Stable keys deduplicate notification bursts and make workers fetch current objects rather than stale event payloads. Rate limiting separates producers from retry timing and adds bounded backoff.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "03-reconciliation",
+      "understanding"
+    ]
+  },
+  {
+    "id": "rate-limited-workqueue::name-from-dedup-backoff",
+    "component": "rate-limited-workqueue",
+    "platform": "03 Reconciliation",
+    "type": "definition_to_name",
+    "front": "What controller mechanism queues stable object keys, collapses bursts, and backs off retryable work?",
+    "back": "A <strong>rate-limited workqueue</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "03-reconciliation",
+      "recall"
+    ]
+  },
+  {
+    "id": "deployment::explain-rollout-promise",
+    "component": "deployment",
+    "platform": "04 Workloads and Disruption",
+    "type": "name_to_definition",
+    "front": "What lifecycle promise does a Kubernetes <strong>Deployment</strong> provide?",
+    "back": "It manages ReplicaSets to maintain replaceable Pods and perform controlled rollouts using desired replicas, surge, unavailability, readiness, and progress signals. Pod identity is not stable.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "04-workloads-and-disruption",
+      "understanding"
+    ]
+  },
+  {
+    "id": "deployment::deployment-vs-statefulset",
+    "component": "deployment",
+    "platform": "04 Workloads and Disruption",
+    "type": "discrimination",
+    "front": "<strong>Deployment</strong> vs <strong>StatefulSet</strong>: what is the real discriminator?",
+    "back": "Use a Deployment for replaceable Pod identity and ReplicaSet rollouts. Use a StatefulSet when stable ordinal or storage identity and ordered lifecycle are correctness requirements; neither makes an application consistent.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "04-workloads-and-disruption",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "statefulset::explain-stable-identity",
+    "component": "statefulset",
+    "platform": "04 Workloads and Disruption",
+    "type": "name_to_definition",
+    "front": "What does a <strong>StatefulSet</strong> add beyond replaceable replicas?",
+    "back": "It provides stable ordinal identity, ordered lifecycle, and per-Pod claim templates. Those primitives support stateful designs, but the application must still implement replication, quorum, and recovery.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "04-workloads-and-disruption",
+      "understanding"
+    ]
+  },
+  {
+    "id": "statefulset::name-from-ordinal-storage",
+    "component": "statefulset",
+    "platform": "04 Workloads and Disruption",
+    "type": "definition_to_name",
+    "front": "Which workload controller provides stable Pod ordinals, ordered lifecycle, and per-Pod persistent claim templates?",
+    "back": "A <strong>StatefulSet</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "04-workloads-and-disruption",
+      "recall"
+    ]
+  },
+  {
+    "id": "job::explain-completion-invariant",
+    "component": "job",
+    "platform": "04 Workloads and Disruption",
+    "type": "name_to_definition",
+    "front": "What is the desired-state invariant of a Kubernetes <strong>Job</strong>?",
+    "back": "Its goal is a specified number of successful Pod completions. It manages retries and parallelism toward completion rather than maintaining a continuously available replica count.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "04-workloads-and-disruption",
+      "understanding"
+    ]
+  },
+  {
+    "id": "job::name-from-successful-completions",
+    "component": "job",
+    "platform": "04 Workloads and Disruption",
+    "type": "definition_to_name",
+    "front": "Which workload controller aims for a specified number of successful Pod completions rather than continuously running replicas?",
+    "back": "A Kubernetes <strong>Job</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "04-workloads-and-disruption",
+      "recall"
+    ]
+  },
+  {
+    "id": "pod-disruption-budget::explain-voluntary-limit",
+    "component": "pod-disruption-budget",
+    "platform": "04 Workloads and Disruption",
+    "type": "name_to_definition",
+    "front": "What does a <strong>PodDisruptionBudget</strong> protect—and not protect?",
+    "back": "It limits API-initiated voluntary evictions using minimum availability or maximum unavailability. It does not prevent node failure, OOM, direct deletion, or guarantee availability without replicas and capacity.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "04-workloads-and-disruption",
+      "understanding"
+    ]
+  },
+  {
+    "id": "pod-disruption-budget::name-from-voluntary-evictions",
+    "component": "pod-disruption-budget",
+    "platform": "04 Workloads and Disruption",
+    "type": "definition_to_name",
+    "front": "Which policy constrains API-initiated voluntary evictions according to minimum availability or maximum unavailability?",
+    "back": "A <strong>PodDisruptionBudget (PDB)</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "04-workloads-and-disruption",
+      "recall"
+    ]
+  },
+  {
+    "id": "hpa-vpa::replicas-vs-requests",
+    "component": "hpa-vpa",
+    "platform": "04 Workloads and Disruption",
+    "type": "discrimination",
+    "front": "<strong>HPA</strong> vs <strong>VPA</strong>: what does each change, and where can they conflict?",
+    "back": "HPA changes replica count from metrics; VPA recommends or changes Pod resource requests. If both use CPU or memory requests, VPA can move the utilization denominator beneath HPA.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "04-workloads-and-disruption",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "hpa-vpa::name-from-two-autoscaling-axes",
+    "component": "hpa-vpa",
+    "platform": "04 Workloads and Disruption",
+    "type": "plain_phrase_to_name",
+    "front": "Name the autoscaling distinction between changing replica count and changing per-Pod resource requests.",
+    "back": "<strong>HPA versus VPA</strong> (horizontal versus vertical autoscaling).",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "04-workloads-and-disruption",
+      "recall"
+    ]
+  },
+  {
+    "id": "custom-resource-definition::explain-api-registration",
+    "component": "custom-resource-definition",
+    "platform": "05 CRDs and Operators",
+    "type": "name_to_definition",
+    "front": "What does a <strong>CustomResourceDefinition</strong> provide?",
+    "back": "It is a cluster-scoped object that registers a custom API resource's group, versions, kind, names, scope, and structural schema. A separate controller supplies behavior.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "05-crds-and-operators",
+      "understanding"
+    ]
+  },
+  {
+    "id": "custom-resource-definition::name-from-custom-api-shape",
+    "component": "custom-resource-definition",
+    "platform": "05 CRDs and Operators",
+    "type": "definition_to_name",
+    "front": "What cluster-scoped object registers the group, versions, kind, names, scope, and schema for a new Kubernetes API resource?",
+    "back": "A <strong>CustomResourceDefinition (CRD)</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "05-crds-and-operators",
+      "recall"
+    ]
+  },
+  {
+    "id": "spec-status-separation::intent-vs-observation",
+    "component": "spec-status-separation",
+    "platform": "05 CRDs and Operators",
+    "type": "discrimination",
+    "front": "<strong>spec</strong> vs <strong>status</strong>: what belongs on each side?",
+    "back": "Spec holds declarative user intent. Status holds controller observations, conditions, references, and processed generation. A controller should report limitations rather than rewriting intent to hide them.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "05-crds-and-operators",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "spec-status-separation::name-from-intent-observation",
+    "component": "spec-status-separation",
+    "platform": "05 CRDs and Operators",
+    "type": "plain_phrase_to_name",
+    "front": "Name the API convention that keeps desired user intent separate from controller-reported observations.",
+    "back": "<strong>Spec/status separation</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "05-crds-and-operators",
+      "recall"
+    ]
+  },
+  {
+    "id": "structural-schema::explain-api-semantics",
+    "component": "structural-schema",
+    "platform": "05 CRDs and Operators",
+    "type": "name_to_definition",
+    "front": "Why is an accurate CRD <strong>structural schema</strong> part of the API contract?",
+    "back": "It defines object shape and list/map semantics needed for validation, pruning, defaulting, and server-side apply. Inaccuracy can silently discard fields or corrupt ownership behavior.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "05-crds-and-operators",
+      "understanding"
+    ]
+  },
+  {
+    "id": "structural-schema::name-from-crd-openapi-shape",
+    "component": "structural-schema",
+    "platform": "05 CRDs and Operators",
+    "type": "definition_to_name",
+    "front": "What CRD OpenAPI shape is required for reliable validation, pruning, defaulting, and server-side apply behavior?",
+    "back": "A <strong>structural schema</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "05-crds-and-operators",
+      "recall"
+    ]
+  },
+  {
+    "id": "served-storage-version::served-vs-storage",
+    "component": "served-storage-version",
+    "platform": "05 CRDs and Operators",
+    "type": "discrimination",
+    "front": "CRD <strong>served version</strong> vs <strong>storage version</strong>: what is the distinction?",
+    "back": "Several served representations may be requested, but exactly one storage version is used for newly persisted writes. Changing the marker does not rewrite old objects; migration is separate.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "05-crds-and-operators",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "served-storage-version::name-from-version-roles",
+    "component": "served-storage-version",
+    "platform": "05 CRDs and Operators",
+    "type": "plain_phrase_to_name",
+    "front": "Name the CRD distinction between requestable API representations and the single representation used for new persisted writes.",
+    "back": "<strong>Served versus storage version</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "05-crds-and-operators",
+      "recall"
+    ]
+  },
+  {
+    "id": "owner-finalizer::ownership-vs-cleanup-gate",
+    "component": "owner-finalizer",
+    "platform": "05 CRDs and Operators",
+    "type": "discrimination",
+    "front": "<strong>Owner references</strong> vs <strong>finalizers</strong>: what lifecycle role does each play?",
+    "back": "Owner references express dependency for garbage collection. Finalizers retain an object after deletion is requested until the owning controller completes cleanup, then removes only its key.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "05-crds-and-operators",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "owner-finalizer::name-from-two-lifecycle-tools",
+    "component": "owner-finalizer",
+    "platform": "05 CRDs and Operators",
+    "type": "plain_phrase_to_name",
+    "front": "Name the distinction between a garbage-collection dependency link and a metadata key that delays physical deletion for cleanup.",
+    "back": "<strong>Owner references versus finalizers</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "05-crds-and-operators",
+      "recall"
+    ]
+  },
+  {
+    "id": "scheduling-framework::explain-extension-points",
+    "component": "scheduling-framework",
+    "platform": "06 Scheduling",
+    "type": "name_to_definition",
+    "front": "What is the Kubernetes <strong>Scheduling Framework</strong>?",
+    "back": "It is kube-scheduler's pluggable architecture, organizing each placement attempt through extension points such as pre-filter, filter, score, reserve, permit, and bind, with rollback where needed.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "06-scheduling",
+      "understanding"
+    ]
+  },
+  {
+    "id": "scheduling-framework::name-from-placement-plugins",
+    "component": "scheduling-framework",
+    "platform": "06 Scheduling",
+    "type": "definition_to_name",
+    "front": "What pluggable architecture organizes a Pod placement attempt into filter, score, reserve, permit, bind, and related extension points?",
+    "back": "The <strong>Scheduling Framework</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "06-scheduling",
+      "recall"
+    ]
+  },
+  {
+    "id": "resource-requests::explain-scheduling-currency",
+    "component": "resource-requests",
+    "platform": "06 Scheduling",
+    "type": "name_to_definition",
+    "front": "Why are <strong>resource requests</strong> the scheduler's capacity currency?",
+    "back": "Feasibility compares declared requests with node allocatable resources, not current utilization. Poor values cause false scarcity, low utilization, overcommit, or later node pressure.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "06-scheduling",
+      "understanding"
+    ]
+  },
+  {
+    "id": "resource-requests::name-from-declared-capacity",
+    "component": "resource-requests",
+    "platform": "06 Scheduling",
+    "type": "definition_to_name",
+    "front": "What declared CPU, memory, and extended-resource quantities drive scheduling feasibility instead of live usage?",
+    "back": "<strong>Resource requests</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "06-scheduling",
+      "recall"
+    ]
+  },
+  {
+    "id": "placement-constraints::hard-vs-soft-rules",
+    "component": "placement-constraints",
+    "platform": "06 Scheduling",
+    "type": "discrimination",
+    "front": "Within <strong>placement constraints</strong>, how do hard requirements differ from soft preferences?",
+    "back": "Hard requirements such as required affinity, taints, ports, volume topology, and capacity can filter nodes. Soft preferences contribute scores that rank only the feasible remainder.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "06-scheduling",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "placement-constraints::name-from-node-rules",
+    "component": "placement-constraints",
+    "platform": "06 Scheduling",
+    "type": "definition_to_name",
+    "front": "What collective term covers affinity, taints, topology, ports, volumes, and other rules that filter or rank candidate nodes?",
+    "back": "<strong>Placement constraints</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "06-scheduling",
+      "recall"
+    ]
+  },
+  {
+    "id": "priority-preemption::explain-victim-selection",
+    "component": "priority-preemption",
+    "platform": "06 Scheduling",
+    "type": "name_to_definition",
+    "front": "How do <strong>Pod priority and preemption</strong> affect placement?",
+    "back": "Priority orders pending work and can let the scheduler nominate lower-priority victims so a higher-priority Pod becomes feasible. A nominated node remains a proposal, not a placement guarantee.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "06-scheduling",
+      "understanding"
+    ]
+  },
+  {
+    "id": "priority-preemption::name-from-priority-victims",
+    "component": "priority-preemption",
+    "platform": "06 Scheduling",
+    "type": "definition_to_name",
+    "front": "What scheduler behavior orders Pods and may nominate lower-priority victims to make a higher-priority pending Pod feasible?",
+    "back": "<strong>Pod priority and preemption</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "06-scheduling",
+      "recall"
+    ]
+  },
+  {
+    "id": "preemption-eviction::placement-vs-termination",
+    "component": "preemption-eviction",
+    "platform": "06 Scheduling",
+    "type": "discrimination",
+    "front": "<strong>Preemption</strong> vs <strong>eviction</strong>: which subsystem acts, and why?",
+    "back": "Scheduler preemption selects lower-priority victims to enable placement. Kubelet eviction responds to node pressure; API eviction represents voluntary disruption and normally honors disruption budgets.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "06-scheduling",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "preemption-eviction::name-from-two-removal-paths",
+    "component": "preemption-eviction",
+    "platform": "06 Scheduling",
+    "type": "plain_phrase_to_name",
+    "front": "Name the distinction between scheduler victim selection for placement and Pod termination caused by node pressure or the Eviction API.",
+    "back": "<strong>Preemption versus eviction</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "06-scheduling",
+      "recall"
+    ]
+  },
+  {
+    "id": "container-runtime-interface::explain-kubelet-runtime-contract",
+    "component": "container-runtime-interface",
+    "platform": "07 Node Runtime",
+    "type": "name_to_definition",
+    "front": "What boundary does the <strong>Container Runtime Interface</strong> define?",
+    "back": "It is the gRPC contract through which kubelet manages Pod sandboxes, containers, images, and runtime status with implementations such as containerd.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "07-node-runtime",
+      "understanding"
+    ]
+  },
+  {
+    "id": "container-runtime-interface::cri-oci-cni",
+    "component": "container-runtime-interface",
+    "platform": "07 Node Runtime",
+    "type": "discrimination",
+    "front": "<strong>CRI</strong> vs <strong>OCI</strong> vs <strong>CNI</strong>: what boundary does each define?",
+    "back": "CRI connects kubelet to a container runtime. OCI specifies lower-level image and runtime primitives. CNI configures network attachment for the Pod sandbox.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "07-node-runtime",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "pod-sandbox::explain-namespace-anchor",
+    "component": "pod-sandbox",
+    "platform": "07 Node Runtime",
+    "type": "name_to_definition",
+    "front": "What is a Kubernetes <strong>Pod sandbox</strong>?",
+    "back": "It is the runtime-created isolation context that anchors Pod-level namespaces, especially networking, before normal containers run. The network plugin attaches this context to the Pod network.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "07-node-runtime",
+      "understanding"
+    ]
+  },
+  {
+    "id": "pod-sandbox::name-from-isolation-context",
+    "component": "pod-sandbox",
+    "platform": "07 Node Runtime",
+    "type": "definition_to_name",
+    "front": "What runtime-created isolation context anchors Pod namespaces and network attachment before normal containers start?",
+    "back": "The <strong>Pod sandbox</strong> (often represented by a pause container).",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "07-node-runtime",
+      "recall"
+    ]
+  },
+  {
+    "id": "probe-semantics::startup-liveness-readiness",
+    "component": "probe-semantics",
+    "platform": "07 Node Runtime",
+    "type": "discrimination",
+    "front": "How do <strong>startup, liveness, and readiness probes</strong> differ?",
+    "back": "Startup protects slow initialization by gating the others. Liveness failure triggers container restart. Readiness controls endpoint eligibility without restarting the container.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "07-node-runtime",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "probe-semantics::name-from-three-health-questions",
+    "component": "probe-semantics",
+    "platform": "07 Node Runtime",
+    "type": "plain_phrase_to_name",
+    "front": "Name the three kubelet checks for initialization protection, restart health, and traffic eligibility.",
+    "back": "<strong>Startup, liveness, and readiness probes</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "07-node-runtime",
+      "recall"
+    ]
+  },
+  {
+    "id": "qos-cgroups::explain-resource-enforcement",
+    "component": "qos-cgroups",
+    "platform": "07 Node Runtime",
+    "type": "name_to_definition",
+    "front": "How do <strong>Pod QoS and cgroups</strong> relate?",
+    "back": "Requests and limits contribute to QoS classification, while kernel cgroups enforce and account for CPU and memory. Together they shape throttling, OOM behavior, and node-pressure eviction decisions.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "07-node-runtime",
+      "understanding"
+    ]
+  },
+  {
+    "id": "qos-cgroups::name-from-kernel-resource-behavior",
+    "component": "qos-cgroups",
+    "platform": "07 Node Runtime",
+    "type": "definition_to_name",
+    "front": "What paired Kubernetes classification and kernel mechanism shape CPU, memory, OOM, and node-pressure behavior?",
+    "back": "<strong>Pod QoS and cgroups</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "07-node-runtime",
+      "recall"
+    ]
+  },
+  {
+    "id": "pod-termination::explain-asynchronous-shutdown",
+    "component": "pod-termination",
+    "platform": "07 Node Runtime",
+    "type": "name_to_definition",
+    "front": "Explain the <strong>Pod termination lifecycle</strong>.",
+    "back": "Deletion begins a grace period while endpoint readiness, lifecycle hooks, TERM signals, and shutdown proceed concurrently. After the deadline, remaining processes may be forcefully stopped; it is not transactional.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "07-node-runtime",
+      "understanding"
+    ]
+  },
+  {
+    "id": "pod-termination::name-from-grace-to-force",
+    "component": "pod-termination",
+    "platform": "07 Node Runtime",
+    "type": "definition_to_name",
+    "front": "What asynchronous process coordinates deletion grace, lifecycle hooks, termination signals, endpoint removal, and eventual forceful stop?",
+    "back": "The <strong>Pod termination lifecycle</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "07-node-runtime",
+      "recall"
+    ]
+  },
+  {
+    "id": "container-network-interface::explain-network-attachment-contract",
+    "component": "container-network-interface",
+    "platform": "08 Networking",
+    "type": "name_to_definition",
+    "front": "What boundary does the <strong>Container Network Interface</strong> define?",
+    "back": "It is the runtime interface used by network plugins to attach Pod sandboxes to networks and allocate connectivity. A plugin supplies the actual addresses, routes, encapsulation, or policy.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "08-networking",
+      "understanding"
+    ]
+  },
+  {
+    "id": "container-network-interface::cni-vs-service-proxy",
+    "component": "container-network-interface",
+    "platform": "08 Networking",
+    "type": "discrimination",
+    "front": "<strong>CNI</strong> vs <strong>Service proxy</strong>: what failure boundary does each own?",
+    "back": "CNI configures Pod network attachment and reachability. A Service proxy translates stable virtual-IP semantics to current backends. One product may implement both, but the contracts remain distinct.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "08-networking",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "service-endpointslice::identity-vs-membership",
+    "component": "service-endpointslice",
+    "platform": "08 Networking",
+    "type": "discrimination",
+    "front": "<strong>Service</strong> vs <strong>EndpointSlice</strong>: what does each represent?",
+    "back": "A Service defines stable discovery and exposure semantics. EndpointSlices represent current backend addresses, ports, readiness, and topology used by DNS and Service data planes.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "08-networking",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "service-endpointslice::name-from-virtual-identity-membership",
+    "component": "service-endpointslice",
+    "platform": "08 Networking",
+    "type": "plain_phrase_to_name",
+    "front": "Name the API pair that separates stable virtual exposure from the current ready backend set.",
+    "back": "<strong>Service and EndpointSlice</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "08-networking",
+      "recall"
+    ]
+  },
+  {
+    "id": "kube-proxy-backends::implementation-vs-semantics",
+    "component": "kube-proxy-backends",
+    "platform": "08 Networking",
+    "type": "discrimination",
+    "front": "<strong>kube-proxy backends</strong> vs <strong>Service semantics</strong>: what may change and what remains stable?",
+    "back": "iptables, IPVS, or nftables are node-local forwarding implementations. The Service API's stable virtual identity and backend-selection contract remains; diagnose the configured implementation without memorizing slogans.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "08-networking",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "kube-proxy-backends::name-from-forwarding-implementations",
+    "component": "kube-proxy-backends",
+    "platform": "08 Networking",
+    "type": "definition_to_name",
+    "front": "What collective term describes alternative node-local implementations that program virtual-IP forwarding while preserving the same Service API behavior?",
+    "back": "<strong>kube-proxy backends</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "08-networking",
+      "recall"
+    ]
+  },
+  {
+    "id": "ebpf-service-dataplane::explain-kernel-hook-service",
+    "component": "ebpf-service-dataplane",
+    "platform": "08 Networking",
+    "type": "name_to_definition",
+    "front": "What is an <strong>eBPF Service data plane</strong>?",
+    "back": "It implements Service translation with eBPF programs and maps at kernel hooks instead of traditional kube-proxy netfilter paths, while still maintaining state needed for consistent flows.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "08-networking",
+      "understanding"
+    ]
+  },
+  {
+    "id": "ebpf-service-dataplane::netfilter-vs-ebpf-conntrack",
+    "component": "ebpf-service-dataplane",
+    "platform": "08 Networking",
+    "type": "discrimination",
+    "front": "<strong>Netfilter conntrack</strong> vs <strong>eBPF connection tracking</strong>: what changes and what does not?",
+    "back": "The hook and state implementation can change from netfilter tables to BPF maps. The need to associate packets with flows for reverse translation and stable load-balancing decisions remains.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "08-networking",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "connection-tracking::explain-flow-state",
+    "component": "connection-tracking",
+    "platform": "08 Networking",
+    "type": "name_to_definition",
+    "front": "Why is <strong>connection tracking</strong> needed in a Service data plane?",
+    "back": "It associates packets with flows so return traffic, address translation, and backend choices stay consistent. An implementation may use netfilter tables or eBPF maps; stateful flow memory remains.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "08-networking",
+      "understanding"
+    ]
+  },
+  {
+    "id": "connection-tracking::name-from-flow-memory",
+    "component": "connection-tracking",
+    "platform": "08 Networking",
+    "type": "definition_to_name",
+    "front": "What state associates packets with flows so reverse traffic, translation, and load-balancing choices remain consistent?",
+    "back": "<strong>Connection tracking</strong> (conntrack).",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "08-networking",
+      "recall"
+    ]
+  },
+  {
+    "id": "cluster-dns-path::trace-resolution",
+    "component": "cluster-dns-path",
+    "platform": "09 DNS",
+    "type": "name_to_definition",
+    "front": "Trace the <strong>cluster DNS resolution path</strong>.",
+    "back": "The application resolver applies Pod search policy, queries its configured DNS endpoint, possibly NodeLocal DNS, and reaches CoreDNS. Ordered plugins synthesize cluster records or forward upstream before the reply returns.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "09-dns",
+      "understanding"
+    ]
+  },
+  {
+    "id": "cluster-dns-path::name-from-resolver-to-answer",
+    "component": "cluster-dns-path",
+    "platform": "09 DNS",
+    "type": "plain_phrase_to_name",
+    "front": "Name the end-to-end path from application resolver and Pod configuration through cluster DNS to a synthesized or upstream answer.",
+    "back": "The <strong>cluster DNS resolution path</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "09-dns",
+      "recall"
+    ]
+  },
+  {
+    "id": "coredns-plugin-chain::explain-order",
+    "component": "coredns-plugin-chain",
+    "platform": "09 DNS",
+    "type": "name_to_definition",
+    "front": "Why does order matter in the <strong>CoreDNS plugin chain</strong>?",
+    "back": "Each plugin may answer, modify, observe, cache, fall through, or forward a query. Order therefore changes resolution behavior, caching, upstream reachability, and what evidence is emitted.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "09-dns",
+      "understanding"
+    ]
+  },
+  {
+    "id": "coredns-plugin-chain::name-from-ordered-middleware",
+    "component": "coredns-plugin-chain",
+    "platform": "09 DNS",
+    "type": "definition_to_name",
+    "front": "What ordered DNS middleware sequence can answer, modify, observe, cache, fall through, or forward queries?",
+    "back": "The <strong>CoreDNS plugin chain</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "09-dns",
+      "recall"
+    ]
+  },
+  {
+    "id": "dns-search-ndots::explain-query-amplification",
+    "component": "dns-search-ndots",
+    "platform": "09 DNS",
+    "type": "name_to_definition",
+    "front": "How can <strong>DNS search paths and ndots</strong> amplify external lookups?",
+    "back": "Names below the configured dot threshold may be tried with several search suffixes before an absolute query, multiplying negative responses and latency. Verify the Pod's actual resolver configuration and behavior.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "09-dns",
+      "understanding"
+    ]
+  },
+  {
+    "id": "dns-search-ndots::name-from-expansion-policy",
+    "component": "dns-search-ndots",
+    "platform": "09 DNS",
+    "type": "definition_to_name",
+    "front": "What resolver rules determine whether a name is expanded through search suffixes before or after an absolute lookup?",
+    "back": "<strong>DNS search paths and ndots</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "09-dns",
+      "recall"
+    ]
+  },
+  {
+    "id": "nodelocal-dns::explain-cache-tradeoff",
+    "component": "nodelocal-dns",
+    "platform": "09 DNS",
+    "type": "name_to_definition",
+    "front": "What does <strong>NodeLocal DNSCache</strong> change?",
+    "back": "A per-node caching agent shortens the query path and can reduce cluster DNS load and UDP connection-tracking pressure. It also adds another listener, cache, and configuration surface to diagnose.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "09-dns",
+      "understanding"
+    ]
+  },
+  {
+    "id": "nodelocal-dns::name-from-per-node-cache",
+    "component": "nodelocal-dns",
+    "platform": "09 DNS",
+    "type": "definition_to_name",
+    "front": "What per-node caching DNS agent can shorten query paths and reduce cluster resolver load and UDP flow-state pressure?",
+    "back": "<strong>NodeLocal DNSCache</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "09-dns",
+      "recall"
+    ]
+  },
+  {
+    "id": "headless-dns::explain-no-vip-answer",
+    "component": "headless-dns",
+    "platform": "09 DNS",
+    "type": "name_to_definition",
+    "front": "How does <strong>headless Service DNS</strong> differ from normal Service resolution?",
+    "back": "With <code>clusterIP: None</code>, DNS returns backing endpoint addresses rather than a virtual IP. Client libraries then perform discovery and backend selection instead of platform VIP forwarding.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "09-dns",
+      "understanding"
+    ]
+  },
+  {
+    "id": "headless-dns::name-from-endpoint-addresses",
+    "component": "headless-dns",
+    "platform": "09 DNS",
+    "type": "definition_to_name",
+    "front": "What DNS behavior returns backing endpoint addresses for client-side discovery because the Service has no virtual cluster IP?",
+    "back": "<strong>Headless Service DNS</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "09-dns",
+      "recall"
+    ]
+  },
+  {
+    "id": "pv-pvc-storageclass::capacity-claim-policy",
+    "component": "pv-pvc-storageclass",
+    "platform": "10 Storage",
+    "type": "discrimination",
+    "front": "<strong>PV</strong> vs <strong>PVC</strong> vs <strong>StorageClass</strong>: what role does each play?",
+    "back": "A PV represents cluster storage capacity and lifecycle; a PVC is a namespaced request; a StorageClass defines dynamic provisioning parameters and binding behavior.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "10-storage",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "pv-pvc-storageclass::name-from-storage-api-split",
+    "component": "pv-pvc-storageclass",
+    "platform": "10 Storage",
+    "type": "plain_phrase_to_name",
+    "front": "Name the storage API split among cluster capacity, a namespaced claim, and dynamic provisioning policy.",
+    "back": "<strong>PV, PVC, and StorageClass</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "10-storage",
+      "recall"
+    ]
+  },
+  {
+    "id": "csi-controller-sidecars::explain-external-controllers",
+    "component": "csi-controller-sidecars",
+    "platform": "10 Storage",
+    "type": "name_to_definition",
+    "front": "What do <strong>CSI controller sidecars</strong> do?",
+    "back": "External provisioner, attacher, resizer, and snapshotter controllers watch Kubernetes storage objects and call CSI controller RPCs to drive lifecycle operations outside kube-controller-manager.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "10-storage",
+      "understanding"
+    ]
+  },
+  {
+    "id": "csi-controller-sidecars::name-from-storage-watchers",
+    "component": "csi-controller-sidecars",
+    "platform": "10 Storage",
+    "type": "definition_to_name",
+    "front": "What external storage controllers watch Kubernetes objects and invoke provision, attach, resize, or snapshot RPCs?",
+    "back": "<strong>CSI controller sidecars</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "10-storage",
+      "recall"
+    ]
+  },
+  {
+    "id": "csi-node-publish::stage-vs-publish",
+    "component": "csi-node-publish",
+    "platform": "10 Storage",
+    "type": "discrimination",
+    "front": "CSI <strong>node stage</strong> vs <strong>node publish</strong>: what is the distinction?",
+    "back": "Stage prepares a device or filesystem once at a node-scoped location. Publish exposes the prepared volume at a workload-specific target path; drivers may support one or both phases.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "10-storage",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "csi-node-publish::name-from-prepare-expose",
+    "component": "csi-node-publish",
+    "platform": "10 Storage",
+    "type": "plain_phrase_to_name",
+    "front": "Name the paired node-side storage operations that prepare a volume on a node and expose it at a workload target path.",
+    "back": "<strong>CSI node stage and publish</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "10-storage",
+      "recall"
+    ]
+  },
+  {
+    "id": "wait-for-first-consumer::explain-topology-delay",
+    "component": "wait-for-first-consumer",
+    "platform": "10 Storage",
+    "type": "name_to_definition",
+    "front": "Why use <strong>WaitForFirstConsumer</strong>?",
+    "back": "It delays volume provisioning or binding until a consuming Pod's scheduling constraints reveal compatible topology, preventing storage from being created in a zone the Pod cannot use.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "10-storage",
+      "understanding"
+    ]
+  },
+  {
+    "id": "wait-for-first-consumer::name-from-delayed-binding",
+    "component": "wait-for-first-consumer",
+    "platform": "10 Storage",
+    "type": "definition_to_name",
+    "front": "Which volume binding mode delays provisioning or binding until Pod placement constraints reveal compatible topology?",
+    "back": "<strong>WaitForFirstConsumer</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "10-storage",
+      "recall"
+    ]
+  },
+  {
+    "id": "volume-attachment-lifecycle::explain-control-node-path",
+    "component": "volume-attachment-lifecycle",
+    "platform": "10 Storage",
+    "type": "name_to_definition",
+    "front": "Trace the <strong>volume attachment lifecycle</strong>.",
+    "back": "A claim binds to capacity; controllers provision and attach it to a node; kubelet and the CSI node plugin stage and publish it. Detach, reclaim, and finalizers protect later movement or deletion.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "10-storage",
+      "understanding"
+    ]
+  },
+  {
+    "id": "volume-attachment-lifecycle::name-from-attach-mount-reclaim",
+    "component": "volume-attachment-lifecycle",
+    "platform": "10 Storage",
+    "type": "definition_to_name",
+    "front": "What end-to-end process connects provisioned capacity to a node, mounts it for a workload, then safely detaches or reclaims it?",
+    "back": "The <strong>volume attachment lifecycle</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "10-storage",
+      "recall"
+    ]
+  },
+  {
+    "id": "raft-quorum::explain-majority",
+    "component": "raft-quorum",
+    "platform": "11 HA and etcd",
+    "type": "name_to_definition",
+    "front": "What does <strong>Raft quorum</strong> mean for etcd availability?",
+    "back": "A majority, <code>floor(N/2)+1</code>, must agree to commit writes while preserving one log. Three and four members both tolerate one failure; five tolerate two.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "11-ha-and-etcd",
+      "understanding"
+    ]
+  },
+  {
+    "id": "raft-quorum::name-from-consensus-threshold",
+    "component": "raft-quorum",
+    "platform": "11 HA and etcd",
+    "type": "definition_to_name",
+    "front": "What consensus threshold requires more than half of members to agree before a write can commit?",
+    "back": "A <strong>Raft quorum</strong> (majority quorum).",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "11-ha-and-etcd",
+      "recall"
+    ]
+  },
+  {
+    "id": "etcd-wal-snapshot::log-vs-compacted-state",
+    "component": "etcd-wal-snapshot",
+    "platform": "11 HA and etcd",
+    "type": "discrimination",
+    "front": "<strong>etcd WAL</strong> vs <strong>snapshot</strong>: what does each preserve?",
+    "back": "The write-ahead log durably records consensus entries needed for recovery; snapshots compact and capture resulting key-value state. Raw filesystem copies are not a substitute for supported snapshot procedures.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "11-ha-and-etcd",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "etcd-wal-snapshot::name-from-log-and-backup",
+    "component": "etcd-wal-snapshot",
+    "platform": "11 HA and etcd",
+    "type": "plain_phrase_to_name",
+    "front": "Name the pair comprising the durable consensus entry log and the compacted backup of resulting key-value state.",
+    "back": "<strong>etcd WAL and snapshot</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "11-ha-and-etcd",
+      "recall"
+    ]
+  },
+  {
+    "id": "control-plane-ha::explain-redundancy",
+    "component": "control-plane-ha",
+    "platform": "11 HA and etcd",
+    "type": "name_to_definition",
+    "front": "What makes <strong>control-plane high availability</strong> more than multiple API servers?",
+    "back": "It combines replaceable API-server replicas behind a stable endpoint with redundant controller and scheduler processes, leader election, and an available quorum-backed etcd group.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "11-ha-and-etcd",
+      "understanding"
+    ]
+  },
+  {
+    "id": "control-plane-ha::name-from-redundant-control-plane",
+    "component": "control-plane-ha",
+    "platform": "11 HA and etcd",
+    "type": "definition_to_name",
+    "front": "What architecture combines replaceable API servers, redundant control-plane processes, leader election, a stable endpoint, and quorum-backed storage?",
+    "back": "<strong>Control-plane high availability</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "11-ha-and-etcd",
+      "recall"
+    ]
+  },
+  {
+    "id": "leader-election-leases::explain-coordination",
+    "component": "leader-election-leases",
+    "platform": "11 HA and etcd",
+    "type": "name_to_definition",
+    "front": "How are <strong>leader election and Leases</strong> used in Kubernetes?",
+    "back": "Controller and scheduler replicas use lease-based coordination so one active writer leads while standbys can take over. Node Leases separately provide lightweight liveness heartbeats.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "11-ha-and-etcd",
+      "understanding"
+    ]
+  },
+  {
+    "id": "leader-election-leases::name-from-active-writer-heartbeat",
+    "component": "leader-election-leases",
+    "platform": "11 HA and etcd",
+    "type": "definition_to_name",
+    "front": "What lease-based mechanisms coordinate one active control-plane writer and provide lightweight node liveness signals?",
+    "back": "<strong>Leader election and Leases</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "11-ha-and-etcd",
+      "recall"
+    ]
+  },
+  {
+    "id": "disaster-recovery::explain-complete-restore",
+    "component": "disaster-recovery",
+    "platform": "11 HA and etcd",
+    "type": "name_to_definition",
+    "front": "What makes <strong>control-plane disaster recovery</strong> credible?",
+    "back": "Define RPO and RTO, verify snapshots, rehearse isolated restoration, rebuild API access and dependencies, validate objects and controllers, and test workload data—not just snapshot metadata.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "11-ha-and-etcd",
+      "understanding"
+    ]
+  },
+  {
+    "id": "disaster-recovery::snapshot-vs-complete-recovery",
+    "component": "disaster-recovery",
+    "platform": "11 HA and etcd",
+    "type": "discrimination",
+    "front": "An <strong>etcd snapshot</strong> vs <strong>complete disaster recovery</strong>: what is missing from the snapshot alone?",
+    "back": "A snapshot captures API state, not necessarily PKI, manifests, component configuration, load balancers, images, CSI data, or cloud resources. Recovery must restore and validate the surrounding system.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "11-ha-and-etcd",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "api-priority-fairness::explain-overload-protection",
+    "component": "api-priority-fairness",
+    "platform": "12 Scalability and APF",
+    "type": "name_to_definition",
+    "front": "What does <strong>API Priority and Fairness</strong> protect?",
+    "back": "It classifies requests into priority levels, queues or rejects excess work, and allocates bounded concurrency so noisy clients cannot consume all API-server execution capacity.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "12-scalability-and-apf",
+      "understanding"
+    ]
+  },
+  {
+    "id": "api-priority-fairness::name-from-api-flow-control",
+    "component": "api-priority-fairness",
+    "platform": "12 Scalability and APF",
+    "type": "definition_to_name",
+    "front": "What API-server flow control classifies requests, queues or rejects excess work, and shares bounded concurrency among priority levels?",
+    "back": "<strong>API Priority and Fairness (APF)</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "12-scalability-and-apf",
+      "recall"
+    ]
+  },
+  {
+    "id": "flowschema-prioritylevel::classification-vs-policy",
+    "component": "flowschema-prioritylevel",
+    "platform": "12 Scalability and APF",
+    "type": "discrimination",
+    "front": "<strong>FlowSchema</strong> vs <strong>PriorityLevelConfiguration</strong>: what does each define?",
+    "back": "A FlowSchema matches and classifies request flows. A PriorityLevelConfiguration defines how the assigned level queues, rejects, and receives concurrency; together they route requests to policy.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "12-scalability-and-apf",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "flowschema-prioritylevel::name-from-apf-objects",
+    "component": "flowschema-prioritylevel",
+    "platform": "12 Scalability and APF",
+    "type": "plain_phrase_to_name",
+    "front": "Name the APF object pair that classifies request flows and assigns their queueing, rejection, and concurrency policy.",
+    "back": "<strong>FlowSchema and PriorityLevelConfiguration</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "12-scalability-and-apf",
+      "recall"
+    ]
+  },
+  {
+    "id": "apf-seats-queues::cost-vs-waiting",
+    "component": "apf-seats-queues",
+    "platform": "12 Scalability and APF",
+    "type": "discrimination",
+    "front": "Within APF, <strong>seats</strong> vs <strong>queues</strong>: what does each represent?",
+    "back": "Seats estimate the concurrency cost of executing a request. Queues hold excess eligible work and fairly select what runs next within the priority level's bounded capacity.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "12-scalability-and-apf",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "apf-seats-queues::name-from-concurrency-accounting",
+    "component": "apf-seats-queues",
+    "platform": "12 Scalability and APF",
+    "type": "definition_to_name",
+    "front": "What APF mechanisms estimate request concurrency cost and fairly hold excess work until capacity is available?",
+    "back": "<strong>APF seats and queues</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "12-scalability-and-apf",
+      "recall"
+    ]
+  },
+  {
+    "id": "watch-scalability::explain-fanout-pressure",
+    "component": "watch-scalability",
+    "platform": "12 Scalability and APF",
+    "type": "name_to_definition",
+    "front": "What drives <strong>watch and informer scalability</strong> costs?",
+    "back": "Repeated lists, reconnects, large objects, many independent caches, and notification fan-out amplify API-server and etcd load. Shared caches and disciplined reconnect behavior reduce that pressure.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "12-scalability-and-apf",
+      "understanding"
+    ]
+  },
+  {
+    "id": "watch-scalability::name-from-list-watch-load",
+    "component": "watch-scalability",
+    "platform": "12 Scalability and APF",
+    "type": "definition_to_name",
+    "front": "What scalability concern covers shared caches, relists, reconnects, object size, and notification fan-out pressure on the API and persistence layers?",
+    "back": "<strong>Watch and informer scalability</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "12-scalability-and-apf",
+      "recall"
+    ]
+  },
+  {
+    "id": "observability-evidence::events-logs-metrics-audit",
+    "component": "observability-evidence",
+    "platform": "12 Scalability and APF",
+    "type": "discrimination",
+    "front": "<strong>Events</strong> vs <strong>logs</strong> vs <strong>metrics</strong> vs <strong>audit</strong>: what does each prove?",
+    "back": "Events are lossy transition hints; logs explain component decisions; metrics aggregate pressure and outcomes; audit records API activity. Canonical object state remains authority for current API truth.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "12-scalability-and-apf",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "observability-evidence::name-from-evidence-types",
+    "component": "observability-evidence",
+    "platform": "12 Scalability and APF",
+    "type": "plain_phrase_to_name",
+    "front": "What concept groups lossy transition hints, component-local decisions, aggregate measurements, and API request records for diagnosis?",
+    "back": "<strong>Events, logs, metrics, and audit evidence</strong>.",
+    "image": null,
+    "image_side": "none",
+    "tags": [
+      "12-scalability-and-apf",
+      "recall"
+    ]
+  }
+]

@@ -1,0 +1,439 @@
+So um I'm air software architect at
+Armo. I'm also a core maintainer of
+cubecape CNCF incubating project and a
+gopheron speaker. This is my first uh
+cubecon as a speaker. [gasps]
+Uh you can find me on LinkedIn and or
+GitHub.
+So the agenda for today is uh we're
+going to start by um looking on the
+differences between CRDs and aggregated
+API servers.
+Um we'll see how uh how these aggregated
+API servers work and we'll take a look
+on a use case how we in cubecape develop
+our own uh server and also uh we'll uh
+go over the lessons we learned in
+production and like when to choose this
+path and when not to. Um
+uh so that's about like the
+agenda for today and before I dive in to
+talk about aggregated API servers uh let
+me set the context on cubecape. So
+cubecape is a security platform. It aims
+to cover all aspects of uh security
+aspects in a single project. So what we
+do is we do vulnerability scanning for
+container images. We do configuration
+scanning of workloads against best
+practices. We also do workload behavior
+monitoring with eBPF.
+And so in general, we generate a lot of
+data.
+So if I look on the vulnerability
+scanning flow,
+so
+in order to uh be able to create a
+vulnerability report, first you have to
+generate an asbomb. And so what we do is
+that we generate an asbomb. An asbomb is
+a list of all the components that make
+up a container image and it can be quite
+large. So once you've generated an
+asbomb, it passes through the
+vulnerability scanner and then it gets
+sent to some external API. This is how
+we used to work like back at the
+beginning of cubecape.
+And so becoming open source had its uh
+requirements or challenges. So in order
+to become like a fully open source
+solution
+uh we um looked in a way that we are
+going to keep all the data inside the
+cluster and one of the important thing
+for us was that our users were
+Kubernetes users. So we wanted them to
+to not learn like a new API and so that
+everything remains in the Kubernetes
+ecosystem
+and so Kubernetes basically gives you
+two ways to extend its API.
+One is with CRDs. CRDs or custom
+resources are very easy to implement.
+It's like the lightweight route. um they
+you define a new resource type in a YAML
+and basically the Kubernetes API server
+does all the heavy lifting for you. So
+you have arbach out of the box
+validation. Um you can use CL
+expressions for like complex validations
+and everything gets stored in at CD
+and so the second option is with
+extension API server. That's the main
+subject for the talk for today. So like
+with extension API server, you build
+your own uh standalone API server like
+Kubernetes does and so you're fully in
+control when it comes to storage
+discovery and all the logic and behavior
+of that server.
+There is a steep learning curve. I can
+assure you that this is what we learn
+with CubeCape and you'll see in a
+minute. Um you'll learn more about it in
+a minute. And so it also comes with high
+operational cost and maintenance. So
+these two options like have very
+different trade-offs both in terms of
+complex complexity, control and
+operational cost.
+And so as I said, CRDs are very simple
+to implement. That's an example of a
+CRD. So you define the uh the scope
+whether it's a namespace or not, the
+name group, and you provide a schema for
+validation.
+Now, raise your hand if you've ever seen
+this error.
+Nice. So, this this error means that
+you've hit the ATCD 1.5 megabyte limit.
+Here it says 3 megabytes, but that's
+because the request allows you to send
+uh that's the overhead of the request
+when it eventually it gets stored in
+protobuff, which at CD has a 1.5
+megabyte. So I really hope that you
+didn't thought about increasing these
+limits because that's not a good
+practice.
+So
+this is where the journey begins.
+Um so since we were generating large
+objects, we knew we had to develop our
+own API server.
+Um, and a good starting point for that
+would be uh to either the sample API
+server that Kubernetes gives you or the
+API server builder. Um, so we started
+with forking this uh project. It gives
+you code generation all the wiring down
+done out of the box. Um, but from that
+moment you're on your own.
+So
+the first step in order to replace
+replace ATCD was to implement the
+storage interface and for that we also
+had to disable the watch API
+and
+to understand better what API
+aggregation means in Kubernetes let's
+look at the cube API server code that's
+taken from the upstream.
+So we can see it's built in a chain. So
+first you have the built-in types and
+then you have the CRDs and lastly you
+have the the aggregated API servers. So
+each chain each part of the chain
+handles try to handle the request. So
+for built-in types uh and then for CDs
+and eventually all the resources that
+are handled in your own server. So um
+this architecture is quite flexible as
+you can see. You don't have to write new
+code for this.
+So
+for a CRD how the the request flow looks
+like. So the client sends a request to
+the cube API server. The cube API server
+takes this request and stores it writes
+it locally the the resarch that you're
+creating to ATCD.
+So everything is safe constrained I
+would say and but it's limited to SCB
+with an aggregated API server. So you've
+sent a request to the Q API server and
+that moment the Q API server understand
+that it needs to route the traffic to an
+external API. So
+from that moment
+the API server can do anything with the
+request and that's comes with a risk.
+So we'll see in a minute like what risks
+are involved with this flow. But um it's
+really can impact the entire cluster if
+you're doing something like very bad.
+So,
+so how's the routing work?
+So, we have these API service objects
+which basically tells the cube API
+server for group X and this version
+forward the request to this service in
+the cluster.
+Authentication is also uh part of this
+um resource. So you can either provide
+the CA bundle or you can skip TLS.
+That's up to you. [sighs and gasps]
+And so if we want to visualize how it
+looks like. So the cube API server does
+the discovery for these API service
+objects. [snorts]
+And these API service objects uh each
+has its own definition. So you can have
+multiple API services for multiple API
+groups and for different versions of the
+same API group. And so authorization
+is done at two ends
+in the in incoming requests to the cube
+API server and also in the um your
+external API server. These arbback
+checks are important because basically
+the client can communicate directly with
+external API server. So this is why it's
+needed.
+And if you done everything correctly, so
+if you type cubectl get API service, you
+should see your um definitions and the
+available should be on a true. And so
+once discovery is done, you should be
+able to see uh your uh new resource
+kinds with a cubectl API resources
+standard command.
+So when you're developing your own API
+server, this is something that I think
+someone should get familiar with. So
+there is a thing called strategy. Um
+each type has a strategy. You have them
+for built-in types. You can look at the
+code in the Kubernetes on on GitHub. And
+so it's kind of um hooks that the
+request goes through before it's get
+written to the storage.
+And in these hooks you can define your
+own logic basically.
+And so let's look at some of the
+um I don't know interesting one I would
+say. So we have the prepare for create
+which is for resource creation. You can
+you uh get the object you cast it and
+from there you can put some creation
+logic.
+We have the prepare for update. you
+receive the old resource and the new
+resource and uh put some custom logic
+based on that. And so in Cubcape for
+example,
+we really used it. Um so what we are
+doing is we we looked for a way for
+example to um based um resource update
+based on annotations. So we need to have
+a reference of the old resource and the
+new resource and then decide if we
+reject or accept the request. So that's
+real cool.
+And uh we have the validate function
+which um basically does a static
+validations on the values in the
+resource.
+So uh you remember these huge asbombs I
+talked about. So we had to get creative.
+And so when we developed our um API
+server, we splitted the um the actual
+resource on the disk to two files.
+One contained only the metadata and the
+other one contained the full object.
+And when you were listing resources from
+the API server, you will get only the
+metadata files. And that is really
+important in terms of memory CPU and you
+can understand why. So this this is how
+it would look like. So the spec was null
+and in order to get the full resource
+you had to specifically specifically ask
+for it using a get
+and so this was like
+uh uh I don't know how to say it like we
+thought that we
+uh did like super optimization and we
+solved all the issues but then we were
+going to production and that was
+challenging.
+So that's the memory usage of our
+storage pod. And if I zoom in, you can
+see it's like 93 GB of memory.
+So
+um we knew we had to to change a few
+things and it wasn't like one shot. It
+took it was a journey.
+So the first step we took is we migrated
+from um to gRPC and protobuff for the
+client server communication.
+Um it wasn't uh very uh easy I would say
+um but eventually uh we managed to do it
+and it yielded in significant
+improvement in um u both memory CPU
+network both for the client and the
+server.
+As for uh the second step was change
+from JSON encoding to go. So gob is go
+specific is a binary format. So it was a
+major um um major change. Uh it
+optimized storage by uh up to 60%. And
+what one more step that we took was to
+work with direct IO as it reduced the
+container memory footprint because
+direct bypasses the file system cache.
+And so the third step is that we didn't
+really support pagionation. And as you
+can imagine, listing um thousands of
+resources in a single request was not a
+good idea. So we knew that this is
+something like a tech that that we need
+to solve. And so how we solved it was
+within SQL DB. [clears throat]
+So what we are doing is that we were
+saving the meta data in SQL DB and using
+the row ID when someone uh sends a get
+list request to get the next page.
+So let me be very clear about the risks.
+So
+you can uh impact the entire cluster if
+you're doing silly stuff and it's very
+easy to to do to do that. So since
+you're running like critical
+infrastructure, your extension API
+server must respond quickly and um like
+things like server crashes can prevent
+operations from happening like namespace
+deletion. um you might get flooded with
+requests from the cube API server. And
+so this is why to overcome these you you
+need to be aware of the risks and put
+some good alerting monitoring
+and make sure that your pod is highly
+available.
+So, I have a few takeaways I want you to
+take from this talk. Um,
+start with CRDs. They're easy to
+implement. Um, I think they should be
+like your default choice. Kubernetes
+does all the heavy lifting for you. Um,
+but
+extension API servers are for when CRDs
+can't do the job. So if you need custom
+storage, you'll have um data data size
+limitation at CD, you want a different
+back end, that's that's the point where
+you can start exploring
+these options.
+And so if you have decided to to build
+one, so keep in mind that you're now
+running critical infra infrastructure
+and that you're ready for all the
+operational burden because we've learned
+it the hard way in cubscape. Um,
+thank you very much. Um, I'm here for
+questions.
+[applause]
+I think the heavy guy there.
+>> Yep.
+>> Okay. So, uh, you mentioned earlier in
+the presentation, uh, fairly early on
+that when you switched from SD to a
+different backend that you had to no
+longer support watch
+>> as, uh, a thing,
+>> as far as I'm aware, that makes it so
+that it's no longer Kubernetes
+conformant for your API server. How do
+you handle maybe somebody wanting to
+perform like controller based operations
+against your APIs? like what what's the
+directive that you have to give end
+users that maybe want to react to
+changes or something like that.
+>> Okay, so for our usage, we didn't need
+the watch and so
+you need to implement the watch. That's
+when you take the interface, you must
+implement the watch. So we're like just
+doing uh equals null. Okay, so um it
+works. Yeah. Um but like it really
+depends on the use case. I mean um
+Ben like um maybe you have
+>> maybe I'll bring you a mic.
+>> Can you turn on the mic? Sorry.
+So hello.
+>> Okay. So um we did return the support
+for watches because we did use at some
+stages the watch but it's like a super
+mean problem for us for because the
+objects are really complex and really
+big and um you can have Kubernetes
+objects which are not supporting
+watches. It's okay to answer like no for
+watches. Uh yeah, but again think about
+it like think about the use case. It's
+an sbomb. So does it make sense to like
+watch for sbombs in general? Uh so it's
+not a configuration object. It's not a
+status object. It's it's I know it's
+something like u you know partially
+compliant but they're like existing
+examples for other projects not
+supporting watches. So it's kind of, you
+know, working.
+>> Okay. Thank you.
+>> Yeah, we did we did a lot of uh any
+mistakes like
+>> for f first timers.
+>> Yeah. Go ahead.
+>> Hi. Um in the beginning you mentioned
+that one of your main driving factors
+was you didn't want to introduce a new
+API for your client. So you want to use
+the Kubernetes API,
+>> right?
+>> Given all of the challenges that you
+described, was that goal achieving that
+goal? Was it worth it with all of the
+effort that has to go into this?
+>> That's that's an open question we're
+still trying to answer. [laughter]
+>> And follow, would you recommend somebody
+in a similar situation, go down this
+path or go the old school way of just
+create an API and HTTP server and store
+stuff in a database?
+>> Yes. So, so I'd say think twice. That's
+like what I would say. uh because the
+there is a lot of high m maintenance
+cost both uh for developers and for
+devops taking this uh and so yeah that's
+it's not an uh plug and play that's for
+sure.
+>> Thank you.
+>> Hi uh thank you for the talk. Super
+interesting. Um you mentioned that the
+sample API server didn't support gRPC
+out of the box and you had to add that.
+Did you contribute that back upstream?
+>> Um there was no need for like um if I
+remember correctly that like the there's
+another developer that uh dealt with
+this challenge. I think it was just
+about like forcing it to to use gRPC.
+It's not like um big like that big of a
+code. It's like for the communication
+with the HTTP headers if I remember
+correctly. So um but I can share um the
+code with you or with anyone who is
+interested.
+>> Yeah.
+>> Great. Thank you.
+>> Sure. By the way, we're available on the
+Cubescape channel in CNCF. So feel free
+also there to raise any questions that
+you might have.
+>> Thank you. Sure.
+Thank you.

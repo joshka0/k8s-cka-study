@@ -1,0 +1,461 @@
+Intro
+As we discussed in the previous 
+section, the primary goal of  
+Kubernetes is to run containers at scale. 
+While Kubernetes doesn’t run them directly,  
+it has an abstraction level called 
+a pod. A pod can consist of one or  
+more containers and is the smallest unit of 
+compute that you can deploy to Kubernetes.
+Kubernetes runs these pods on 
+physical servers or virtual machines,  
+depending on your environment, whether 
+it is on-premises or in the cloud.  
+These servers are called Kubernetes 
+nodes or sometimes Kubernetes workers.
+Well you could potentially 
+spin up one pod here and there,  
+but Kubernetes frequently runs hundreds or 
+even thousands of these pods. In this way,  
+you need another entity to manage 
+or orchestrate these containers.
+We used to call these servers masters; now 
+we call them the control plane nodes. At a  
+high level, the control plane is responsible 
+for making all the decisions about the state  
+of the cluster. It can schedule pods, add new 
+Kubernetes nodes, and respond to certain events,  
+such as automatically scaling the number of 
+pods based on overall CPU or memory usage.
+Now, what happens if the control plane 
+goes down? Your applications will continue  
+to operate without downtime. For example, 
+if you have an application exposed to the  
+internet using ingress, your clients 
+would still be able to send requests  
+and receive responses from your application, 
+so they won’t notice any interruptions.
+However, there are significant limitations.
+Now existing pods and services will continue 
+to run, and network traffic between pods,  
+services, and external endpoints will 
+generally continue to function as  
+long as the underlying network 
+infrastructure remains intact.
+But new pods cannot be scheduled because the 
+scheduler is part of the control plane. There  
+will be no automatic scaling (horizontal or 
+vertical). And you won’t be able to make any  
+updates to the cluster, such as creating new 
+deployments or updating existing ones. Finally,  
+there is no self-healing, meaning if a pod fails,  
+it will not be automatically rescheduled. 
+The same applies to Kubernetes nodes;  
+if a node fails, normally Kubernetes will 
+reschedule all those pods on different nodes,  
+but without the control plane, it won’t.
+Additionally, if you have cron jobs,  
+they won’t run, which can cause a lag 
+or other issues. The same applies to  
+third-party controllers like Airflow that 
+manually create pods to run batch jobs.
+So, the control plane is very 
+important, but if it goes down,  
+it doesn’t mean everything goes 
+down with it immediately. You would  
+still have some time to debug and 
+recover before anyone even notices.
+To avoid this in production, we frequently 
+run multiple control planes at the same time,  
+usually three, with a load balancer in 
+front of them. In that typical setup,  
+only one control plane is active and responsible 
+for all decisions. However, if something happens  
+to that node, another control plane node 
+will become the leader and take its place.
+Control Plane
+Etcd
+Now let’s take a look at what components 
+are inside the control plane. The control  
+plane makes global decisions about the 
+cluster, such as scheduling pods to  
+specific nodes based on the 
+available CPU, memory of the node,  
+and other constraints. It needs to store that 
+state somehow. Instead of storing it in memory,  
+it uses the etcd database. Whenever a new node 
+joins the cluster or you create a new deployment  
+and expose that application using ingress, all 
+that information is stored in the etcd database.
+Etcd is a distributed key-value store frequently 
+used in distributed systems such as Kubernetes.  
+Now let’s go over the main key features of etcd.
+First of all, it has strong consistency. This 
+means that once a write is acknowledged by the  
+etcd database, all following reads will reflect 
+that write. So if you write a value to etcd,  
+any read that happens afterward 
+will see that updated value,  
+regardless of which node in 
+the etcd cluster you query.
+Next, etcd is a distributed database that provides 
+high availability and fault tolerance. This means  
+if one node fails, the remaining nodes will 
+continue to operate. Etcd uses the Raft consensus  
+algorithm to manage leader election, which 
+helps coordinate operations across the etcd  
+cluster. For the election in etcd, you need to 
+run an odd number of nodes to ensure a majority  
+(quorum) can always be formed. The minimum 
+recommended number of nodes for a reliable etcd  
+cluster is three, but if you really want to 
+ensure its reliability, you can run a 5-node  
+cluster. These are the same requirements 
+for running an etcd cluster for Kubernetes.
+Most of the time, we run etcd instances on the 
+same control plane node with other components,  
+but in some cases, you can run etcd 
+for Kubernetes on dedicated machines.  
+This makes it more reliable since 
+only etcd instances are running,  
+but it adds additional complexity and 
+overall cost of managing Kubernetes.
+Next, etcd stores data as simple key-value 
+pairs. Keys are unique identifiers,  
+and values are the data associated 
+with those keys. This simple data  
+model makes etcd easy to use and efficient for 
+storing configuration and state information.
+Etcd also provides a watch mechanism that 
+allows clients to subscribe to changes to  
+a specific key or a range of keys. This 
+is useful for building reactive systems  
+that need to respond to configuration 
+changes in real-time. This is essential  
+for maintaining the desired state of the cluster 
+and ensuring that all components are synchronized.
+Next, etcd uses the Raft consensus 
+algorithm as I already mentioned.  
+When you write data to one of the 
+database instances, that data is  
+immediately replicated across the cluster and 
+remains available even if some nodes fail.
+Finally, etcd is very secure, and usually, 
+you would use TLS certificates to encrypt all  
+requests to and from the database. As a part 
+of Kubernetes bootstrap, you would generate a  
+certificate authority for the cluster and issue a 
+certificate for each etcd instance. And all other  
+control plane components would establish 
+secure communication with the database.
+If you use kOps to provision your cluster,  
+keep in mind that every year you need 
+to manually renew certificates for etcd.
+Kube-scheduler
+Next, we have the kube-scheduler. 
+The main job of this component is  
+to watch for newly created pods and then 
+schedule them to suitable Kubernetes nodes.
+Let’s go over the steps it 
+takes to schedule a pod.
+First of all, kube-scheduler filters out nodes 
+that do not meet the requirements for the pod.  
+For example, if a pod requests 4 CPU and 8 Gi 
+of memory but the node only has 6 Gi of memory,  
+that node will be filtered out. Kube-scheduler 
+also uses other constraints such as affinity  
+and anti-affinity. For example, you 
+may have specified that you want to  
+run those pods on specific nodes defined 
+in the affinity section. After this step,  
+the node list only contains suitable nodes, 
+and often there will be more than one. If  
+the list is empty, it means that the 
+pod will be stuck in a pending state.
+The next step is scoring. Kube-scheduler 
+takes the list of suitable nodes and assigns  
+a score based on different criteria 
+to find the best fit. For example,  
+there is Resource-Based Scoring. In this case, 
+nodes are scored based on the percentage of CPU  
+and memory resources that are requested by 
+pods already running on the node. Nodes with  
+fewer requested resources score higher, 
+this give you even distribution of pods. 
+There are also many other rules such as 
+node and pod affinity and anti-affinity,  
+taints and tolerations, Topology 
+Spread Constraints, and custom rules.
+Kube-scheduler’s scoring rules are designed in a  
+way that places pods on nodes 
+to optimize resource usage.
+Controller-manager
+Next, we have the controller-manager. Its main 
+responsibility is to regulate the state of the  
+cluster. It is actually a collection of different 
+controllers compiled into a single binary to  
+simplify deployments. These controllers 
+use control loops to watch the state of  
+the cluster through the Kubernetes API server and 
+make changes to move the current state towards the  
+desired state. Each controller is specialized 
+for managing a specific aspect of the cluster.
+First, there is the Node Controller, which 
+manages nodes in the cluster. It monitors  
+the health of nodes and takes action if 
+nodes become unavailable. This includes  
+updating the status of nodes and evicting 
+pods from nodes that are not responsive.
+Then we have the Replication Controller. 
+Its job is to make sure that the specified  
+number of pod replicas are running at 
+all times. If there are too many pods,  
+it will delete the extras; if there 
+are too few, it will create more.
+Next, we have the Endpoints Controller, 
+which populates the Endpoints object,  
+joining Services and Pods whenever a Service and 
+its corresponding Pods are created or deleted.
+Additionally, there are the Service 
+Account and Token Controllers,  
+Namespace Controller, Job Controller, DaemonSet,  
+Deployment, ReplicaSet Controller, StatefulSet 
+Controller, and finally, the CronJob Controller.
+Now how does the kube-controller-manager 
+work? First of all, the controller manager  
+continuously watches the state of 
+the cluster through the API server. 
+Each controller then compares the current 
+state of the cluster with the desired  
+state defined by the user.
+If there is a discrepancy,  
+the controller takes action to move the current 
+state towards the desired state. For example,  
+if a pod managed by a Replication Controller is 
+deleted, the controller will create a new one.
+Let’s see an example of the ReplicaSet 
+Controller in action. When you apply the  
+deployment object, the ReplicaSet is created 
+to maintain 3 replicas of a specific pod. 
+Now, let's say that one node fails 
+and only 2 replicas are running. 
+The ReplicaSet controller notices the 
+discrepancy and creates a new pod to  
+ensure that 3 replicas are running. All of 
+the other controllers follow the same logic. 
+The controller-manager consolidates the logic 
+for these controllers into a single process,  
+making it easier to manage 
+and extend. It is also a key  
+component to ensure the Kubernetes 
+cluster operates reliably and as  
+intended by continuously maintaining 
+the desired state specified by the user.
+Cloud-controller-manager
+Next, we have the cloud-controller-manager. It 
+was initially created as part of the Kubernetes  
+source code to integrate with different clouds. 
+For example, in AWS, when you create a service of  
+type LoadBalancer, this in-tree cloud controller 
+will be used to make the necessary API calls to  
+AWS to create an Elastic Load Balancer and 
+expose your application to the internet.
+Additionally, it has cloud-specific logic 
+to allocate volumes from cloud-specific  
+providers such as EBS volumes and 
+attach them to Kubernetes pods,  
+and other functionalities. These controllers 
+follow similar logic to the core controller  
+manager. They use a control loop to try to 
+convert the desired state to the actual state.
+This legacy cloud controller manager only receives 
+bug and security fixes, and most of the logic has  
+already been transferred to cloud controllers 
+created by the cloud providers themselves.
+For example, in AWS, you would want to install 
+the AWS Load Balancer Controller to manage  
+load balancers for your applications 
+using a service of type LoadBalancer.
+If you want to run statefulsets in 
+AWS, you need to install the CSI  
+EBS driver or other cloud storage drivers 
+depending on the storage you want to use.
+So, more and more logic is being 
+transferred to external cloud  
+providers. This allows developers to release 
+new features independently and more quickly,  
+properly integrating Kubernetes with different 
+clouds. Very soon, to integrate Kubernetes  
+with any cloud provider, you will only 
+need to install external cloud managers.
+API server
+Now, all those components that we previously 
+described are only exposed through the  
+central API server. It serves as the main 
+interface for interacting with the cluster,  
+exposing the Kubernetes API, 
+and handling all the RESTful  
+API requests from different clients, 
+such as kubectl, kubelet, controllers,  
+and other components. Let’s take a look 
+at the key functions of the API server.
+First of all, it acts as an API 
+Gateway. It exposes the Kubernetes  
+API and provides endpoints for all 
+API operations, such as creating,  
+updating, deleting, and retrieving 
+resources like pods and services.
+The API server verifies that all requests 
+are authenticated and authorized. This  
+involves verifying user credentials and checking 
+permissions based on defined roles and policies.
+The API server is also used to validate requests. 
+For example, it will check if the configuration  
+that you send to the API server is valid and 
+conforms to the expected schema and rules.  
+For instance, if you misspell something in the 
+Deployment object, the API server will reject it.
+Additionally, it uses Admission Controllers. 
+These plugins can modify or reject requests based  
+on custom policies. They can be used for tasks 
+like resource quota enforcement, security policy  
+checks, and automatic label addition. For example, 
+the nginx ingress controller has an admission  
+controller that validates custom configurations 
+you pass while creating and configuring  
+ingress. If it’s not a valid nginx directive, 
+the ingress will be rejected by the API server.
+The API server is also responsible 
+for sending requests and storing  
+them in the etcd database, which 
+is a distributed key-value store.
+Now, let’s go over an example 
+and see the API server in action. 
+Let’s say a user sends a request 
+to create a new pod using kubectl. 
+The kube-apiserver authenticates the user, 
+verifying that this user has the necessary  
+credentials to access Kubernetes.
+Then, the request goes through  
+Authorization, checking if the 
+user has permission to create pods. 
+Then it validates the pod specification 
+to ensure it is correct and there are no  
+typos in the pod object.
+The next step is to go  
+through Admission Control. It processes the 
+request through admission controllers, which  
+might add default values or enforce policies.
+Finally, it writes the new pod object to etcd  
+and returns a response to the user, 
+confirming that the pod is created.
+Nodes
+On the other hand, we have Kubernetes 
+workers where all your containers would  
+run. Node components run on every single node,  
+maintaining running pods and providing 
+the Kubernetes runtime environment.
+kubelet
+First of all, let’s talk about kubelet, 
+which is a core node component. Kubelet  
+is the primary "node agent" that runs on 
+each node in the Kubernetes cluster. It  
+verifies that containers are running 
+in a Pod as specified by the PodSpec.
+Kubelet takes a set of PodSpecs provided 
+by different means, for example,  
+from the Kubernetes API server, and ensures that 
+the described containers are running and healthy.
+It is also responsible for communicating 
+with the Kubernetes API server to get Pod  
+definitions and report the status of 
+nodes and the Pods running on them.
+It continuously monitors the health of the 
+Pods and containers running on its node,  
+restarting them if necessary 
+based on the defined policies.
+Next, kubelet interacts with container 
+runtimes like Docker and containerd through  
+the Container Runtime Interface (CRI) 
+to manage the lifecycle of containers.
+It is responsible for storage as well. 
+It manages volumes for persistent  
+storage by mounting and unmounting them 
+according to the Pod specifications.
+The next function is Resource Management. 
+Kubelet verifies that Pods are scheduled  
+onto nodes that have enough resources like 
+CPU, memory, etc. to handle the workload.
+And finally, kubelet is responsible for 
+Metrics and Logging. Kubelet collects  
+metrics related to the containers 
+it manages and exposes them through  
+the Kubernetes monitoring framework. It 
+also handles logging from the containers.
+Overall, kubelet is an essential component in 
+the Kubernetes architecture that guarantees  
+containers are running and performing 
+as expected on each node in the cluster.
+kube-proxy
+Next, we have Kube-proxy, which is 
+another core component of Kubernetes.  
+It is responsible for network 
+operations within the cluster.
+First of all, it’s a Network Proxy. Kube-proxy 
+runs on each node in the Kubernetes cluster  
+and acts as a network proxy and a 
+load balancer for service traffic.
+Then, it provides Kubernetes service 
+abstraction. It ensures that the network  
+traffic targeted at a specific service, 
+which may consist of multiple pods,  
+is correctly routed to one of the available pods.
+Kube-proxy can also use the Linux 
+kernel's iptables or IP Virtual  
+Server (IPVS) to manage and direct 
+the traffic. It configures the rules  
+so that traffic can be routed 
+to the appropriate pod backend.
+It also plays a part in service discovery. It 
+works in conjunction with the Kubernetes API  
+server to watch for new services and endpoints,  
+updating its routing rules to ensure 
+the traffic is correctly forwarded.
+Kube-proxy also performs a load balancing 
+function. It distributes the traffic  
+among multiple pod replicas for a service, 
+providing load balancing at the network level.
+It can also be configured to provide session 
+affinity (also known as sticky sessions),  
+guaranteeing that a client's requests are 
+consistently directed to the same pod.
+And finally, Kube-proxy supports 
+TCP, UDP, and SCTP protocols,  
+allowing it to handle a wide 
+range of network traffic types.
+In summary, Kube-proxy is an important 
+component in the Kubernetes architecture  
+that manages network routing and 
+load balancing for services within  
+the cluster, ensuring efficient and reliable 
+communication between different components.
+Container runtime
+And the final core component is the 
+container runtime. As the name suggests,  
+it is the software responsible for 
+running containers on a node. It  
+manages the lifecycle of containers, including 
+their creation, execution, and destruction.
+For a long time, Docker was the primary runtime 
+for Kubernetes. But not so long ago, it was  
+deprecated, and Kubernetes defined an abstraction 
+layer called the Container Runtime Interface (CRI)  
+to allow the use of different container runtimes. 
+The CRI defines the APIs and gRPC protocols that a  
+container runtime must implement to integrate with 
+kubelet. So, there are multiple runtimes in use  
+nowadays. I think the most common is containerd, 
+but there are other runtimes available as well.
+Besides core components,  
+Kubernetes includes add-ons such as DNS, an 
+open-source dashboard, and other plugins.

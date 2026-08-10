@@ -1,0 +1,459 @@
+Hello everyone, welcome back to my
+channel. My name is Piyush and this is
+video number 31 in the CD CK 2024. In
+this video, we'll be looking into
+CoreDNS concepts like how DNS works in
+Kubernetes. And if you are not aware
+about the DNS concept in general, not
+just specific to Kubernetes, but DNS in
+general, how it works, what happens when
+you type www.google.com in your web
+browser, I would highly recommend
+watching the previous video, day 30
+video, in which an amazing content
+creator and my friend Piyush Garg had
+shown us end-to-end explanation of how
+it works in the simplest possible
+language. So, feel free to check that
+out. If you are aware of that concept,
+you can continue with this video about
+DNS in Kubernetes. And the comments and
+like target of this video will be 100
+likes, 100 comments. It's the lowest
+possible target that I have set. So, I'm
+sure you can do it. And without any
+further ado, let's start with the video.
+So, let's start with simple connectivity
+test to show you how DNS works in
+Kubernetes. I have deployed a couple of
+pods in my default namespace. So, one is
+Engine X pod, another one is Engine X
+one pod, and they both are using the
+same image as Engine X. And I have
+exposed these with the services as well.
+So, if I do K get SVC, I have two
+services. One is Engine X that is
+exposing the Engine X pod and Engine X
+one that is exposing the Engine X one
+pod. I have kept the same name just to
+make you aware of the relationship
+between these pods and services, okay?
+So,
+ideally, when you like we have seen that
+in services, namespace, and many other
+videos, like services can talk to each
+other with the help of their name,
+right? So, for example, if there is an
+Engine X service, it should be able to
+directly talk to the Engine X one
+service. And pods can also talk to each
+other. Pods can also talk to services
+and so on. So, if I do K exec {hyphen}
+it Engine X and if I run curl on Engine
+X one, what I'm doing is I'm doing exec
+into Engine X pod and from there, I am
+doing a curl on Engine X one service.
+Because Engine X one will be a host name
+as it is a service, it should be able to
+return the results, right?
+So, let's hit enter.
+And it's getting terminated. The command
+is not successful. It's not returning
+the result. So, what could be the issue?
+Uh before that, let's see if it is
+something to do with the
+service name to the IP resolution
+because this service name or this host
+name is nothing
+but a DNS record, right?
+We have seen like the Piyush Garg have
+already mentioned told this before like
+there are different record sets in DNS
+and it helps to map your IP to the host
+name, right? So, this is one of those
+CNAME records you can consider. And over
+here, Engine X one resolved to this IP
+address over here. So, let's try to do a
+curl on this IP address instead of the
+service name.
+Okay?
+So, this is returning the result. That
+means there is some misconfiguration
+in the DNS itself. DNS itself is not
+able to resolve service name to its host
+name or host name to its IP address. We
+have seen how DNS works, but how it
+works in Kubernetes? Kubernetes deploy a
+pod, actually a couple of pods with the
+name CoreDNS. And if this is like if
+there is an issue similar to this where
+you are able to reach the service with
+the IP address, but not with the host
+name or the service name, that means
+there is some issue with your DNS server
+itself.
+Okay? So, DNS server, if I do K get pods
+{hyphen} n equal to cube-system, in that
+there'll be a pod
+with the name CoreDNS. It's not here.
+So, that means there is some issues with
+that because it is deployed as a
+deployment. If I do K get deploy on the
+cube-system namespace,
+uh here is our CoreDNS pod, but as you
+see, um there are zero replicas
+available. So, let's do one thing. Let's
+try to scale this. K scale deploy and
+the name is CoreDNS {hyphen}{hyphen}
+replicas equal to two. I'm sure you are
+aware of this command by now. We have
+used this multiple times. And then, I'm
+going to pass the namespace name as
+well, which is cube-system. So, I am
+scaling this back to two replicas, which
+is what we get when we do the
+installation of Kubernetes, CoreDNS
+comes with it. So, I have scaled it and
+if I do K deploy, it's getting ready and
+it is ready now. It is up. And if I do K
+get pods now on the cube cube-system
+namespace, I see there are two pods
+running for CoreDNS. Okay, so now our
+CoreDNS is up. Let's see if I'm able to
+curl the Engine X service name now.
+Okay, I'm getting the reply back. So,
+that is what CoreDNS does in general,
+right? It is a DNS server. It provides
+you the functionality of domain name
+resolution with the service to IP name.
+Okay? And it is like we have seen the
+pods, the deployment, but it is exposed
+as a service as well. And if we do K get
+SVC {hyphen} n equal to cube-system,
+okay, the service name is kube-dns. So,
+don't get confused between CoreDNS,
+kube-dns,
+are they different or are they same? So,
+CoreDNS is the name of the DNS service
+that we are using, service as in the DNS
+tool that you are using or the DNS
+server that we are using. And kube-dns
+is the Kubernetes service with respect
+to CoreDNS. Okay? And this service is
+exposed on port 53.
+That's its use. And here is its cluster
+IP. So,
+if you do, let's say if I
+exec into one of those pods, K get exec
+uh let's say Engine X {hyphen}{hyphen}
+bash. And
+we already know the file that is
+responsible for uh the local DNS
+resolution, which is ETC resolve.conf.
+Okay? Over here, you will see some
+entries. Okay? First is name server. So,
+this entry belongs to your DNS server
+entry. So, whenever you create a new
+pod, an entry automatically gets created
+in this particular file of that pod and
+which points the name server to
+10.96.0.10,
+which is nothing but the
+service IP of the kube-dns.
+All right? I hope this is making sense
+now. And over here, because we can
+search the service with its
+top-level domain, which is cluster.local
+or with the service.local and so on or
+with default service cluster local and
+so on. So, there is this search entry
+for that. Okay? This is just adding some
+more aliases to the service name.
+All right? So, this is the file
+responsible for that. So, make sure you
+understand this file. There could be
+some misconfiguration in this file as
+well, but it's get automatically
+generated
+unless someone manually altered it.
+Okay, so this is how we actually
+check it. Now, if we were not using
+this, how it would have worked, right?
+So, there is another file. Let's say it
+is
+ETC hosts.
+Right? So, what you do is you actually
+add the address over here. So, let's say
+this particular pod should be able to
+reach another pod, okay? So, this was
+pod Engine X and if I do the host name
+{hyphen} i, like what is the IP of this?
+This is this entry is already there in
+this file.
+But if you were to reach another pod in
+the same network, we could have added
+the entry of Engine X one over here as
+well. But we don't need to do that
+because we are already using our DNS
+server and DNS is doing all that for us.
+We don't have to manually add the entry
+in each of the pods that is being
+created because it'll be, you know, an
+impossible task if we scale the server,
+let's say let's say if I if it has 100
+pods, 1,000 services, uh many 100 nodes,
+it is really an impossible task to do
+that if you were doing it manually. But
+DNS takes care of all of this for us.
+Okay? So, this is the central DNS server
+that we are using and this central DNS
+server has a cluster IP, which is
+obviously for the internal use. And
+there there'll be an entry in the ETC
+resolve file for every single pod.
+Okay, now let's see some important files
+of CoreDNS. So, if we go back, let's do
+an exit. Let's do a K get pods on the
+cube-system namespace.
+And I'm going to describe one of these
+CoreDNS pods. K describe pod {hyphen} n
+is cube-system.
+All right? So, if we go up, you will see
+there are couple of mount points. One is
+for the service account secrets. That's
+okay. The another one is ETC CoreDNS
+from config volume. So, there is another
+volume that's been attached and it is
+mounted to ETC CoreDNS. Let's see what's
+there in this config volume. So, here's
+the volume, config volume.
+And it has
+a type of config map with the name
+CoreDNS. That means we are mounting a
+config map as a volume to this pod.
+Okay, so let's see the config map. So
+I'm going to enter K get config map
+{hyphen} name equal to cube-system.
+Okay, we saw the name of the config map
+was CoreDNS. So if I'm going to do K
+describe config map
+on the cube-system namespace.
+This is what the file is basically.
+It has a core file. So there is a file
+named core file inside that config map
+and it has few plugins along with it.
+First is errors, health. Errors means it
+will redirect all the errors to STDERR.
+Then it has health checks that lame duck
+there is a certain tool that will do the
+health check of CoreDNS pod after 5
+seconds. Like similar to
+the health props.
+Then we have ready kubernetes
+cluster.local. So this is the top level
+domain of our kubernetes cluster. That
+means your cluster will be reachable
+with this address and then we have IPv4
+and IPv6 addresses.
+Pods insecure, this plugin is for
+backward compatibility with kube-dns.
+Okay, and there are few other details
+like Prometheus is exposed on 9153
+port. All the Prometheus metrics will be
+exposed on this port and then we are
+also forwarding the traffic to
+etc/resolv.conf.
+Right, so this file that's been
+auto-generated for us, it will forward
+the traffic to that to
+route that traffic to the
+central DNS server. Okay, so let's say
+when we mount this config map to a
+CoreDNS pod, the request comes to that
+and then it will check the entry in this
+file.
+Okay, so this file will suggest that
+CoreDNS has a service at attached to it
+with the IP 10.96.something
+and it will redirect the traffic to
+that. And then it will be doing the load
+balancing in a round robin fashion uh
+and so on. Right, so whenever there is a
+change in config map, it will reload the
+configuration and so on. So this is an
+important file
+uh when it comes to CoreDNS.
+Okay, so this file is if you want to see
+the location of this file, I believe it
+should be because it is mounted inside
+the CoreDNS pod etc/corefile,
+whatever we have seen you can check the
+content from there as well. I believe
+this is what uh we need to know from the
+CoreDNS perspective.
+Um I'm sure I have covered everything
+when it comes to that.
+What else you can do is you can check
+out um the
+DNS document or DNS task that is there
+in the
+kubernetes documentation section. I
+guess it will be over here. I'll paste
+that link in the GitHub repository. So
+you know, uh try to follow these steps
+as well. Implement a pod with this
+particular DNS utils install
+and then try to do nslookup. So
+basically this is doing similar thing
+that we did with the nginx pod and it
+will tell you what all files to check
+for etc/resolv and then do the nslookup
+again and so on. And all the things that
+you need to check like
+uh to check if the DNS is running, you
+check the pods.
+Then you check the errors as well. You
+do kubectl logs. We have covered this
+multiple times so I'm not covering it.
+How to check the logs for it, how to
+check the services up or not.
+And are there any DNS endpoints exposed?
+Because it is exposed as a service, that
+means there'll be some endpoints exposed
+to it.
+And then this is the config map details
+and it has all the details of what it
+does. It has cluster roles as well
+binded with it.
+And yeah, basically that's that's all
+about it. So try to have a look at that.
+Try to implement all those steps and
+um I'm sure this concept will be clear
+like how DNS works. In in any case, if
+you feel like your CoreDNS is not coming
+up or you see the status as
+uh you know, no pods available for
+CoreDNS even if there are no errors or
+you have started it. So issue could be
+related to your networking add-on.
+Because CoreDNS only works when there is
+a network add-on installed. So we have
+already K get pods. If I do
+let's do {hyphen} A.
+So we already have if you see we have
+Tigera operator which is the operator
+that we have used to install Calico.
+Right, so Calico is the networking
+add-on that we are using in this cluster
+setup. So if this networking setup was
+not installed because it does not come
+with the default kubernetes
+installation. If it's not there
+then your CoreDNS pods won't come up.
+Right, so this is the first thing that
+you should be looking if you are
+checking how do we do that. Now there
+was an issue when I was installing the
+cluster I somehow missed including that
+in the video but let me tell you this
+now.
+When I was installing Calico, it worked
+fine on the kind cluster but when we did
+on on the kubeadm cluster, it was not
+coming up because there were some issues
+with it. There are some open bugs with
+it or there are some you know,
+documentation
+that we need to follow. First is if you
+are running
+it on AWS EC2 servers that you need to
+make sure that where it is
+instances.
+Okay, I'm going to just close the rest
+of the tab.
+Okay, over here you need to make sure
+that
+select the instance, go to actions and
+then
+networking and enable this option change
+source destination check. Okay, so I
+have currently disabled it. So make sure
+you have disabled the source and
+destination check in all the VMs that
+are part of the cluster.
+Okay, that's one thing. It's there in
+the kind documentation as well but it's
+not pretty straightforward clear so I
+had to go through multiple
+documentation, multiple GitHub issues to
+understand this.
+So that's one thing. The other thing is
+the daemon set that is running behind
+the Calico node. So if I do K get daemon
+set {hyphen} n equal to Calico system.
+Okay, so Calico node this daemon set
+these three pods won't come up if you
+don't make this change. So what you have
+to do is
+you have to change something. So if I do
+K describe
+daemon set
+and {hyphen} n equal to cube-system.
+Okay, I have misspelled it.
+Okay. And over here
+you have to look for something called as
+IP auto detection. So it should be
+enabled. This IP auto detection should
+be enabled.
+Yeah, I guess that was the only change
+that I did.
+So yeah, feel free to reach out if you
+are facing any issues with
+uh with starting the Calico node
+this particular pods. If you are facing
+an issue, let me know and I'll try to
+help you because there are some ongoing
+issues with it. Sometimes it works,
+sometimes it doesn't. So I have we have
+to do certain changes to your
+configuration based on which method you
+are using for the installation. It will
+work fine in the kind cluster. I guess
+it was just specific to AWS but if you
+do the
+source destination check and all those
+things, it should be good.
+Okay, so that's the only thing that I
+wanted to share um
+I hope this video was also beneficial
+and now you're able to understand what
+the CoreDNS is, what is kube-dns, how
+DNS work in kubernetes and why do we
+actually need the local DNS server in
+kubernetes.
+Okay, so thank you so much for watching
+this video. I will see you soon with the
+next video. This was video number 31. I
+will see you again with video number 32
+which is about what do we have in video
+32? Let me quickly check. Okay, yeah. So
+we'll be looking into kubernetes
+networking. Again I have brought some
+amazing guest for it.
+So someone with a lot of experience with
+working with kubernetes and teaching
+kubernetes and who's been an amazing
+content creator associated with the CNCF
+namespace
+will be there to explain the kubernetes
+networking concepts like CNI network
+add-on
+uh runC container runtime and all those
+concepts in detail.
+So do not miss that video and if you can
+guess the name, please feel free to do
+that in the comment section.
+And yeah, thank you so much for
+watching. I will see you then with the
+next video. Thank you so much. Have a
+good day.

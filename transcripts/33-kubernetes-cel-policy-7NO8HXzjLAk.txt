@@ -1,0 +1,909 @@
+good okay so my name is Kevin Connor I'm
+chief engineer with getup Cloud I'm also
+a co-author on the second edition of
+kubernetes In Action along with Marco
+Lua hi um Manish ramaker I'm a software
+engineer at Microsoft focusing on
+security um I'm a member of kuity SE go
+maintainer of Secret store CSI driver
+from Seattle
+Washington okay so here is the agenda
+for today uh we're going to talk briefly
+about cell uh then we're going to
+introduce you to cell playground um
+basically a playground where you can
+test out cell Expressions uh then we're
+going to give you a deep dive on
+validating admission policies mutating
+admission policies and then basically
+show you uh the validating admission
+policies and mutating admission policies
+in
+action okay so let's start with a brief
+overview of cell
+so what is cell cell is common
+expression language it's an efficient
+way to evaluate expressions especially
+for applications where performance is
+critical like kubernetes cell is
+non-turing complete it avoids constructs
+like loops and recursions making it
+predictable in terms of execution time
+this design ensures that cell can
+evaluate expressions safely and quickly
+with no risk of running
+indefinitely U cell evalu expressions in
+linear time and is optimized for Speed
+so it performs very well in production
+environments cell is built to be
+embedded in applications providing an
+easy way to integrate policy checks
+directly into your system without
+needing any additional dependencies this
+makes it versatile and useful across
+various software environments cell also
+allows for extensibility through its
+context meaning you can add custom
+functions or provide additional data the
+cell reference in
+Expressions cell is designed to use
+minimal CPU and memory which is critical
+in environments with limited resources
+this efficiency allows you to evaluate
+expressions even in resource constraint
+environments like a kubernetes cluster
+and on the screen here we have an
+example of what a cell expression might
+look like uh it's natural syntax and it
+has dot accessors with ability to have
+macros or fun FS that the integrator
+provides okay so the cell language has a
+straightforward syntax as we looked at
+in the previous slide uh cell was
+designed to be embeded into applications
+so each cell program is an expression
+that evaluates to a single value and
+then they're typically short on liners
+that can be easily inlined in kubernetes
+API objects um in addition to the cell
+community libraries kubernetes also
+includes additional cell libraries uh
+and then we have a list here to name a
+few so if you look at URL manipulation
+to make it easier and safer to process
+URLs uh the kubernetes extension
+provides uh s URL function that you can
+check if a string is a URL and then a
+URL accessor that you can convert a
+string to a URL and once you have the
+URL object you have accesses like get
+host get scheme through which you can
+manipulate it uh then the next thing is
+there is also a um function for getting
+quantity strings and then in addition to
+that the there is regular expression
+libraries and then there is also an
+authorizer so in cell expressions in the
+API you could use this authorizer to
+perform authorization checks for the
+principal of the request and this is
+just a list of some of the ones that we
+know but beyond this there are other
+libraries that are actually supported
+okay so before we get onto the mean of
+it uh I'm going to introduce you to cell
+playground uh this is an open- source
+project which was created by the company
+I work for and the whole point of this
+was really to give people an opportunity
+to play with cell but to do it in a safe
+place so this is what it looks like
+don't worry if you can't see that I'm
+going to do a demo of it shortly and the
+link at the top the URL there is how you
+get access to it so if you want to give
+it a go uh please do
+so it was designed to be a safe play
+space for people to uh play around with
+cell to test cell Expressions to test
+the integration with various kubernetes
+features it's you can you know you're
+not deploying into a cluster so there's
+no risk of breaking anything it's a
+golang application which is compiled to
+wasm and then downloaded and run in the
+browser so there's no uh exent so
+there's no backend service for this it's
+all local all your information stays
+local and at the moment we support are
+the evaluations of plain cell
+Expressions the integration points with
+web Hooks and also the integration
+points with validating admission
+policies okay so let's swap over so this
+is cell
+playground so at the moment you can see
+uh this the standard self expression uh
+mode that we have on the left hand side
+here uh this is where the Expressions
+you can put the expression that you want
+to test top right here is the data that
+gets fed into the expression when it
+gets evaluated and you get the output of
+the expression on the bottom right here
+so if we just run that you can see this
+is very simple it's just a check of an
+overdraft says that we can uh withdraw
+700 which is great uh but we also get an
+idea of the cost of the expression in
+the bottom right here if we change mode
+and go to the validating emission policy
+which is what we're here to talk about
+it becomes slightly more complicated but
+it's still following the same structure
+left hand side is the uh the uh
+expression in this case it's a uh proper
+kubernetes resource so we have a
+validating admission policy here and
+then the top right are the various
+inputs that the validation admission
+policy will get from the API server so
+we run
+this and the output's slightly different
+it's a concertina output here we have a
+single validation expression so we're
+only seeing one uh validation response
+but that evaluating to true if I go and
+show something more complex like the
+variable one here we have four different
+variables plus a validation
+expression that will show you the
+evaluation of each individual variable
+as well so you can see how it gets
+evaluated within the context of the
+policy and we do that the same thing for
+match
+conditions and also for the order
+annotations okay so that's a a quick
+introduction to sell
+playground okay so we looked at cell
+expressions and then we also looked at
+how you can use a cell playground to
+validate cell Expressions uh so the next
+thing that we here to talk about the
+core of the talk is admission policies
+and this one is specifically validating
+admission polic policies so first thing
+is validating admission policies are
+designed to be an alternate for
+validating web hooks for many common use
+cases unlike web hooks which require an
+external service these policies are
+handled directly within the kubernetes
+API server making them more efficient
+and easier to manage since they run in
+the cube API server they reduce the need
+for Network calls uh which means lower
+latency and reliable policy enforcement
+as they are evaluated natively
+validating admission policies use the
+common expression language to declare
+the validation rules of a policy each
+validating admission policy consists of
+three components the first one being the
+validating admission policy that is the
+actual policy definition where you
+specify the rules and the conditions
+that must be met and the second
+component is validating admission policy
+binding this connects a policy to a
+specific resource or namespace allowing
+you to Target policies of certain
+workloads uh and then the third
+component is parameter resources these
+allow you to parameterize policies
+enabling flexible reusable rules that
+can adjust based on different
+inputs at least a validating admission
+policy and a binding needs to exist for
+it to actually have any effect and then
+in terms of uh the validation action you
+can BAS basically configure that to
+either deny war or audit requests uh
+deny if the validation fails the request
+is going to be denied uh if you have War
+then basically the client gets a warning
+that they're not allowed to do a
+particular action and then audit is in
+addition to the warning the validation
+failure is also as part of audit and
+then deny and warn are not to be used
+together because this combination
+needlessly duplicates the validation
+failure both in the API resp resp body
+and the HTTP warning uh
+headers so with validating admission
+policies cell expressions are Central to
+defining uh conditions variables um
+message expression audit annotation and
+validations uh so if you look at match
+conditions cell Expressions can Define
+match conditions to specify when a
+policy should apply based on the
+attributes of the incoming request so
+this is in addition to match labels
+namespace selector object selectors that
+you have in the binding then the next
+one is variables so you can use cell to
+set variables that simplify complex
+expressions and that can be
+reused as part of evaluation uh the
+validations these are the core rules
+that get evaluated so cell Expressions
+validate whether a resource request
+meets specific requirements and then you
+have audit annotations so cell can also
+annotate the requests based on what
+decision is being made uh to track
+policy actions and violations and then
+the last one being message expression so
+this is where you configure an
+expression so that uh the client gets
+more detailed message if a violation
+exists and then in terms of what these
+cell Expressions have access to uh they
+typically have access to the uh contents
+of the admission request or response um
+or organized into cell variables and
+here's a list of the cell variables that
+they have access to the first one is
+object so this is the object of the
+incoming request and the value is null
+for delete and then the old object is
+the existing object the value is null
+for create requests and then the request
+is basically attributes of the admission
+request and the params is optional
+parameters that you have configured that
+is used for uh evaluating the conditions
+uh and then the namespace object is the
+kubernetes namespace object this value
+is set to null if it's if you're
+evaluating a cluster scoped resource um
+and then the authorizer the cell
+authorizer uh this can be used to
+perform authorization checks for the
+principle that the request is being made
+for okay so now we know a little bit
+about validating admission policies we
+know that they uh they're declarative we
+know that they run embedded within the
+API server so there's no external
+network access required we know that
+they use cell for defining their
+policies and the best exam best reason
+for using them as far as I'm concerned
+is we don't need to use a web hook so
+anybody use web hops will know how that
+feels okay so we're going to take you on
+a little journey of uh validating
+emission policies take you through a the
+kind of Journey that you might
+experience if you were learning how to
+use it uh yourselves so the first thing
+we're going to look at is really where
+do you start it's it's probably with
+something like this a very simple policy
+uh this one here is uh it's matching for
+pods the create an update verbs on pods
+and what it's trying to do is it's
+trying to prevent containers getting
+into your system that have requested
+privileged access so the expression at
+the bottom here is fairly simple we have
+a a has macro there which says uh that
+it's the expression uh sorry the
+resource is going to be valid if it
+doesn't have a security context or if it
+doesn't have a privileged set or if the
+privilege value is not true so that's it
+so we'll show this in
+action
+so I need to move
+that okay so this is the policy that we
+showed on the slide just to show you
+that I'm going to to deploy the same
+thing so that gets
+deployed the policy
+binding uh can you read that that looks
+a bit small let me increase the size of
+that is that any better yep okay so this
+is the policy binding what we're doing
+is we are uh matching on namespace
+selector here with environment demo now
+the only name space in this cluster that
+we have that matches that is called demo
+uh the policy name is deny privileged
+example so that's a policy that we
+previously defined and our validating
+action is deny so if anybody tries to uh
+submit a request that contravenes this
+policy then we're going to deny the uh
+request so we will apply that as
+well so now we're going to test it out
+here is a simple pod it's just deploying
+engine X so nice and easy and it's
+asking for privileged access so we will
+try it and see what we
+get okay so that's what we wanted to see
+the request has failed uh we have a
+message here which has come from our
+policy which says the port has at least
+one privileged container so that's great
+but what happens when you start talking
+about controllers who are creating PS
+how does that work well let's give that
+a try let's try it with the deployment C
+so the deployment as you can see is
+essentially the same as the Pod it's
+just wrapped in within
+deployment uh structure itself so if we
+run
+that we see that actually that succeeded
+now that's not what we wanted to see
+what we wanted was for that to fail so
+let's go and take a look and
+see what we have here so we can see we
+have a deployment and we can also see
+that we have a replica set let's take a
+look at the deployment first and see
+what we get
+okay so if we scroll down
+so the bottom we can see that okay
+there's a message there that says
+replica failed but there's nothing
+really of interest there so let's look
+at the replica set and see what that
+says again down at the bottom we start
+to see lots of error messages that are
+coming from our policy so the reason
+this has happened is you know thanks to
+the good as asynchronicity of cometes
+and controllers the replica
+controller is the client that's making
+the request so it's is creating the Pod
+it's the one that gets the error message
+so it's logging in
+status so now we have to go back to the
+drawing
+board wrong one sorry let me just go
+back and I'll close that down so we're
+not going to use that again so now we
+have to go back to the drawing board and
+we do a second version of it uh this one
+what we've done is we've extended the
+resource rules that we're using so that
+we are are also looking at the other
+types that contain containers uh and
+actually I know this is just I know
+we're not doing a net containers and a f
+roll stuff I'm trying to keep it simple
+but we're just looking at the the normal
+containers within the pods we are also
+having to
+extend see if this works wrong one so we
+have that's not very good so we have got
+three validation rules now instead of uh
+one the reason for this is because the
+ACT the structures of the resources are
+different right pods the containers are
+based directly in the spec uh
+deployments Etc they have a template uh
+which contains everything Chron job has
+a job template which which contains
+everything so we need to put guards
+there to make sure that only the
+appropriate resource will evaluate that
+expression so let's give that a
+try okay
+so this is the policy that we're using
+just to show that it's sorry to show
+that it's the same
+one so we'll give that a go that's now
+configured
+and we will go back and we will try the
+deployment
+again okay so now we get the error
+message so that was what we wanted to
+see so when somebody is actually
+creating the deployment they're the ones
+who see the error cuz that's where it
+makes sense now there are two real
+issues with this if we go back to the
+policy and show that you know this is
+quite a messy policy we are using the
+has macro all over the place uh we also
+uh are duplicating duplicating a lot of
+code there must be some way to clear
+this this uh to clean this up an other
+issue is that if you uh look at the
+policy
+itself you will see
+that there are lots of errors that have
+been created right down in the bottom of
+status so these are the errors now what
+is happening here is that when we deploy
+our policy there's a CH a type checking
+stage that takes place this takes all
+the resources that you've said that
+you're interested in and it will compare
+the structure with what you're executing
+with the Expressions if there's a a
+mismatch then it creates an error
+message okay now we know that we have
+different types with different
+structures we are expecting there to be
+mismatches because the expressions are
+not going to to handle everything uh but
+the type Checker doesn't know that okay
+so it's creating all these errors for it
+so is there a way that we can deal with
+this as well well as it turns out that
+there is
+oops so there are two things that we can
+do first is to start using variables so
+these are essentially sub Expressions
+which will be evaluated On Demand only
+if they're ever referenced and they will
+be evaluated once and we can also use
+the optional operator which is the dot
+question mark that you can see there now
+what the optional operator means does is
+it it says that from this point onwards
+something could be missing right I know
+it could be missing I'm telling you it
+might not be there and we have an
+opportunity to set up a default value
+which is what our value does so now we
+have uh three Expressions at the sorry
+three variables at the top POD
+containers workload containers and Chron
+job containers they are using the
+optional operator to say if this exists
+then we will take the value of
+containers otherwise we'll just have an
+empty list and just for uh ease of use
+we've created a fourth variable which
+just con concatenates that all together
+right so now we end up with one
+expression which says there may or may
+not be a security context with a
+privileged if there is make sure that
+it's not
+okay so that's much uh simpler so let's
+try that out and see what happens with
+that okay so this is the policy that we
+were just talking
+about I'll deploy that
+instead okay and if we do
+a go back to the policies and describe
+that we can see that
+uh this is there and it's clean there
+are no errors there now really uh we
+we've kind of cheated a bit here because
+the reason there are no errors is
+because we moved all the bits which
+would cause errors into variables and
+that doesn't get type checked so it's a
+bit of a cheat but it works it's clean
+okay so that's that fit there
+uh right so going back so the next thing
+you might move on to is okay you you
+want to do something like uh restrict
+sorry you want to uh enforce a minimum
+number of replicas for example that's
+the common example that you see uh this
+is something that you want to configure
+using parameters because you want the
+ability to create uh so you want the
+ability to update that value but without
+re restart without recreating the policy
+or updating the policy so you define a
+crd uh we have an example called demo
+pram here which I'll show you the crd in
+a minute it's very simple and we use
+that within our expressions with params
+dopc do replicas and use that just to
+enforce the policy The Binding that you
+see on the right hand side when you see
+the param there what that is doing is
+it's binding the policy to a particular
+instance of that resource so that CR so
+this one is in the namespace config and
+it has a name Min
+replicas so
+let's give that a go as
+well okay
+[Music]
+sorry wrong
+one okay so this is the policy just to
+show you that I'm doing the same policy
+we will apply
+that uh the policy binding the same
+binding actually I for to do the crd so
+I'll do the crd first so this is the crd
+it's very simple it has is a single
+integer and they're called replicas
+so deploy
+that and the parameters we're going to
+use again this in namespace config has a
+name in replicas has a replica value of
+three so we'll deploy
+that and now we'll deploy the Bing okay
+so let's give this a go and see what
+happens I'm just going to go down to the
+command line for this right
+so I'm going to call it engine X cuz I'm
+going to deploy engine X
+let's see what happens okay so we get an
+error message says deployment spec
+replicas are set to one but should be at
+least three so the three is coming from
+our parameters that we' spe we've
+specified we can try with three and we
+see that it gets created okay so that's
+how to use a parameter
+oops but that's not where we stop with
+parameters
+uh oops sorry I keep going back to the
+hummingboard uh so now the next step
+would be okay well we can use parameters
+but actually what we really want to do
+is we want to have different values of
+the parameter per namespace so how do we
+do this so you go back you do a bit of
+research and you actually find that it's
+uh fairly easy to do this the only thing
+you need to do is change your binding so
+that it does not specify the namespace
+within the
+param when API server sees that what it
+will do is it will default the namespace
+to the same name space as the resource
+that's coming in right so if somebody's
+creating it uh in test then it will use
+that parameter within the test namespace
+if it's us if it's deploying into prod
+then it will do it will pull it from the
+prod namespace okay so we'll do
+a show
+this in action as well
+so this is the changed binding as you
+can see there's no name space there we
+will apply
+that and now these are the parameters
+that we are going to deploy so again
+test we have three replicas prod we have
+five replicas deploy
+that okay so that deployed now if you go
+back and try it with test we'll see that
+it's saying okay okay we should have at
+least
+three and if we do it with
+prod
+oops then now it's saying this should be
+at least five and you can take a look at
+the
+oopss you use my say uh so the these are
+the the uh parameters that we have
+defined in the name spaces that they're
+in okay so it's matching prod was five
+test was
+three okay but that's not where
+you stop with parameters right so far we
+have created policies and we've
+evaluated them against a single
+parameter right it doesn't matter
+whether it's in the namespace that the
+resource is deploying in or whether it's
+in a config namespace of some kind you
+can actually use many parameters right
+but they all have to there are some
+gutes right the first one is that you
+are defining the type of the parameter
+within the policy itself so you're
+restricted to one type the second thing
+is uh that you uh you define a selector
+which chooses the parameters the uh API
+server will ident will will identify all
+the parameters that uh match your
+selector and for every single one it
+finds it will execute your
+policy every combination of that policy
+has to succeed for the admission to work
+right so here we're going to do
+something which is actually uh may look
+a bit strange but it makes sense so we
+have a parameter kind we're actually
+going to use pod disruption budget here
+but we're also going to have our
+resource Rules match on pod disruption
+budgets right so when they get created
+or updated our object will be a pdb and
+the parameter will be a pdb but the
+parameter will be every single pdb
+that's already in that namespace so we
+can check to see whether the incoming
+one clashes in some way with the ones
+that are already
+deployed so if we
+go back to
+this so this is the policy that we're
+going to
+use uh at the top here we have two
+variables all those are really doing is
+making it easy so that we don't have to
+keep typing that again they're just
+copying the uh the labels that we have
+right now we have an expression here
+which is checking to see whether the pdb
+that's already deployed and the one that
+we're about to uh test against are the
+same if it is then we just we we don't
+care because it's replacing what's there
+so they're not going to
+clash the next two are just
+simple Expressions which check to see
+whether the labels that are there the
+match labels which are in uh in this
+case in the incoming object if they are
+a subset of the pdb so go through every
+single label check if it exists check if
+the values are the same if it do if if
+that is true then it's obviously a
+subset and it's going to clash and the
+last one is the opposite direction in
+this case for pdbs so if either of those
+are true then we know that we're going
+to have a clash and that's what the
+validating expressions are going to say
+so
+let's deploy
+that we'll deploy The
+Binding and we go and have a look at
+some pdbs so this one here is there's
+obviously nothing deployed at the moment
+this one should succeed it's got labels
+of app being app one and service being
+service one so you apply that that
+works pdb2 has app again app one but the
+service is service two so they're not
+clashing deploy that one and that one
+works pdb 3 on the other hand has app of
+app one and service from service one now
+we know that they clash with pdb1
+because those are the only labels that
+are deployed in in
+pdb1 uh but it also includes
+sub uh label in there as well so pdb1 is
+a subset of this if we deploy
+that then we get an error message from
+our policy which says the match labels
+in pdb1 match a subset of the match
+labels in this pdb okay so that
+worked and then pdb 4 look at that all
+it contains contains is that so it's a
+subset of the existing pdb1 and the
+existing pdb2 CU they were the only two
+that successfully
+deployed and
+that's
+oops and that's what we're getting back
+from our uh policy so match labels in
+this pod disruption budget match a
+subset of match labels uh in pdb1 in
+this case it could have been pdb2 it
+depends which one's evaluated first but
+this one is pdb
+one okay
+so so the next thing I'm going to talk
+about uh is mutating admission policy so
+this is something which has only just
+made it into the kubernetes code base
+it's going to be in 132 as an alpha
+release uh whereas validating emission
+policies they first hit Alpha 126 there
+were beta 128 and then they G8 and
+130 so mutating admission policies are
+to mutating web hooks what validating
+emission policies are to validating web
+hooks they run in the API server uh they
+have a policy a binding and resources
+parameter resources the same way as
+validating emission policy does uh but
+we have a uh mutation section instead of
+a validation section and we can we can
+create either serice side apply
+configurations or we can create Jon
+patch
+configurations so let's take a look at
+those right this is an example
+of the apply configurations so serice
+side
+apply I will go back to command
+line okay so this is the policy now this
+policy is looking for pods which do not
+have an apply hello label already set
+and if it finds one then it will just
+mutate the the uh pod to have it okay so
+we will go and create that
+sorry uh apply it
+first and apply The Binding
+Okay so we've created a deployment we go
+back and have a look at the workloads
+okay uh we have pause
+there I have let me just do that again
+I've obviously left something running
+for
+before
+okay okay so now if we take a look at
+the Pod we can see that that label
+exists so that's come from the mutation
+that we did uh Json is
+similar uh but it's a bit more it it has
+a bit more options for us because we can
+add values we can remove values replace
+values copy values move values and also
+test
+values this is the same except as
+looking for Jason hello instead sorry
+so this is the same but it's looking for
+Json hello instead a label of Json hello
+but again it's doing a mutation and
+adding the label if it doesn't find it
+so we can apply
+this go back
+to
+that create it
+again go back to look at the workloads
+and take a look at the
+we can see now we have the label Json
+hello world so that's the Json patch
+working and mutating
+it uh okay so that's it that's where we
+are up to uh I don't know we've got 39
+seconds left sorry I couldn't see the
+clock from here on the podium it's a bit
+hard to see um so if there are any
+questions please ask them quickly uh if
+not you can catch us at the end of this
+and ask questions it's a your choice
+no questions is that good or bad oh we
+have a question do you want to come to
+the mic and ask the
+question so I think we've all dealt with
+the downsides of validating admission
+controllers uh or specifically
+validating admission and mutating web
+hooks right like that'll really get you
+in trouble uh what are the downsides to
+implementing the same patterns using
+cell and
+validating admission policies versus web
+hooks uh so I I guess you're uh I mean
+there are some obvious advantages like
+no network you don't need to worry about
+the service going down or anything uh
+but there are some constraints as well
+to it uh you can't make remote accesses
+to anything from a policy uh admission
+policy so if you're if you need to do
+that for any reason then you um you you
+you can't do that uh if you need if you
+depend on multiple different types then
+there are additional steps that you have
+to do so the only real way to do that is
+to have a controller which monitors
+those types and then creates an
+individual parameter crd Uh custom
+resource which then feeds into the
+policy so there's an extra step there of
+creating a a controller to do that and
+obviously that can potentially get a bit
+unwieldy so those are the the real ones
+I can think of you got any no
+performance impacts to the API server
+overloading the API server and killing
+the API server as they're being each of
+these uh Expressions they all run with a
+cost budget but uh until
+132 uh when this this finally gets
+enabled uh they actually forgot to add
+in the cost estimator for a lot of the
+extension functions that we use so it
+went GA without the cost estimator uh
+they put it in as a deprecated feature
+flag that feature flag uh will be turned
+on by default in 132 so now you'll be
+constrained uh by resources because of
+that so you shouldn't uh do that you
+shouldn't overload the API Ser do you
+know what the budget number is off hand
+say again do you know what the budget
+number is off
+hand uh not off the top of my head but I
+think it's no I don't remember but we
+can check that thanks you're
+welcome okay sorry somebody said
+something I M 10 million R and 100
+million for the entire resource 10
+million per Rule and 100 million for all
+the resources there you go thank you
+very much um for the Json patch stuff uh
+can you use sell in writing the Json
+patch or is the patch just static oh no
+it's a a cell expression so you can use
+it to generate it yeah you can create
+whatever you want using cell yeah
+no
+sorry just so it gets recorded and
+people can hear the question just
+quickly is there uh tools for doing unit
+testing of your validating emissions
+policies so you can run them in CI and
+make sure that they're doing what they
+should be doing not blocking things they
+should be allowing not allowing things
+they should be that is starting to come
+through I do know of one which is called
+VAP Library if I remember rightly and
+they do have some way of testing it as
+part of CI uh I haven't tried that
+myself but you can certainly look at
+that and I know that within the C
+playground we're going to add that
+anyway as a capability so it may well be
+that we'll have it in both thank you
+you're welcome what about
+exceptions what about exceptions what do
+you mean by exceptions like um the
+privilege container example Q proxy I
+don't want to block Q proxy oh you you
+can uh create whichever ex exceptions
+you want really I mean if it's something
+to do with
+uh not wanting to apply it to resources
+that coup system and when you set up the
+binding you can exclude it that way so
+you can see you set up the selector for
+the name spaces or the resources to to
+match however you would normally do it
+so you can might be like a really really
+long rule right so you could do it
+through the selectors right so you could
+do it Define it in The Binding but that
+is where you can also do it through like
+match conditions right so you can
+basically use cell in match conditions
+to say I want to exclude this particular
+thing like it gives you more granular
+control over which workloads within that
+namespace you want this condition to
+match for and not do it for the others
+and the other advantage of that is that
+you can use things like authorizer so
+you could actually base it on who's
+making the request as well so maybe you
+have some people who you would allow to
+do that and some people who you wouldn't
+allow to do it so you can use authorizer
+to check whether they have permissions
+to do
+that so based on the arback
+stuff any more questions
+all right well hopefully you managed to
+get something out of this certainly Our
+intention but thank you very much for
+coming and thank you very much for
+staying to the end thank you thank you
+very much

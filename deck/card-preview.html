@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kubernetes Anki card preview</title>
+  <style>
+  .card {
+  box-sizing: border-box;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1.25rem;
+  background: #f8fafc;
+  color: #172033;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 20px;
+  line-height: 1.5;
+  text-align: left;
+}
+.prompt, .answer, .extra { overflow-wrap: anywhere; }
+.answer { margin-top: 1rem; }
+.extra { margin-top: 1rem; color: #526078; font-size: 0.88em; }
+.divider { border: 0; border-top: 1px solid #cad2df; margin: 1rem 0; }
+.media { display: none; margin-top: 1rem; text-align: center; }
+.question[data-side="front"] .media,
+.question[data-side="both"] .media,
+.answer-side[data-side="back"] .media,
+.answer-side[data-side="both"] .media { display: block; }
+.media img { max-width: 100%; max-height: 28rem; object-fit: contain; }
+code { background: #e8edf4; border-radius: 0.25rem; padding: 0.08em 0.3em; }
+@media (prefers-color-scheme: dark) {
+  .card { background: #111827; color: #e5e7eb; }
+  .extra { color: #aab4c5; }
+  .divider { border-top-color: #384459; }
+  code { background: #253148; }
+}
+.nightMode .card { background: #111827; color: #e5e7eb; }
+.nightMode .extra { color: #aab4c5; }
+.nightMode .divider { border-top-color: #384459; }
+.nightMode code { background: #253148; }
+  body { margin: 0; padding: 2rem; background: #dbe4ef; }
+  main { max-width: 64rem; margin: 0 auto; }
+  h1 { font: 700 2rem/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #172033; }
+  h2, .preview-label { font: 600 0.85rem/1.4 ui-monospace, SFMono-Regular, monospace; color: #42516a; }
+  .preview-label { margin: 1rem 0 0.35rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  .sample { margin: 0 0 2.5rem; }
+  </style>
+</head>
+<body><main><h1>Production card preview</h1>
+    <section class="sample">
+      <h2>api-server::explain-policy-boundary</h2>
+      <div class="preview-label">Front</div>
+      <div class="card"><div class="question" data-side="none"><div class="prompt">Why is <strong>kube-apiserver</strong> the cluster coordination and policy boundary?</div><div class="media"></div></div></div>
+      <div class="preview-label">Back</div>
+      <div class="card"><div class="question-recap"><div class="prompt">Why is <strong>kube-apiserver</strong> the cluster coordination and policy boundary?</div></div><hr class="divider"><div class="answer-side" data-side="none"><div class="answer">It exposes the supported API, applies request policy and conversion, persists canonical objects through etcd, and serves reads and watches. Other components coordinate through this contract rather than storage internals.</div><div class="media"></div><div class="extra"></div></div></div>
+    </section>
+
+
+    <section class="sample">
+      <h2>api-server::api-server-vs-etcd</h2>
+      <div class="preview-label">Front</div>
+      <div class="card"><div class="question" data-side="none"><div class="prompt"><strong>API server</strong> vs <strong>etcd</strong>: which owns the public contract, and which persists state?</div><div class="media"></div></div></div>
+      <div class="preview-label">Back</div>
+      <div class="card"><div class="question-recap"><div class="prompt"><strong>API server</strong> vs <strong>etcd</strong>: which owns the public contract, and which persists state?</div></div><hr class="divider"><div class="answer-side" data-side="none"><div class="answer">The API server owns authentication, policy, validation, versioning, conversion, reads, and watches. etcd is the strongly consistent persistence layer behind it; clients should not bypass the API contract.</div><div class="media"></div><div class="extra"></div></div></div>
+    </section>
+
+
+    <section class="sample">
+      <h2>etcd::name-from-raft-store</h2>
+      <div class="preview-label">Front</div>
+      <div class="card"><div class="question" data-side="none"><div class="prompt">Which distributed key-value store persists Kubernetes API state with strongly consistent, Raft-backed writes?</div><div class="media"></div></div></div>
+      <div class="preview-label">Back</div>
+      <div class="card"><div class="question-recap"><div class="prompt">Which distributed key-value store persists Kubernetes API state with strongly consistent, Raft-backed writes?</div></div><hr class="divider"><div class="answer-side" data-side="none"><div class="answer"><strong>etcd</strong>.</div><div class="media"></div><div class="extra"></div></div></div>
+    </section>
+    </main></body>
+</html>

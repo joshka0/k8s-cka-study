@@ -1,0 +1,820 @@
+hello hello and welcome to the CNI deep
+dive session my name is brian Boram
+worked for a company called weave works
+and I am a CNI maintainer amongst other
+things and I'm Dan Williams and I worked
+for red and also CNI maintainer so let's
+just find out who's in the room who came
+to the intro session yesterday
+ah okay thank you who is a current
+maintainer of a CNI plugin welcome who
+knows very little about CNI oh thanks
+for coming yes seriously
+okay well I wondered about that so we we
+have some recap of the basics so those
+of you who've been through this before
+bear with us a couple of minutes we'll
+go we'll get through that we got some
+stories to tell you about the kind of
+deeper aspects of the project and
+technical details of what's being going
+on and life and times and also talking
+about the future of the project so let's
+begin the recap so the the CNI project
+has has two major parts to it one is a
+specification and that's that's a
+document written in English or as close
+as we could manage and the in the same
+repo is that is a is a library Lib C and
+I that's that's a go library that's used
+by things that call C and is and we call
+them runtimes
+so the one many of you will know as
+kubernetes but CNI is is cross-platform
+so it's used by what can be used by me
+sauce it's used by cloud foundry
+it's used by pod man
+there's a bunch of alternate runtimes
+that can call into CNI and we do stress
+that in the the cross project
+cross-platform nature CNI is a CNC F
+project kubernetes is the CNCs project
+but that's you know we're all friends
+but they're not the same thing one is
+not part of the other yeah so a couple
+of tools so that's it that's on github
+it's all under the container networking
+organization the CNI repo has the spec
+and the library the so-called base
+plugins that word means horrible and
+reference nasties yeah sometimes we call
+them reference plugins so basically some
+some plugins that are nowadays on both
+Linux and Windows that you can use just
+without any extra you know parts without
+installing servers and things like that
+just using Linux facilities to fire up
+Network bits and pieces and and there's
+a reference they sort of serve as best
+practices especially as we as we evolve
+the system the the reference or base
+plugins act as a guide to how to use the
+new features who we are so I'm on there
+Dan's on there these are the maintainer
+these are the people who show up
+regularly who have commit rights to the
+repo but we do get lots of contributions
+and I'm sure there's lots people in the
+room have made contributions to the lib
+CNI or to the spec or to to the
+reference plugins and then there's this
+dozens more plugins outside of the CNI
+project those are all CNI plugins and we
+love them we host references to a lot of
+them but that's that's you know one of
+our aims is to make it possible for
+everyone to be on the same playing field
+and everyone who's got a network
+implementation can't
+that into a container runtime via C&I
+that's what it's for
+a little bit about how we work the spec
+is quite slow in evolving intentionally
+so yeah yeah oh yeah because we have to
+be very careful and really agonize over
+things that might break someone we are
+at zero point I forget four or four on
+the spec this confuses people actually
+the the spec and the plugins are at
+different versions sorry one of them
+evolves slower than the other I mean
+well in one point under plugins is we
+need to rev the plugins more quickly
+because you know people find bugs and
+plugins and you know bugs in the other
+libraries and stuff like that and so we
+want to get those fixes out to people
+more quickly than the spec of balls
+because like Brian said the spec needs
+to move a little bit more slowly because
+we need to be very careful about what
+gets added to the spec in the language
+there but we don't want to block point
+releases of the plugins you know just to
+fix a bug with something and so we did
+split those two apart and create
+different kind of streams for the
+plugins and the spec about maybe a year
+year and a half ago basically in
+response to user requests for more quick
+updates of the plugins and not quite so
+much the spec and we're gonna get into
+what 1.0 later later on in the deep dive
+so for those of you prefer pictures to
+words this is where it fits you have a
+you have a runtime on the left so maybe
+that's kubernetes maybe not you have a
+container or in kubernetes case a pod on
+the right and you have a network at the
+bottom so this this could be something
+that someone is set up that this could
+be calico network or weave network or
+you know shifts network or something
+from from Cisco or juniper network so
+you know there's a a network out there
+we want to connect to our container and
+conceptually the the plugin is just
+doing the glue in the middle I was
+talking to someone after the last talk
+and I realized maybe I didn't explain
+this very well so so in the case of my
+own plugin we've net when when when
+kubernetes calls the plugin it basically
+makes one rest call because we're
+running a daemon an exit
+you know the plug-in itself does nothing
+it's talking to an implementation of a
+network that's somewhere some of the
+reference plugins do their work entirely
+because there's something already on the
+operating system like the bridge plug-in
+for instance uses a Linux bridge which
+is in the kernel so so both of those
+things are CNI plugins and and I
+recognize that might be confusing to
+think about but basically what needs to
+happen is is the runtime makes a call
+which is very simple just add to make a
+make a network connection or dowel to
+take one away it's configured by a JSON
+file or you know some Jason whether it's
+in a file or not is that me okay
+the Jason is the configuration of what's
+going to happen on the network and the
+plug-in makes it happen the plug-in
+makes an interface appear in the
+container so whatever needs to happen we
+don't care because we're we're just
+making it possible for everyone else to
+play on the same playing field okay I
+I'm gonna tell you a story now about a
+CV you know of ulnar ability the I just
+thought that so that's the recap over I
+I thought it'd be interesting to get
+into some of the life of the project and
+understand some of how it works yeah so
+the the story really concerns the port
+map plugin
+which is which is one of the reference
+plugins and what what does the port MAP
+plugin do so it is for in docker terms
+the - PFLAG in kubernetes terms a host
+port so it's mapping a port from inside
+a container out to the host I get it
+right okay and it works by iptables
+rules what what doesn't and so the
+mistake was that it inserted its IP
+tables rules and this works great you
+know and all the tests that we did there
+was a problem though that they would go
+ahead of rules that someone else had on
+their machine and in particular that
+could be a blocking rule such as a
+firewall rule so just kind of depended
+on the order in which things were set up
+and ended on whether you had a port map
+or not and so on but eventually someone
+realized this is vulnerability the the
+kind of the the interesting part was
+that oh you know how this how I became
+aware of this it was essentially people
+people screaming at us on github saying
+when are you gonna fix this issue and so
+we'd go like okay well I personally
+would go okay tell tell me more about
+the issue they go I can't it's embargoed
+so what we realized was is it's a it's a
+public project right we work in public
+we work on github the security committee
+of kubernetes who were the people
+screaming at us were you know I tightly
+tightly knit group they're keeping the
+information under wraps until they had a
+fix so they weren't going to publish
+that on github and you know we sorted it
+out in a day or so the the fix was
+really easy just don't insert a pen
+the rule but yeah we learned we learned
+a number of lessons that that that week
+CNI is a very critical tiny but critical
+part of the infrastructure we didn't
+have the communications channels we
+didn't we didn't have a way to make a
+private build of CNI so the fix itself
+could be kept under wraps and while
+there was more fun and games in actually
+getting it kind of vendored into
+kubernetes but that's that's really down
+in the weeds ask a question if you want
+to hear about that but yeah the kind of
+the kind of life life of the project
+this is touchwood we've only had the one
+CVE that I can tell you tell us about
+but it was kind of an exciting week with
+we actually learn well we're you know -
+we need we need the communications
+channels and and also problem you know
+people are signed to react to these
+things and yeah and the infrastructure
+to be able to do private builds and
+things like that until vulnerability is
+disclosed yeah well that's a work in
+progress I guess
+yeah the yes although all the kind of
+big names that you see up on the keynote
+stage they're all screaming at me
+personally and that was I was excited
+okay I'm gonna hand over to Dan for the
+next story yeah so there are in the CNI
+spec 0-4 there are a couple of
+interesting changes and one of the big
+ones is check the check verb is another
+verb along with add and del inversion
+and these four things together form the
+basis of CNI operations and these are
+things that run times like kubernetes or
+pod man or cryo would call to set up
+containers delete containers and check
+check is is your container healthy and
+it's kind of a
+yeah it is the network of your container
+healthy it's something that we know we'd
+seen for a long time as a need in the
+cni project we went through a number of
+iterations of it and I think it took
+maybe six nine months maybe even a year
+to figure out exactly what the right
+pattern there was for the check command
+so you know based on that let's just
+kind of go through it and talk a little
+bit more about it basically what happens
+when kubernetes or docker or something
+like that restarts in your container is
+running well dr. shim currently assumes
+that the networking is up if the pot has
+an IP on the primary interface of the
+pod but after that it basically kind of
+forgets about it and even if it doesn't
+really have that IP it assumes that
+things are more or less okay so there's
+kind of a disconnect here between what
+is the actual state of your container
+and what does the runtime expect that
+state to be and if something changes
+does the runtime react intelligently to
+that
+we thought that CNI could help here and
+so we created the check command and the
+check command is essentially hey si and
+I plug in I asked you to set up pod well
+is that pod still healthy is the network
+of that pod still healthy do you think
+it is there were a couple of
+complications with that and that's why I
+kind of took us you know maybe almost a
+year to really get right and pushed
+through because correct means something
+very different to a lot of different
+network plugins it's things like is the
+IP address of the container the same as
+was originally assigned to that
+container what if some plug-in later on
+decided that it wanted some details of
+the pod and the plug-in that is doing
+the checking right now isn't aware of
+those details and that was one of the
+things that was kind of complicated
+because if you're not aware in CNI we
+have a concept of chained plugins the
+configuration
+you give to the runtime to say these are
+the operations or these are the plugins
+that you need to call as a runtime as
+kubernetes cryo mais au s-- whatever to
+set up the pod network it can be a list
+of plugins and that list of plugins is
+you know first you usually have
+something like the bridge plugin and
+then you might have an eye Pam plug-in
+in there to do the actual IP allocation
+assignment then you might have something
+like a firewall plug-in to poke rules
+through the firewall you might also have
+a tuning plug-in or a bandwidth plug-in
+to set up bandwidth limitations on the
+container well all of these different
+plugins can interact in different ways
+and that was one of the big things that
+we kind of had to discuss and figure out
+how to get exactly right is you know all
+these things do operations to the
+container and they can change how the
+containers networking looks and so you
+know during the check operation you need
+to make sure you account for that
+so the spec language says and this is
+pretty sure we copied this directly from
+the spec that the plug-in should return
+an error if a resource included in the
+cni results type which are things like
+interfaces addresses routes you know MAC
+addresses of the plug-in other things if
+that if a resource including the result
+that was created by this plug-in and is
+listed in the result that is given to
+the plug-in as part of the check
+operation is missing or an invalid state
+now what exactly does that mean it's
+probably worthwhile to back up a little
+bit and talk about how you know what
+proof result is and how the check
+operation works so when the runtime
+calls the check operation the spec
+requires that it passes to the plug-in
+the actual object that the add call
+returned to the runtime so first the
+runtime calls add and says set up this
+container and all the plugins in the
+chain do their thing and they return one
+JSON structure to the runtime that
+describes things like the IP address the
+container has DNS results routes that
+might that the container has MAC address
+a number of different things something
+needs to cache
+that result so that it can feed that
+back into subsequent calls and those
+subsequent calls the two most important
+ones are check and delete in the case of
+check that pre result describes the
+final results of the network operation
+on that container and that is what the
+plugins and check need to take a look at
+because if some further chain plug-in
+decided to modify the results after your
+plug-in ran then that gets fed back in
+and your plug-in can see that you know
+maybe the state is not exactly what I
+thought it was when I set it up and so
+that's why if the resource that you
+configured is listed in the pre frizzled
+then you can take some action on it but
+if it is not listed in the pre Frizzle
+then your plugin should not what really
+needs to happen here is that if the
+plug-in thinks that something is invalid
+it needs to return an error to the
+runtime and then the runtime is supposed
+to do something like tear the container
+down so that it can restart the
+container with a healthy Network and so
+let's you know take one example here so
+if your container sets up or your excuse
+me your CNI plugin sets up a route
+inside the container and then a further
+plugin later on in the chain decides to
+remove that route or change routing now
+when that comes back for a check call to
+determine whether the containers healthy
+or not your plugin might know through
+some other mechanism that it was
+supposed to configure that route inside
+the container but your plugin will see
+that in the pre Frizzles that route is
+not present and in this case that
+indicates that some further plug-in
+decided to change things and so your
+plugin should not decide that that is an
+error because it could not it did not
+see that that thing is in the pre
+Frizzle hopefully that makes sense and
+this is kind of one of the reasons why
+it was complicated to decide how check
+should really work but in the end we did
+implement check support in all of the
+reference plugins and so that serves as
+a pretty good example of exactly how the
+cni project and the spec expect check to
+work and again
+if you see a resource in your plugin
+that you think should be there but it's
+not in the pre-freeze alt that you get
+as part of that check operation that's
+not an error but anything else you know
+we would expect your plug-in to return
+an error to the runtime and then the
+runtime would take some action on that
+to make sure that the container was
+still healthy I think you covered that
+already the one thing the important
+thing is there is a skip check safety
+valve we could come up with some
+situations where this behavior could
+return or could result in unwanted
+behavior and so you can specify in your
+CNI configuration that check should not
+actually happen result caching is the
+other thing and this kind of ties
+directly in with the check behavior so
+for example how can you actually do any
+kind of health checking on a container
+if you don't know what to check for well
+the answer is that you need to pass that
+proof result from the add operation back
+into the canner back into the the check
+operation and kind of the same thing for
+Dell it turns out that a lot of plugins
+don't necessarily want or need to cache
+the state that they set up and so it's
+very useful for those plugins to get the
+result of the add operation and then
+they can decide using that information
+what exactly need to clean up that's
+things like for example the subnet that
+was that the container has an IP address
+on so that for example firewall rules
+can be cleaned up and you can use and
+the firewall plug-in you can match on
+that subnet and do the right thing
+so there's also config caching and the
+big issue here is what happens if you
+want to change Network plugins well the
+cluster is running and this actually is
+a thing that people want to do it in
+some ways it is more complicated than it
+should be and it might not give you the
+right results that you want but there
+was a pretty big gap with C&I around if
+you change that Network plug-in out
+nothing actually remembered what the
+network plug-in was that a particular
+container was set up with and so you
+plug in a and you get a container set up
+with plugin a then you swap out the
+network plug-in and all the rest of the
+containers get started with plug-in B
+but then if container a is removed or
+deleted
+nothing remembered that it was supposed
+to be deleted with the first plugin it
+would then be deleted with the second
+plug-in and that obviously is not going
+to give you the results that you expect
+and garbage collection and things like
+that would not do the right thing so
+config caching basically saves the
+configuration that any given container
+was started with and then it will use
+that configuration for subsequent
+operations like check and Dell this is
+we implemented this both config and
+result caching into Lib C and I and as
+Brian said this is the library the go
+library that the cni project provides as
+a reference for runtimes
+to encapsulate a lot of this behavior so
+that the runtimes don't have to all
+rewrite this themselves so if your are
+involved or you write a runtime that
+uses CNI this is mostly automatic for
+you with Lib C and I and go yes as long
+as you wrote it and go but most of them
+are written and go so that's that's not
+a huge issue
+it is fairly automatic the one thing
+that is not automatic with it is the
+config caching for delete your runtime
+does need to actually pull that out with
+API so that we've added to Lib C and I
+so that you can then pass that
+configuration back to the delete call
+but it's actually fairly easy we have
+implemented this check in other projects
+and some of the layers that runtimes use
+so there are definitely examples out
+there and if you have further questions
+on it please ask us what's next I'm
+asking myself
+so 11.0 is is we because we think it's
+feature complete so we want to get to
+1.0 we're a spectrum 0.4 plug-in 0 dot
+8.3 something like that we want to
+declare 1.0 because some people get
+anxious if if we're before 1.0 so we
+think we're basically feature complete
+we therefore have a stable spec which is
+what 1.0 means really we would like to
+have more complete test coverage and we
+need to get our build process signing
+builds that we'd like to do that
+conformance test is a is a great idea
+actually this so this is a ask for those
+of you who in the audience are really
+interested we'd we'd love for people to
+step up to help us with that if nobody
+steps up we'll probably declare 1.0
+without a conformance test but it
+certainly would be a nice really great
+thing to have 2.0 is the one that comes
+after 1.0 so just you know a taste of
+some ideas things that we're talking
+about currently CNI is a program
+interface like CGI if if you old enough
+to remember that the the the caller
+execs a program which is the plugins and
+as I described for instance in in in the
+network I work on all that program does
+his mix makes a network call a rest call
+to make something happen somewhere else
+and a lot of implementations are like
+that a lot of the bigger ones so what we
+might want to do and then this has been
+done in for instance a storage interface
+CSI is making a G RPC interface so so
+the kubernetes or the runtime or
+whatever
+would somehow be aware that there's a
+demon running and call it directly that
+would that would be more efficient give
+us better facilities to know what the
+heck's going on I would also point out
+that process exacting is very
+inefficient on Windows and I think the
+the windows CNI team were some of the
+original people who were pushing us to
+think about other mechanisms than fork
+exec for running CNF plugins yeah so gr
+PC we'd like to do that after 1.0
+configuration you know is is currently a
+JSON file and and it's pretty pretty
+gnarly exactly how that works or
+something better than that
+yeah mo not necessarily I have no idea
+what a plug-in drop-in is KC are one of
+our containers he told me what they are
+and I forgot so come on are slack and
+our ask us later yeah the idea of
+garbage collection when you win so for
+instance the bridge plug-in the first
+time you call it if there's no bridge it
+makes a bridge and then you add you know
+20 containers or whatever and then let's
+say you take them all away again they're
+still a bridge because there's no nobody
+nobody said to take the bridge away
+there's no command to take the bridge
+away so that's the idea of garbage
+collection when those when there's
+nothing left using a thing same applies
+to firewall rules and stuff like that
+there's it's kind of like plug in in it
+and plug it or excuse me plug in tear
+down those are not concepts right now
+yeah that are in the C&I but there's
+something we'd like to add to see and I
+because there's a use case and a need
+for those and G RPC might be one way to
+do that yeah because it has a better
+idea of lifecycle yeah and and yeah what
+what do you want to see I guess so I
+just put up the slide about how you can
+talk to us I'm not sure with any you're
+still on IRC right
+slack is is probably more popular we're
+on the CNC F slack in the CNI channel
+github the container networking in to
+address that I said earlier and yeah
+come come speak to us here so that's
+yeah over to you now
+questions observations yep do we have
+any questions I'll run the mic around
+please raise your hand if you do Thanks
+so if you use the multis plugin where
+you have multiple interfaces for each
+pod can you have different see and I
+like implementations rst ins for each
+interface yeah I think that's the whole
+point
+yeah maybe maybe an interesting
+well it's interesting to meet
+clarification so CNI has always
+supported the idea of multiple networks
+kubernetes has not and Tim Hawken was
+going on and on about the limitations in
+in that this morning so maltose kind of
+was maltose exists to paper over a
+limitation in kubernetes montez's is
+taking advantage of the feature of CNI
+that it always supported multiple
+networks and sort of one call in
+multiple calls out yeah that's a great
+example of how they use the flexibility
+of the openness of the system to make
+something happen
+I could repeat that or you could repeat
+it for the further people couldn't hear
+from the telecom in 2c maltose and
+multiple networking is key and in many
+respects sort of the the maltose is sort
+of a step toward a in the CNI context
+yeah it's it's so you I don't know if
+everyone can hear that you're saying
+that the Montes is essential in some
+areas like like telecoms and it's
+considered a stepdaughter by kubernetes
+yes it's it's a it's a it's a CNI
+plugins perfectly valid so you know I
+plugin it's just as good as all the
+other ones
+it's kubernetes that has that problem so
+good in continuation to the multis
+plugin you talked about change plug-in
+and you're introducing checks and
+results previous results how how are
+these new plugins which are actually
+delegate plugins impacted by that change
+sure you do have to be a little bit
+careful and basically our default
+implementation for check is success so
+if you don't want to implement check at
+this point in your plugin or you want to
+you know do some more research first to
+figure out the right way to do it you
+don't have to do anything it's backwards
+compatible and it will still work
+exactly like it currently does if you do
+want to implement check then you do need
+to be a little bit aware around what
+other chain plugins might do after your
+plug-in if they do alter some of the
+things that your plug-in sets up that's
+explicitly allowed by the CNI
+specification and so that's why we have
+the wording in the specification around
+if you see something you did in the
+previous alt then you can check it if
+you don't see something in the brief
+results that you did then you have to
+assume that some other plug-in in the
+chain changed that and
+it's okay microphone how do I identify
+in the changeset that what corresponds
+to me and how do I look forward and then
+say that okay some somebody next to me
+might be modifying if I know in advance
+what the result is going to be for that
+modification by another plug-in you know
+i'm implicitly creating a dependency on
+something that is going to happen so is
+there a way for me to identify in this
+result like what did i do and how does
+in other change impact my change yeah
+that's a good question you know at this
+point there isn't a good way to identify
+exactly what changes were made by which
+plug-in I can think of some ways that we
+could possibly enhance the cni spec to
+make that happen but at the end of the
+day you can also just say my plug-in you
+know should not be used in certain ways
+with certain chain plugins it's kind of
+up to the administrator of whatever
+system you're creating whether it's a
+kubernetes cluster or whether it's
+something else
+to kind of put together the networking
+set up and you know I mean it you get
+something that you can shoot yourself in
+the foot with and you know if you choose
+to do that that's okay or if the cluster
+master it chooses to do that then they
+can do that but you know again you do
+have to be careful and we set around for
+a long time and discussed exactly how
+this stuff works with chain plugins to
+try to make the best approach that we
+could that was still flexible you know
+to accommodate a lot of the chain
+plug-in use cases but still kind of keep
+it straightforward so if you have more
+questions about that feel free to talk
+to us later or engage us on slack github
+why is poor mapping in CNI so
+essentially we want to take all the
+network specific code out of kubernetes
+so that's kubernetes also wants to do
+the same thing oh yeah sorry I said you
+know I spent half my time I emphasizing
+that they're completely separate
+projects and
+and you also might need to remember that
+we all work on both of them we're all
+members of Signet work and kubernetes
+and so there's where different hats at
+different times but but yeah
+specifically we want everybody wants to
+take the network specific code out of
+kubernetes particularly couplet or
+docker shim and so that is why we
+created a specific implementation in CNI
+so port mapping is not about stitching a
+network inside a part actually it's it's
+something about additional IP table
+rules or routing or matting that you are
+doing it has nothing to do with the core
+networking word and you move a vet
+inside a network namespace assign an IP
+and you know just have some roads added
+into the container well you're entitled
+to that opinion I
+I also would say that you know we are
+trying to figure out how the CNI
+specification can address features at
+somewhat higher levels of the stack as
+well we're always looking to try to find
+out how we can standardize behaviors
+that we see as common across a number of
+different platforms and port mapping was
+one of those things that is quite
+popular and so we created a
+specification or as part of the CNI
+specification we've defined how port
+mapping can work in CNI but the port map
+plug-in is one implementation of that
+and there are other implementations that
+consume the same input which is the
+runtime capabilities and the port
+mappings but do different things with
+them than IP tables and you know what
+the port map plug-in itself does the
+owner actually in this back is it it's a
+convention so we can talk about
+convention versus spec that is true but
+you know it's kind of do you factor I
+think maybe one more quick question and
+then we're out of time
+so I have a question related to NP w g
+how do you relate to that network
+plumbing workgroup I see some
+interesting discussion on their Google
+Docs about multi C and export or doing
+something where to do that so just
+wondering how the CNR a project relates
+to that
+so network plumbing working group is
+kind of a informal group that is part of
+kubernetes it's not formally part of the
+kubernetes project but it is related and
+it's formed by people who are members of
+cig network and some other groups as
+well around a common interest of how you
+might do multiple networks in a pod
+within the context of kubernetes that
+said it is not directly related to CNI
+although some of the same people are in
+both groups but network plumbing working
+group also in the standard or de-facto
+specification that that group developed
+specified behavior of multiple networks
+when a CNI plugin is used to implement
+that behavior so there are I mean as
+Brian said many of us are members of
+many different groups and we all try to
+you know kind of work together and
+develop things that we think will push
+different areas forward but then also
+try to make sure that you know
+individual projects work for a number of
+different use cases and groups as well
+so if you want to talk more about that
+I'm happy to to talk more I mean part of
+the essence of it is is things move
+forward when someone shows up to do some
+work you know a lot of a lot of people
+show up to demand things or complain or
+whatever and I sympathize you know I all
+these people are correct about the way
+they feel but it doesn't get anything
+done so things get done when people show
+up so the network plumbing working group
+is some people who showed up to do work
+that's that's how things move forward
+the the CNI project that we is doing a
+particular kind of work very thin layer
+hopefully
+and kubernetes is doing other work so
+yeah this hope to hope to kind of
+explain how that all works well yeah
+we're we're past time thank you very
+much for for coming
+[Applause]

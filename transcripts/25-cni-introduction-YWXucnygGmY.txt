@@ -1,0 +1,974 @@
+hello and welcome to the cni intro
+session given by two maintainers of the
+cni project
+if you're new to cni we'll give an
+overview in just a moment
+if you have questions we are live online
+so as this goes out so please start
+asking
+as an introductory session this is a
+high level and pretty much starts at the
+beginning from cni
+you may also wish to join us for the cni
+deep dive session which is being
+published on
+wednesday
+so first some introductions brian
+ah thanks casey hi i'm my name is brian
+ballroom
+i work for waveworks and uh
+known at least to begin with for weave
+net but perhaps better known for githubs
+these days
+anyway i've been the lead maintainer on
+weavenet for
+over five years now and i'm a maintainer
+on the cni project and i
+i work on a few other cncf projects
+like cortex casey why don't you
+introduce yourself
+sure so i'm casey calendrolo i am an
+engineer at red hat previously core os
+i work on kubernetes networking
+openshift networking and the
+ovn kubernetes project also maintains
+some utilities that people tend to use
+like go ip tables for which i'm somewhat
+sorry
+i like ipv6 and jumbo frames and the
+kubernetes informer system and i dislike
+nat
+and the kubernetes informer system
+so we'll start out with brian explaining
+what exactly
+is cni
+thanks casey um so we put a uh
+the big picture here the uh
+just has three things on it you your
+container
+and the network and um
+and cni sits in the middle so this
+represents
+uh the the big picture the point
+we're trying to make here is that um
+cni is intended to sit in a world where
+people use all different kinds of
+networks they use all different kinds of
+ways of getting their containers
+working and we'll go into more detail
+about that
+as this talk progresses um
+but but fundamentally it's it's the bit
+in the middle
+it's uh
+it exists as a common ground interface
+so that
+all different companies and and people
+can
+contribute to this world and have them
+work together
+so here's a more detailed
+picture uh the um
+uh what we've got on on the right uh
+representing the
+um container runtime uh
+yeah so it's you know it's not literally
+the person that sets up a container at
+some software
+um perhaps using kubernetes although cni
+works with
+um others mesos cloud foundry a whole
+bunch of different
+um orchestrators for containers
+um and those go through some kind of
+container run time
+like uh podman cryo container d
+um so so that's
+kind of putting more detail on the uh on
+the whole um
+uh ecosystem on the right um
+and the cni project is everything in
+this box
+here um it's uh uh
+things that the libraries that the
+runtime calls its plugins which
+implement the actual network connection
+um
+and we'll come back to more detail on
+this in a bit
+casey why don't you tell us a bit more
+about the um the project
+sure so we're both here as maintainers
+of the cni project which is an
+organization under
+the cncf umbrella as a project we have
+two major
+outputs the first is the cni
+specification document which defines the
+cni protocol
+and a reference implementation in go of
+that protocol
+this reference implementation as it
+happens is used by
+both container runtimes and cni plugins
+and it's generally widely used although
+not the only implementation of
+cni used in the industry this this
+section of the project or this output
+has a pretty slow relatively stable
+release cycle as befitting a
+specification
+the second output of the cni project or
+consumable
+is a suite of commonly used cni plug-ins
+these include some basic connectivity
+plug-ins such as bridge
+and some chained utility plug-ins like
+bandwidth limiting host port mapping and
+some other
+tweaks most of the plugins are linux
+only but we do have a selection of
+windows plugins maintained by microsoft
+and other contributors
+and you can find all of course all of
+these on github
+to dive in a little bit more into the
+specification
+the specification really is the heart of
+cni right it defines the protocol
+between
+the runtime and the plug-in as brian
+showed earlier
+because the cni specification is a
+simple vendor-neutral stable
+specification
+it's an industry standard that's widely
+used it's not just used by kubernetes
+by mesos cloud foundry et cetera et
+cetera we see we've seen the list before
+the key part of the specification is how
+plugins are discovered by the runtime
+the execution flow and the data types
+for both configuration and the data
+types for responses as well
+the specification is not complicated
+generally it's
+backwards compatible for the average
+end user the specification it's probably
+not going to concern you too too much
+other than perhaps the version
+but it's good to know that the document
+exists and you could probably read it if
+you needed to
+uh the next question for you brian then
+is
+what isn't cni
+uh yeah um so we thought
+we we'd put this in because
+as maintainers on the cni project
+you know almost any problem you're
+having with your system can
+look like a network problem so so we do
+get a lot of
+different questions and unfortunately we
+don't
+we don't do every part of the the
+network
+uh picture um
+so cni is really about con connecting
+containers or pods to the network
+um and if you're using a system like
+kubernetes it will
+provide in different ways things like
+load balancing service discovery
+um network policy there's
+uh there's all these different things
+that um go together
+uh and and cni is kind of i mean the cni
+project itself is this little bit of
+glue
+um and very little uh
+uh you know a lot a lot of problems come
+from elsewhere um
+it's also as i mentioned already cni is
+not kubernetes specific
+[Music]
+so even if we
+could perhaps make a change in cni
+uh that would um
+you know we we have to we have to be
+even-handed across all those different
+uh systems and um and the cli project
+although we do have some plugins that
+that we're going to talk about
+uh in our um repo
+um a lot of people are using
+uh third-party ones that that you know i
+work on one as i said we've met
+calico is very popular silly and there's
+there's a whole
+um bunch of them and that's great you
+know that is the whole point to
+to allow uh different people to
+to implement things so um
+yeah so the cni uh that we're
+representing as maintainers of the
+project
+um is the uh is the bid in the middle
+and there's all this other world that is
+not the cni project although we
+you know we we talked to those folks um
+and
+generally work together pretty well but
+it's not the whole world
+uh so let's take a deeper
+look into how does it all work casey
+for context we can go and dive a bit
+more deeply
+into this diagram as we had said before
+cni is the protocol for container
+runtimes which we see here on the right
+which is podman et cetera et cetera to
+request that a network plug-in such as
+weave or flannel which we see here on
+the left connect
+a container to the network your
+container runtime is going to first
+create the container
+then it's going to call out to its cni
+plugin which will
+create and configure a network interface
+or more than one network interface in
+the container's
+namespace we see here libcni
+which is our reference implementation
+usually mediates
+both sides of the protocol how the cni
+plugin actually works
+is not defined in the specification
+likewise the plugin doesn't need to know
+anything about the container runtime so
+it is abstracted over that
+note by the way on this picture this is
+just an aside that but it's an important
+understanding to have
+the cubelet is not present on this slide
+so remember the cubelet doesn't actually
+create containers itself it talks to its
+container runtime engines by something
+known as the cri
+or container runtime interface the cri
+implemented by runtimes
+is what actually creates the container
+and the runtime is responsible in the
+kubernetes world
+for doing the lib cn for doing the cni
+uh next up brian is going to tell us a
+bit about the execution flow
+yeah so um so if you keep that
+picture in mind the the runtime calling
+the plugin it can
+call it with one of four different
+commands we only have four at the moment
+so
+it's pretty simple um add adds an
+interface delete
+takes it away and then there's some
+check and version a check to check that
+things are still the way
+you thought they were and and version
+just uh
+you know administratively finding out
+what version the thing you're talking to
+is
+um plugins are executable so
+that's the way you call a cni plug-in is
+you run a program and the program is the
+plug-in
+it's a really simple interface um
+the details about what to do are passed
+in
+on standard in on this program that
+you're running uh
+in an adjacent format and standard out
+uh comes the answer the response from
+the plugin
+so the whole thing is just extremely
+simple and
+that is the whole mechanism of calling a
+cni plug-in
+okay so casey take us through what that
+looks like when you actually make
+so this is the configuration format uh
+it's the
+cni standard it's a json based
+configuration
+and it usually lives on disk uh it is
+consumed somewhat
+it's consumed by both the runtime and
+the plug-in and unfortunately it looks
+like
+the highlighting hasn't carried through
+i'd like to point out so the first three
+configurations fields here
+version name and type are consumed by
+both
+the runtime and the plugin they are used
+for version negotiation and plug and
+discovery
+the remaining sections of this sample
+configuration file are
+plug-in specific so they are not
+consumed by the runtime they're not even
+really part of the cni specification so
+as such they are
+open for you as a plug-in maintainer or
+a system administrator to use
+so it's a really simple format and uh
+it's a little bit of a hybrid of both
+the runtime and the plug-in side
+configuration in a single file
+however a simple configuration file has
+ground up to not be flexible enough
+so in specification
+version
+there we go okay so
+uh the spec version 0.3 has we've
+defined
+something called dynamic configuration
+or in this case we're calling runtime
+configuration
+this is a way for a cni configuration
+file to signify to the runtime where it
+might want some container specific
+configuration to be inserted
+and this means that configuration files
+can mostly live on disk and mostly be
+static
+however the actual interaction between
+the runtime and the plugin can be
+dynamic
+so on the left we would see a json
+configuration file on disk
+it's very simple but we see here it has
+the section capabilities
+and it says that i support the port
+mapping capability
+well for each container invocation if
+the runtime so desires
+it may substitute a port mapping
+capability with some port mapping
+runtime configuration
+where we see that this particular
+container happens to have a host port
+configured
+a container report this is to say we
+would like a very specific chunk of
+container specific information
+substituted into the configuration and
+then the other
+exciting thing inspect 0.3 is plug-in
+chaining and brian's going to talk to
+you about that
+yeah chaining calling a
+chain or sequence of plugins in a row
+allows us to compose functionality to
+to add things in um so not every
+plugin has to kind of paste in all of
+the features that people want
+um so this example
+on on the slide has has two plugins
+listed the
+the bridge plug-in which is is um you
+know just just uh
+bridging all the traffic from several
+containers
+um and then followed by a port forward
+plug-in so it's kind of the same
+example or same area that casey was just
+talking about
+um if i want to uh bring out some ports
+from my container to the host the port
+that's what the port forward
+plug-in does and um and the bridge and
+weavenet and
+uh calico and whatever do not have to
+re-implement that functionality because
+they can
+they can put it in a chain or more
+specifically the person
+uh configuring the network configuring
+your own cluster
+can can construct that chain in exactly
+the way
+you want to do it so um so that's a
+powerful feature
+each plug-in in a chain operates on on
+one interface
+so this is this is not about running
+like the same plug-in multiple times to
+give you multiple interfaces
+um you you just you know if you if you
+want to do that you just do it with with
+uh separate configs
+um and we'll talk a little bit more
+about that later
+but yeah that's plugin chaining
+so next brian is going to talk to us
+about how
+the cni project actually works as a open
+source project
+um so we have uh the the parts that
+we've
+talked about already the the spec um
+this is actively maintained we we have a
+maintainers meeting
+every week and we we look at questions
+that have come in
+or issues raised against the spec people
+submit pr's against the spec
+but it tends to happen quite slowly
+because the this making a change in the
+spec
+might require a lot of plug-in authors
+to to do rework
+um so it tends to evolve very slowly
+over time
+we uh are really close to
+um announcing 1.0 which a lot of people
+are looking forward to because that'll
+be a declaration that we're
+really going to try even harder not to
+change anything fundamental
+in the spec um so that's that's close
+month
+month or so is what we're thinking right
+now
+um the plugins however
+uh go much faster you know they're
+they're individual bits of software
+features are added bugs are fixed
+just you know as as they come up
+and we we have even more contributors
+there a lot of people from
+around the world using cni software
+and they come across something they'd
+like or they come across bug and they
+can
+if they know go code they can submit a
+pr
+um and like i say we do a maintainers
+meeting once
+a week that tends to be where we we
+sweep through things that come in and
+make sure we catch up on all of them
+uh and at the bottom of the slide uh
+cubenet cube proxy anything
+like that is is the kubernetes project
+it's not the cni project
+and um they have an organization sig
+network
+uh which which kind of owns all that
+stuff um
+so although we're
+very good friends with those people it's
+it's a different project works on
+in different way and it's not part of
+what we're talking about in this talk
+so we have um seven
+maintainers uh right now and as you can
+see they come
+from um a bunch of different companies
+um typically software
+companies i mean you know we're not
+really network people
+uh we're not we're not network engineers
+by trade
+um so uh we're mostly kind of
+application developer type people who
+happen to know a bit about networks and
+wish to
+contribute it's really a volunteer
+effort
+um you know we're there's no kind of
+billion dollar business on the back of
+cni
+uh so um so those are the people that uh
+um you have to thank for uh making this
+thing
+move forward each week
+um so talking about what's happened
+recently
+uh in the spec not point four that was
+the most recent
+version that went out we um we added
+this check
+command which took a lot of of debate
+and
+thinking about how to do it um
+we added static ip support changing
+support for changing the mac
+um layer two bridges and
+uh uh yeah a little thing that was
+needed
+to play better with the kubernetes
+device plugins
+so um i won't read the whole list but uh
+you know you can
+you can go over to the github slash
+container network
+cni or plugins uh see everything that's
+been going on
+um cves that's that's a kind of
+colloquial term for
+for security vulnerabilities do come up
+and those
+generally cause us to to jump
+uh although we tend to have to do that
+in secret um
+because we're trying to get the fix out
+before the problem is widely known
+um anyway that the deep dive session
+which if you're watching live is
+tomorrow
+um i go into
+quite a bit of detail about some
+vulnerabilities we've dealt with
+recently so if you're interested do come
+along
+to the deep dive cni deep dive session
+all right i'm going to hand over to
+casey to talk about what's
+coming up next
+so uh trouble advancing the slides if
+someone could help me out
+in any case oops
+alrighty there we go so uh what's next
+right as we said 1.0 we essentially
+consider it to be feature complete the
+spec is essentially stable
+we we essentially need to crystallize
+that in order to cut 1.0 we need a bit
+more
+precise specification language that just
+needs to be tightened up a bit
+and we'd like a more secure or signed
+release binary is a
+more secure release mechanism what's
+next after that
+we're starting to dream about spec
+version 2.0 and what that might look
+like
+are we going to do something like grpc
+about which we'll chat a little bit more
+in a bit do we want a richer life cycle
+create and delete are of course
+important but they're certainly not
+the only thing in a container life cycle
+as we all know
+but the other ques the other question
+for the community is what do you want
+what can cni
+do to help advance the state of
+container networking it's an open source
+project it's a public specification and
+we would absolutely love your input a
+bit later we'll talk about how you can
+get involved in the project
+okay so now we're going to quickly go
+through some frequently asked questions
+that often
+have come up when we've done these sorts
+of sessions before or
+in slack and maintainers meaning in
+other emails the first
+is why do some cni program
+plugins especially those in kubernetes
+come with the host side demon
+and the answer has to do with life cycle
+cni is only concerned with the life
+cycle of an individual container that's
+pod that's creation and deletion you
+need some sort of long running process
+to maintain routing tables if you have a
+higher level system such as kubernetes
+you need to react to events that happen
+across the cluster that are not
+container level events the demon might
+for example set up routes or
+react to node changes or something like
+that a question for you brian then is uh
+brian can i have multiple interfaces in
+a pod
+uh yes you can casey um
+so cni
+has always supported multiple interfaces
+in a pod right right from the beginning
+um
+all you need to do is call it multiple
+times
+with the different config that you need
+um and you can call the same plugin
+multiple times you can call different
+plugins with different configs
+on the same container and you will have
+multiple interfaces
+in your container the reason why
+this question gets asked so much
+i think generally stems from the fact
+that kubernetes only supports
+one interface in in a pod um
+the the plumbing the the number of
+concepts in kubernetes that
+um they're based around the idea that
+there's only one interface
+is is large and a huge amount of work
+to um shift from that position so
+um so what people tend to do to work
+around that problem
+is um is they run a cni plug-in
+which itself calls multiple cni plug-ins
+so multis is a good example of that um
+there are there are a couple other there
+are cni genie dan m
+uh coming from predominantly a
+telecoms background so um
+so if that's you uh if you're in the
+telecom world definitely
+suggest taking a look at some of those
+um
+also you know if if you have ideas uh
+you know back to what
+casey was saying what would you like
+next
+um particularly if you want to uh
+contribute code to help make those
+things happen
+please do um you know show up in
+uh in the
+github issues or in our slack channel
+or some other way that we publish to
+contact us
+we'd love to hear from you um
+but yes so back to the back to the
+simple question cni itself supports
+multiple interfaces
+kubernetes really only deals with
+one interface for a pod um
+but you can generally get around that by
+by faking it with something like maltose
+well gee that took a long time so casey
+you can
+uh take the next one what about
+deployment
+sure right so uh if you have a cni
+plugin how might you deploy it right
+well the good news is that all you need
+to do is write a couple files to disk
+you don't need to set up a demon unless
+you do
+you don't need to do any complicated
+host level configuration
+the best practice in the kubernetes
+world is to use a daemon set that leaks
+these files onto host
+but any mechanism by which you like to
+configure your nodes
+this will work this will often be
+provided to you by your vendor
+we would like to come up with a better
+story for how this is done
+perhaps the cluster add-on sub-project
+as part of sig cluster lifecycle will be
+the answer
+so we have an answer it's not great but
+it works reasonably well for now
+so brian do we support ipv6
+uh yeah we do casey wells again
+uh cni um supports ipv6
+uh we added into spec a couple years ago
+and the the plugins about a year ago
+all the plugins that we own anyway
+support uh as the cni project support
+ipv6
+for over a year um again
+uh it's really complicated to plumb that
+into kubernetes
+and um so they made the first step
+uh which which is if you want a cluster
+that's only ipv6
+um so that works pretty well uh
+most people probably want a dual stack
+ipv4 and ipv6
+um that is still
+marked as alpha in other words not not
+really completely ready in in kubernetes
+um i think it came in in version 1.16 of
+kubernetes
+um and is is still uh
+still got a few rough edges um but check
+it out
+um and again they need help from people
+checking it out and
+people making it better
+um so casey what about this
+uh you know why are we executing
+binaries
+so the cna protocol does kind of seem a
+bit old-fashioned
+why not grpc like every other kubernetes
+and container related api like cri
+csi and so on and so forth well i mean
+it's a long story and somewhat
+historical but ultimately it's because
+cni came out of rocket the container
+runtime engine from coreos
+which has which is always demonless
+executing binaries is a really simple
+api
+don't need a daemon and it just fit in
+with the entire
+ecosystem the simplicity ultimately led
+partially to cni's adoption
+however the world has moved on things
+have changed and we would like to think
+about
+opening up the possibility for grp ac in
+cni v 2.0
+we're running quickly out of time but
+brian would you like to highlight some
+cool chain plugins yeah
+uh so we talked about chaining earlier
+calling
+one thing then another then another on
+the on the same interface and
+and so people have really run with that
+idea um
+you can do your port mappings you can
+tune
+things like tweaking the mac address and
+and uh
+linux system settings um
+actually that reminds me one thing we
+wanted to stress uh cni plugins exist
+for linux and windows
+i in my job i tend to work on on linux
+but we
+shouldn't uh lose sight of that the um
+the ecosystem works on on windows too so
+um
+sorry back to back to the question i'm
+supposed to be talking about
+um another kind of tuning is is
+bandwidth but it's actually separate uh
+plug-in
+uh doesn't matter you can call as many
+as you like um
+we have a plug-in to try and interact
+better with
+uh firewalls on on linux
+and source-based routing
+choosing where exactly your traffic is
+going to go based on
+the um where it's coming from which
+again is a cool feature that some little
+niche but some people like that
+okay i think we are done on our list of
+uh frequently asked questions so
+uh let's put up some links um
+the deep dive session i've mentioned
+already if you're watching this live
+it's tomorrow
+and the github
+links where the code lives and the cni
+is the spec and library that's the bit
+that moves a bit slower and the plugins
+well that's the plugins moves quite a
+lot faster we have our own
+slack channel in the cncf
+slack um but do remember if your
+question is really about kubernetes
+uh they have their own area in fact
+they're on slack
+so i put a link up for that too
+casey you want to wrap up sure i
+thanks everybody for coming uh we're
+here to answer questions and please join
+us of course in the slack and on github
+and i will end the presentation with
+this slide just to leave it up so we can
+reference it if there's any final
+questions but
+thank you very much for watching yeah
+thanks
+bye
+oh hello live looks like we're live
+online and um uh so
+thanks for all the questions great
+questions coming in we answered a lot of
+them
+uh by typing i wanted to pick up uh one
+that came in earlier
+uh which is basically how how what are
+some things to think about when you're
+picking a cni
+plug-in and um
+uh that which is obviously a great
+question um so i think i would i would
+highlight
+one key difference there there are some
+of them that work
+as what's called an overlay so they they
+kind of make a whole
+virtual network inside your real network
+and there are some that run on your real
+network
+and um so basically uh
+you you might have constraints on your
+real network you might have not enough
+address space
+or limitations or or something like that
+that might really drive you in the
+direction of an overlay
+so that's going to narrow the the choice
+down overlay has a
+little bit of extra work so there's a
+performance hit to
+to run an overlay um so if you don't
+really need an overlay maybe you're
+going to
+choose one of the ones that doesn't do
+that um but that's that's a really
+uh pretty fundamental divide um
+between the ones that work by being an
+overlay and the ones that don't
+um then beyond that there are some
+features
+uh you might look at like do they do
+encryption do they do network policy
+um can they handle for instance
+multicast
+traffic um that that
+if you had a specific need that's going
+to narrow down
+your choices um after that
+you know sort of personal preference or
+uh
+uh you know brand recognition or
+something like that the the
+um uh
+that's one of the great things that we
+really try to create with this whole
+world
+is is a lot of competition and um
+i'm sorry that makes life harder because
+you have to choose but
+we do think competition drives the bar
+up
+in general for everyone so there you go
+right and if you're using
+uh something say like multis you're
+doing something where you are not using
+kubernetes
+and you care very specifically about the
+networking technology so
+full disclosure i work on openshift and
+openshift makes it relatively easy to
+use multis to install extra networking
+plugins and for those that if you're
+doing something advanced like that you
+probably care a lot more about the
+specific technology that's
+being used right sometimes you just want
+to bridge you want to use a bridge where
+you're going to bridge your
+east 1 or east 2 into something else or
+if you're very performance sensitive
+you might want you might want to be
+using something like sriov where
+you use a device plug-in and so a little
+bit more duct tape to pull it all
+together such that you have a dedicated
+pci lane for whatever it is that your
+advanced
+networking configuration might be right
+so in that case you do need to care
+about
+the specific plug-ins networking
+implementation as opposed to just
+thinking of that as
+a unimportant detail
+uh so a couple of more questions um
+we could look at uh as long as when do
+we
+oh that's a dream yeah let's do that one
+right
+so uh yeah so dynamic configuration is
+like
+like i had mentioned in the presentation
+as for anything that's plug-in specific
+i'm sorry that it's container specific
+so the two most widely used instances
+for this would be
+bandwidth and host ports but there are
+others as well right
+kubernetes itself has some glue that uh
+puts together
+uh host ports which are a fundamental
+part of the pod spec
+and bandwidth which is a magic
+annotation um in addition so for example
+in the multis world that we have built
+uh the multisand castle that we have
+built in openshift
+we also use dynamic configuration so you
+can give pods
+static ip addresses on their secondary
+interfaces um
+so one of the dynamic configuration
+conventions or
+standards is to request that a specific
+pod have a specific ip address
+i'm sorry that a specific interface have
+a specific ip address right so that's
+like a classic example of dynamic
+configuration since you don't want
+every container to have the same id
+address unless you're totally crazy
+which some of you may be
+um so there's a question
+does overlay reduce the ip address
+management i
+i don't entirely follow what that means
+but it maybe refers to something i said
+about if you were short on address space
+um so the the point being that an
+overlay network
+uh is is isolated it runs effectively in
+its own address space
+um so for instance you you could run 10
+overlay networks
+uh all reusing the same set of addresses
+this is more of a problem in ipv4
+um but then that's that's what a lot of
+people are using um
+so uh yeah an overlay
+gives you some flexibility because um as
+long as you don't want to talk
+to an ip address uh outside of your
+cluster you can use whatever address you
+like because you're you're
+in a little bubble
+i think we are out of time
+oh yes
+and hand over to casey uh sorry uh my
+laptop decided to drop out your audio
+but uh in any case uh thank you
+everybody
+thank you everybody for coming i think
+we have to end the presentation here
+uh i hope the rest of you have a great
+uconn and i'll see you in slack
+i will see you all virtually in all the
+places in which we gather
+thank you

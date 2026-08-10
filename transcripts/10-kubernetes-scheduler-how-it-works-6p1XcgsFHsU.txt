@@ -1,0 +1,359 @@
+hey guys welcome back to another
+kubernetes video today we're going to be
+talking about the kubernetes scheduler
+this will be our first of a series of
+videos on the different components of
+the control plane where we will go into
+a little bit more depth
+we've already done a overview of the
+control plane
+in kubernetes and
+in this video we'll start with the
+scheduler
+so let's get right into it
+so what does a scheduler do it is
+the component that determines where in
+our cluster a pod can be run
+applies an algorithm to choose the best
+node that a pod should run on
+some considerations that the scheduler
+will take into account a resource
+availability node health
+and developer specifications
+we will go into this in more detail as
+we move through those particular
+developer specifications can actually
+get quite complex so we'll have
+individual videos on the developer
+specifications however on this
+particular video we will focus on the
+actual algorithm itself that the
+scheduler uses to
+select nodes
+before we get to that it is worth
+talking about this node name property so
+in our pod specs
+you will not have seen the node name
+property and that is because the node
+name property is a hidden property
+generally when we're specifying pods
+however
+this particular property is one that is
+updated by the scheduler when the
+schedule scheduler algorithm has
+completed and a node has been selected
+we can also manually specify this node
+name property and give a node within our
+cluster however obviously we don't want
+to do that because the
+um scheduler provides our functionality
+for us we can do it for testing purposes
+and for curiosity's sake but generally
+that will be done by the scheduler
+so the scheduler identifies pods where
+the node name property is empty and then
+the scheduler algorithm is run
+without these steps the pods remain in a
+pending state so pods can be in various
+States
+um throughout their life cycle which
+we'll probably go into in a future video
+but just understand that they will be
+pending if they do not get assigned a
+particular node
+so now let's have a look at a couple of
+the details of the scheduling algorithm
+the first thing to note is that we have
+a step in the schedule algorithm called
+filtering
+this is where we find feasible nodes so
+what are feasible nodes no feasible
+nodes are nodes on which a pod can be
+deployed
+there are certain hard constraints that
+we'll have for a pod for example the
+resources required to deploy the pod
+any node that say meets those resource
+requirements will be considered a
+feasible node
+when we are finding the feasible nodes
+in a cluster that is deployed across
+multiple
+geographical availability zones
+we will alternate through those
+availability zones
+this allows us to deploy pods
+in a variety of locations and ensures
+that our overall cluster is in a
+a highly available state so that we
+don't have all of our pods deployed on a
+particular
+um availability Zone within our
+ha cluster
+the second broad step is scoring this is
+when we take a little bit
+more of a nuanced approach to defining
+which
+node a pod should be deployed to
+and we find
+the node that is the best fit based on a
+broader set of criteria than we have
+used to to filter the nodes in the prior
+step
+when we are scoring nodes in a large
+cluster
+we can Define this property called
+percentage of nodes to score so you
+could imagine the scoring algorithm can
+be quite a complex
+function that is run and there is some
+computational overhead there so if we
+had a cluster with hundreds or up to
+maybe a thousand nodes
+then if we had to run that
+algorithm on every single node then it
+would take a lot of time to schedule our
+pods so that's why we may want to Define
+this percentage of nodes to score
+property that way we can cut down on the
+overhead of that scoring algorithm in
+terms of you know Computing time
+and we will deploy our pods more quickly
+and this of course is a balance because
+we want to find the best node but we
+also want to reduce that overhead for
+scheduling the nodes so it really
+depends on the
+scenario that you're running if it's
+super important to find the absolute
+best node then you should probably
+increase this percentage of nodes to
+score if it's not as important and you
+want to deploy your pods quickly you'll
+reduce it
+the scheduler notifies the API server in
+a process called binding so this is the
+last step of the scheduling algorithm
+we actually have a yaml object that can
+be defined to bind a pod to a particular
+node but this is uh generally created
+um
+automatically at the end of the
+scheduling cycle
+so now
+this is these are the these steps that I
+have uh talked about in the last step
+except this is in a lot more depth
+so we see we have sort pre-filter filter
+pre-score score normalized score Reserve
+permit pre-bind bind and post bind and
+all of these steps
+are extensible to the user of the
+kubernetes cluster they come as
+default but we can replace the logic
+that kubernetes has defined with our own
+logic if we want to if we have
+specialized requirements for how we want
+to schedule our pods
+so let's have a quick look through each
+of these extension points individually
+the first one is the sort extension
+point or Q sort and this essentially
+determines how we order our pods that
+are waiting to be scheduled so all of
+our pods that are to be scheduled will
+wait in a queue
+and
+as they reach the end of that queue they
+will then begin the scheduling process
+however we can actually Define how we
+want to order that cue as the pods are
+waiting to be scheduled and that is a q
+Source extension point
+then we have pre-filter with pre-filter
+we
+assess certain conditions of the Pod and
+the cluster itself
+and if we get errors on the pre-filter
+stage we abandon the scheduling process
+so it essentially acts as a short
+circuit so that we don't have to run
+through filtering all of the nodes in
+our cluster and then to find out we have
+some kind of overall issue with the
+cluster
+that results in no node being available
+to schedule a pod
+then we have the actual filter algorithm
+itself
+here we will run
+based on various criteria as I mentioned
+before we will
+run individual plugins so the filter
+um
+extension Point may have multiple
+plugins
+and for each of those we have to in
+order for a node to be considered
+feasible as I mentioned before for each
+plugin we have to meet the criteria
+defined by that plugin so it's like a
+big and condition you can think about it
+so we have to come back at each point we
+have to ensure that we've met the
+criteria defined by the filter
+and finally we have post filter
+so in the case that the filter
+algorithm does not return any feasible
+nodes
+we still have the potential to schedule
+the Pod that we are trying to schedule
+for example if the Pod we are trying to
+schedule is high priority and we're
+trying to schedule it
+onto a cluster where there are lower
+priority pods then we can actually evict
+one of those lower priority pods and
+deploy our higher priority pod to a
+particular node and that is one of the
+functions that post filter provides it
+essentially allows us to
+deploy
+pods During certain conditions
+when we haven't actually found a
+feasible node in the filter stage
+now
+the next five extension points are
+around scoring reserving and permitting
+the first one is prescore
+prescore is essentially any
+preliminary work that needs to be done
+prior to the scoring algorithm being run
+generally we we use it to generate data
+State data particularly that is then fed
+into the scoring algorithm
+then we have scoring which is executed
+via a set of plugins that are run
+sequentially each of those plugins will
+return a score
+and then
+after we have that data we run the
+normalized score
+extension point
+where we can actually
+modify the scores that we have returned
+relative to their importance
+um and other criteria that we may Define
+next is the reserve step
+this step is essentially used to prevent
+race conditions so if we are going to
+schedule a pod on a particular node we
+want to mark that node and say there is
+a pod going on to this node and that
+gives us protection against another pod
+being scheduled on that node
+prior to the binding actually taking
+place for the Pod our next step then
+would be the permit stage and this just
+allows us to provide some extra logic
+to either approve deny or delay the
+scheduling of the pod which is done at
+the next step which is the
+binding extension points
+and our final three steps of the
+scheduling
+algorithm
+our pre-bind bind and pulse bind
+pre-bind defines any work that needs to
+be done before The Binding process for
+example mounting Network volumes for the
+pod
+the buying process is where the actual
+binding object is created once a binding
+object is created then
+the cubelet on the Node that is going to
+deploy the Pod picks up the fact that
+the binding object has been created
+then context the container runtime which
+goes away and Provisions everything that
+we need for the new container to be
+deployed to our node
+finally there is post bind which is
+really just an informational extension
+point it is used to
+clean up any resources that are left
+over after The Binding process
+and that is the in-depth
+scheduler algorithm
+um
+we also
+will talk in the future about the
+scheduling API and how we can actually
+specify rules for how we want to deploy
+airpods
+to give you a little overview of how
+this can be done
+we have
+rules that can be applied at the node
+level for example node selector rules
+if we Define a node selector in our pod
+definition yaml file
+this will select labels that exist on
+nodes within our cluster and we will
+only deploy the pod
+to a node that contains the label that
+we have specified
+next we can Define which node we want to
+deploy our part onto using node Affinity
+or anti-affinity
+this gives us a more flexible way of
+defining which node we're going to
+deploy our pod
+for example we can create hard or soft
+rules
+so you may wish to deploy our pod to a
+node that has an SSD but that is not a
+hard rule
+we can also Define rules with affinity
+and anti-affinity that specify
+what existing pods are on our node
+so there's a huge amount of
+functionality and flexibility that can
+be
+leverage using affinity and
+anti-affinity but we will get into that
+into in depth on a future video
+then there are pod topology constraints
+so earlier in the video we mentioned the
+possibility that a cluster may be
+deployed across different
+availability zones or regions globally
+and this is a scenario where we'll have
+that will allow us to have a
+highly available cluster so if one of
+the availability zones goes down we can
+still rely on the other availability
+zones and pod topology constraints allow
+us to deploy pods
+and Define how the pods are spread
+across different availability zones
+within our cluster
+finally pod priority
+we actually kind of give a brief example
+of how this might work earlier in the
+video but we can assign
+the level of priority that we want to
+particular pods so
+how this would work is if we assign a
+high priority to a new pod that we are
+deploying to a cluster we may actually
+evict an existing lower priority pod and
+this is called preemption in kubernetes
+where a pod is evicted for a higher
+priority pod and again we'll get into a
+lot more detail on all of these Concepts
+in future kubernetes scheduling videos
+I really hope that was helpful for those
+who watched please leave a like And
+subscribe and I will talk to you in the
+next video

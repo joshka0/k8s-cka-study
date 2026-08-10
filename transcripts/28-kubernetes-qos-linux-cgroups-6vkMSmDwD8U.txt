@@ -1,0 +1,747 @@
+[Music]
+from Container Days Hamburg. This video
+is proudly presented by Ducks IT.
+>> So hello everybody. I appreciate that
+you're joining this talk which covers a
+topic which we're usually a bit glossing
+over in the cloud native world. Right.
+Right. So uh this is all covered by
+Kubernetes right we're setting our C
+groups uh we're setting our uh resource
+requested limits and are happy about it.
+Um but yeah I mean something has to be
+there which takes those into effect and
+uh we need to understand that if we're
+actually running Kubernetes on our own
+and that's what we going to look at
+today. So um just to see uh what where
+we were at here. So um how how many of
+you are setting like Kubernetes quality
+of service things on a regular basis?
+Ah okay. And how many of you uh find the
+fact that they have a bit puzzling from
+time to time?
+Okay. Okay. And um how many of you had
+have to had a look under the hood how
+that works actually? How how those
+things work? Okay. it's getting like
+less and less. Okay. So, if if you want
+to dig into that that then you're in the
+right talk here. And um I want to go
+into that topic today. So, uh why do I
+care about all of this? So, um I'm Tom
+uh I'm an engineer with Mirantis and uh
+with within Mirantis I'm working on Kos
+uh which by the way is um like since a
+few months uh CNCF sandbox project which
+we are very proud of. So yeah, kudos
+and um yeah, C KZ itself is a certified
+uh Kubernetes distribution. So uh we try
+to be very like um machine agnostic. We
+try to be like zero dependencies and
+everything. So we don't mandate anything
+about like the Linux servers that we're
+running on or the Windows servers if you
+like. Um so we need to be prepared for
+everything there and that also means
+that we need to be prepared for
+different um like Linux configurations
+and we we need to know how how to work
+with that and um yeah that brings us to
+the question of noisy neighbors at all.
+So what is the noisy neighbor problem? I
+mean it's of course bin packing. So we
+want to like cram all of our workloads
+onto uh as few compute as possible so
+that we are not wasting resources all
+the time.
+And so that has some problems of course.
+I mean the laws of physics apply. So
+even if we're like um in the cloud I
+mean there's still a physical device
+attached to this. So that means you
+cannot bend the laws of physics like uh
+like speed and so on. So resources are
+not infinite and like the scaling out
+takes time and like rescheduling takes
+time. All those things come into play
+there. And um yeah, and when you're on
+the load, it might um occur to you that
+uh your house is on fire because of
+that. And that's obviously a situation
+in which we not do not want to be in,
+right? And um yeah, that's where
+Kubernetes comes into play with the
+quality of service settings. Um so there
+where we have to define uh our resource
+requests and uh resource limits and so
+on and with them we tell Kubernetes
+about our workloads about our opinions
+how to handle things and together with
+Linux kernel um Kubernetes can actually
+enforce that and like take the right
+guard rails into place to to like make
+the system smooth or like operate under
+understandable
+parameters even when it's going to be
+hot, right? So if there is really
+pressure on the system and then this is
+basically where those requests and
+limits count the most, right? So under
+usual workload uh under usual like load,
+they're not very interesting but you
+know if you're really making money so if
+your servers are burning uh then you
+want to have that that in place.
+So um what are we going to look at
+today? So first of all uh we try to
+understand what Linux containers are and
+what croups are. So how do those connect
+to each other? And then we want to have
+it look at how um Kubernetes
+uh looks at croups and uses those things
+to actually enforce uh quality of
+service.
+And um for that we also need to have a
+look at the init system because um they
+uh that init system will have to play a
+role in this as well. And in the end we
+need to like boil down uh boil all this
+down to our cublet configuration so that
+we are basically um telling cublet how
+to integrate with the rest of the Linux
+node to actually get all the our um all
+of our stuff into place all of our um
+resource requests and limits into place
+right
+so first of all like Linux containers um
+this is how it works
+uh probably not Right. But um that's
+usually how how it uh how it looks like
+when you're under contention. Right. So
+every everybody is fighting across
+resources and um the Linux kernel has to
+like mitigate or like uh mediate between
+all of those folks. So they're not like
+hitting each other to to the ground,
+right? Uh no. Yeah. Seriously. Um let's
+let's talk about Linux containers. So uh
+short reminder maybe you all of all of
+this know but this is a Linux container
+right? So this is how it looks like and
+yeah I can feel it I can touch it. So it
+must be a real thing real thing but you
+know um in life there is always somebody
+with greater wisdom than I have. In this
+case it's uh the person on the right
+side which is the Linux kernel and it
+tells me there is no container. So um
+what does this mean actually? So
+containers are a thing that is not part
+of the Linux kernel itself. It's an
+emerging thing uh from lower level
+kernel primitives. So we have things
+like namespaces and layered file systems
+and croups and those are tied together
+all together um to form a thing that we
+call container. But if you want to look
+at have a look at the Linux source code
+itself there is no notion of it. Linux
+has no idea what we are doing with it.
+So this is something that uh software
+called container runtimes are
+introducing on top of the Linux kernel
+itself and um yeah and Kubernetes
+established an interface to that uh
+which is called CRI which is like the
+interface between the container runtimes
+that you can plug and um um and
+Kubernetes right and um with this we're
+coming to the croup subsystem in the
+Linux kernel so this is one of the parts
+which are necessary for us to run
+containers. And this is basically a huge
+pile of knobs. So you have a knob for
+each and every part of um your resources
+and they're grouped u in a so-called
+controller. So each croup controller
+takes care of a certain resource type
+and exposes different settings that we
+can like um use um as a as a user on the
+on the kernel to like tell the kernel
+about how certain things uh should be
+used by our processes and um there they
+form basically a hierarchy of um a
+hierarchy of things. So much like a file
+system, we will have a detailed look on
+that later on. Um uh and that is
+actually also like important because
+like it's all like delegating to each
+other and like popping up and we will
+have a look at that later a bit
+and um yeah so um the thing is that each
+process which is running belongs to
+exactly one croup right so there is
+onetoone relationship but each croup can
+have a parent croup so that that's the
+hierarchy I mean and Um just like for
+example if you want to compare this
+maybe with file system permissions you
+can set file system permissions on a
+directory and then like this delegates
+down this trickles down um to the uh to
+the uh leaf nodes. It's the same with a
+croup. So you can basically define
+certain settings on a parent croup which
+like confine all the all the uh child
+croup. So the child cg groupoups cannot
+exceed the settings or the limits that
+are set on the parent and they are
+basically competing on on a sibling
+level with each other. And then there's
+also the notion of a croup delegation.
+Uh so which means that a parent process
+can set up a a child croup for one of
+the one of its child C group uh for one
+of its child processes and put that
+process into that child C groupoup and
+give the process control to the to that
+child C groupoup so that the child
+process is able to um to create more and
+more subcroups under that and like um
+delegate uh resources
+uh the sub resource resources um below
+those CG groupoups. So basically it
+cannot exceed the parent C group but it
+can basically the resources that are
+assigned to the parent C group it can
+further delegate to subcroups and do
+further fine-tuning if it if we want to.
+Um a short overview about the croup
+controllers that the Linux kernel has.
+So I've just put the most interesting
+ones in front here. CPU CPU memory IO P.
+Um those are the ones which are probably
+most most familiar or which you probably
+have an idea of what they can do. And
+then there is much many more uh which
+are not interesting right now in this
+talk but just to let you know that there
+is a lot of different croups right uh
+croup controllers out there and um the
+croup controllers themselves they're
+exposing um certain settings uh which
+usually are in the this dotted notation
+and they are very much dependent on um
+on the on the croup controller itself.
+So usually the naming pattern is uh
+controller name dot value. So in this
+case the croup control uh the CPU
+controller has a setting called weight.
+The memory controller has a setting
+called max and then you have and then
+you can set a certain value on those
+settings and uh they have a special
+meaning depending on which setting they
+are. So uh we have basically one thing
+to note here is that we have typically
+two types of um
+um of settings. One is limits. So this
+is like absolute values and the other
+one is weights uh which is like a
+proportional value. In this case CPU
+weight is a proportional value which is
+very much important uh for what I will
+be showing you next. Um because um in
+Kubernetes we're defining absolute
+value. So we say one CPU we are
+requesting one CPU how does that relate
+to a proportional setting right this is
+one of the problems that we want to
+understand today. Um okay so now now
+that we have a broad understanding uh
+what croups are and what controllers are
+there and we want to have a look at uh
+the CPU and memory controller and how
+they interact with Kubernetes and how
+Kubernetes itself like um um views uh
+the state of the world concerning that
+um Kubernetes uh as I said before has
+the notion of quality of service classes
+which is something that we are not uh
+defining ourselves. This is deduced by
+Kubernetes itself by the requ the
+resource requests and limits that we set
+and there's like two uh there's like
+three QS classes. Um the best effort one
+means basically yolo you know um you
+don't set anything there. Um which also
+means that you you're not guaranteeing
+everything uh anything there and um
+those pots are basically uh just as this
+best effort. So uh whenever there is
+time they will be scheduled but if there
+is resource contention then they will be
+most likely the first ones to suffer
+from this and then there we have the
+other extreme which is the guaranteed um
+QoS class which is basically uh resource
+equals limits uh which in this case
+means um that you're basically blocking
+those resources on the uh on the node
+itself but you cannot even exceed those.
+So this is basically guaranteed. So if
+you're setting resource requests and
+resource limits identical to say two
+CPUs 5 GB, then you will have those two
+CPUs and never more. So this is already
+a trade-off because you cannot burst,
+which is like uh the middle ground. So
+so you have some requests, some limits,
+but they're not equal. Um so this make
+make uh the most valuable uh QS class I
+would say because that those give you
+the possibility to burst and to use more
+CPU or more more memory than then they
+usually should request but if there's
+still something available there that's
+just fine. I mean we just don't want to
+like um have slack CPU around right. So
+we want to use it if we if we can right.
+Okay. Um
+this is how uh Kubernetes organizes uh
+our workloads in the croup hierarchy. So
+we have the uh the cgroup root for
+kubernet for the cublet and for all of
+our workloads is like by default called
+cube bots. So this is basically uh the
+root cgroup under which cublet will
+organize all of our containers and and
+pots and whatnot. And then you see that
+you have like um those um three quality
+of service classes already like shown
+here in the colorcoded way. So we have
+guaranteed, burstable and best effort.
+And uh to note is that burstable and
+best effort both get um a subcgroup
+assigned where basically um everything
+is summed up. So from from bottom to top
+um cublet will go on and sum up all the
+resource and requests of each container.
+Then they will go then it will go sum up
+all the resource and requests of each
+pot and uh it will sum it up um until
+the top level for best effort and then
+or not for best effort sorry for
+burstable and then it will set those
+values for burstable and the same for
+the guaranteed pots. Best effort in this
+case doesn't get anything set. So it's
+just like best effort. So there's no
+requests and limits and like the kernel
+will just do something with it. Um
+and also noteworthy is that the
+guaranteed pots themselves don't have a
+croup uh they uh in front of them. So
+they are directly attached to the to the
+root cube pots croup which means they're
+directly competing on the same level on
+on all the other burstable and best
+effort nodes. So directly competing to
+each other. This is important because
+like um u resources are distributed
+amongst siblings. So the cube pods uh
+croup has a certain setting and then
+this is like proportionally distributed
+amongst the sibling croups. That means
+that all the burstable pots are just
+worth as if there would one guaranteed
+pot like them. So this is like already
+like constraining um the uh resource
+allocation that burstable pots can do
+compared to guaranteed ones.
+And that's also like the precedence,
+right? So from from top from from bottom
+to top uh in this picture like they're
+they're more um they're like more more
+important, right? and used by the
+kernel.
+Okay, the actual mapping from uh
+Kubernetes require resource requests and
+limit to croup settings looks as
+follows. So we basically have um uh the
+CPU limits which are affecting the
+CPU.mmax part uh the CPU.mmax setting on
+the croup level which is basically
+throttling in 100 millisecond slices. So
+you're basically putting um a nancond or
+a millisecond value on this like 50
+millisecond. This is basically half a
+CPU. So you get 50 milliseconds of a 100
+millisecond CPU time slice. This means
+half a CPU. And if you're having three
+CPUs, you would get 300 milliseconds of
+a 100 millisecond um time slice. So this
+is how limits on CPU bases work. Um then
+we have the proportional CFS setting
+CPU.weight which is for the CPU
+requests. And this is very a very tricky
+part because like in Kubernetes we have
+absolute values but the Linux kernel
+doesn't understand absolute values. It
+has this um proportional
+um proportional calculation for
+CPU.weight. So I can put any number
+between uh uh 1 and 10,000 into it and
+um it will just sum up this the weight
+of all the sibling cgroups and then just
+do a proportional weight. So if I'm
+putting one uh one in one uh if I have
+two C groupoups and one has a C CPU
+weight of one and the other has a CPU
+weight of two this means like 1/3 2/3
+distribution and if I'm setting two and
+three then I have 40% 60% right this is
+like just uh math right so you're just
+doing relative limits so that is already
+a problem because you cannot you just
+cannot uh translate those absolute
+Kubernetes CPU requests into absolute um
+CPU requests on the CPU weights on the
+Linux kernel because it doesn't work
+like this. So there is a magic there's a
+real magic um there is a real magic um
+formula inside Kubernetes which we we'll
+look at later in the next slide on uh to
+do that. Uh but let's have a short look
+about process about memory. So there is
+the mem max setting which is basically
+just the absolute amount of bytes which
+you are allowed to use in your croup and
+uh this is a bit different from uh the
+limits in CPU because CPU uh when you're
+hitting your CPU limits you're getting
+throttled when you're exceeding your um
+memory limits you're being OM killed
+that there is no notion of like uh
+trying to request memory but not getting
+it the Linux kernel will just get get
+you the the the amount of memory that
+you requested, but then you're probably
+eligible for OM kills and then your
+process will just be terminated because
+it was using too much memory. So, this
+is basically a a very important
+difference between the both settings
+because um when you're hitting your CPU
+limits, you're just being throttled. If
+you're hitting your memory limits,
+you're being killed. Um the memory
+requests themselves are not propagated
+to the Linux kernel as of now. there is
+a cap open um um which is actually using
+uh certain kernel settings which are not
+related to croup which are a per process
+setting which is called OM score
+adjustments. Um right now um the memory
+requests are only used for kubernetes
+scheduling decisions but they're not
+used for um act or they're not enforced
+in the kernel in any way um module the
+cap that I mentioned there. So if you're
+interested in that please dig into that
+but that is not related to croups. this
+is working differently.
+Um now now this freaking formula uh down
+below in the in the right corner. So if
+you want to know what the CPU weight
+will be that your croup receives from
+deduced from your line from your uh
+Kubernetes CPU requests then you have to
+use this formula. I've just like tried
+to illustrate that in this example. So
+on the left side we have CPU requests uh
+which are um and the ratio which on the
+ratio which you should expect. So if
+you're summing this up and taking the
+relative ratio of that then you get 0.7
+2.86 and so on and so forth. And then on
+the right side we have the actual CPU
+weights as by as calculated by the
+formula below. And then you see the
+ratios don't match up. So there is
+already a bit of discrepancy between
+like the absolute requests that we get
+and the uh that we set and the relative
+CPU weights that are being calculated.
+So this is like an inherent problem um
+an inherent mapping problem. Um
+right. So you see the factor here is
+like also different. I'm putting 10 10
+times more CPU there from 100 to one one
+full CPU but I only get eight times more
+on the right side. So there this is
+something that you need to be aware of.
+Um right so that we know so that we know
+how Linux and Kubernetes uh use uh use
+cgroups we also need to know how the
+init systems use them. Um, and what is
+the init system at first? Like it's it's
+the P1, right? So the kernel boots up
+and then it like pivots all of its
+duties to uh P1 and uh the P1 has to do
+all the rest. So this is the only
+process that the Linux kernel itself
+starts when when it's booting up. And so
+the P1 has a very crucial role of course
+because it has to like bootstrap the
+whole computer, right? So it has to
+start all the node components all the
+components that are needed like I don't
+know um logging and uh SSH and also like
+Kubernetes worker components and um it's
+also like controlling the life cycle. I
+mean you probably get the idea what an
+init system does and guess what it of
+course integrates into croups as well.
+So we have to have a look at that. Um
+what kinds of init systems do we have?
+Like we have some historical ones like
+some simple ones like oh Marc is qu kind
+of simple and popular for uh for its
+usage in Alpine for example. And then we
+have um some dominant ones here but the
+dominant ones might not be so simple.
+Um system D is the only really um
+dominant one that we that we have to
+have a look at. uh if you're not running
+for example on Alpine or Gen 2 or
+something um then we have to have a look
+at that. So this is actually um a really
+complex beast. System D has its very own
+understanding of how Cgroups are to be
+used and um it has very idiosyncrasy. It
+has some idiosyncrasies about how uh
+about how croups should be structured
+and it even wants to own everything. So
+you shouldn't be going to the Linux
+kernel and modify your croups per se by
+yourself. You have to do it via systemd.
+So the systemd has its own debus debus
+API to do that. And if you want to be
+integrating on a systemd uh managed
+system, yeah, you need to basically use
+the systemd APIs instead of the uh
+standard Linux kernel ones.
+And um yeah. Oh right, the classic one.
+This is basically this slide um which I
+which I just took in front right. Okay.
+So how does it look in um
+in practice? So this is basically a
+hierarchy of a systemd managed the croup
+hierarchy I must must say of a systemd
+managed um uh Linux computer. So we have
+the root C groupoup and then like uh we
+have the system slice with with all the
+system components like all the OS
+process threads and so on. Then we have
+a user slice which like covers all the
+user sessions. And then we have the cube
+pot slice and we also see the
+nomenclature that we're enforcing here.
+Um the the dot slice is basically
+enforced by systemd. It wants to have
+that uh it wants to have that uh suffix
+and it has a special meaning. Um but
+yeah so so this is this is how it looks
+like and then we have on the right side
+like um on the right side a deeper look
+in the cubeot structure and this is
+basically uh the stuff that we we've
+seen before in in in a former slide
+uh but ju just in the systemd uh not
+notion right then we have the same on
+the open marc side which is very much
+simpler you have the cube ports uh on
+the route directly and and you of all
+the system services as siblings. So
+there is no like uh deeper hierarchy
+that we had before, right?
+Um so we need to configure that on the
+cublet actually. So what do we need to
+do there? Um um this is how cublet views
+the state of the world uh on the node.
+So we have like three three groups. We
+have the cube reserved, the system
+reserved and the pots groups. So the
+pots group is uh the group that we we've
+already looked at cube pots uh system
+reserved and cube reserved are pretty
+much mapping to the stuff that we've
+already seen on the systemd side. So
+system reserved is typically mapping to
+the system slice on the on the um on the
+system D side and cube reserved is um is
+for things that scale with a number of
+ports right and in this case it's um the
+pot uh it's usually like uh cubit and
+the container runtime
+and um the node capacity or the node
+allocate the the actual allocatable
+resources are deduced from from from
+those settings. So uh the cublet takes
+the things that we reserve for the
+system the things that we take the
+reserve that we reserve from the cublet
+and uh from for for the cube uh group
+and uh deduces that from the node
+capacity and that's actually the
+resources that we can allocate to pots
+and um that's how we basically tell um
+tell the cublet how how to do it. Um so
+first of all we need to have the secret
+driver in place. So we need to tell
+cublet that uh we're actually on a
+systemd managed node. So it will take
+all the idio idiosyncrasies of systemd
+into account. So for example it will use
+the system dd deb boost api to manage uh
+to manage the croups instead of going to
+the linux kernel primitives for this. Um
+this is actually something that can
+nowadays be read out from this the
+container runtime. the container runtime
+has to be um configured in the same way
+because it also has to deal with with
+croups and uh in recent Kubernetes dro
+uh Kubernetes versions uh Kubernetes is
+able to pull that value from the
+container runtime. Um so you don't have
+to do it twice. So you have to do it on
+the container runtime and then uh cublet
+will know about this and then you can
+basically say uh define the resources
+for the system and uh cube preserved
+croups um in the same way as you would
+do for single pots. Uh and now um the
+most important part is the enforce node
+allocatable setting because by default
+um cublet is not setting those settings
+to those respective croups. So cube node
+and system it's only setting uh um the
+croup settings to the cube pots group
+and this is a problem because um as we
+learned the CPU weights are relative and
+if you're just leaving cube uh the the
+the cube node and the system cgroups as
+at their default levels they will not
+match with the things that are
+calculated for the cube ports. So this
+won't align. So you will end up with
+potentially way less resources for your
+system than than you would expect
+because it doesn't align with what cubit
+calculates for the cube pots because
+it's a relative thing the default value
+for CPU weight is 100 and according to
+the formula if you have many CPUs that
+you're all allocating then you're
+getting in trouble. Um so this won't
+align.
+Um yeah so let's wrap it up real quick
+because I'm running out of time of
+course. So um what what what what do we
+need to to know what what is the what is
+the core of this talk? So the secret
+layout actually has practical
+implications on our workloads especially
+when they are under contention. um the
+weights are the CPU weights are
+proportional in the kernel whereas
+they're absolute on the on the
+Kubernetes level and that has to align
+even for things that are not Kubernetes
+managed right and um if you're not doing
+this then your uh quality of service
+settings are not enforced in the way you
+would expect them to be enforced and
+that is um that is way way way
+important. So how do do you configure
+your quality of service? I mean it
+depends on your workloads, right? So
+there is no good answer to this. You
+need to understand what you want to be
+doing with your workloads. You have to
+try you have to make best guesses and
+then you like to have monitor and
+experiment with it. And there is
+probably no no right or wrong. You just
+have to find find your right find your
+sweet spot. And that you can only do by
+experimenting.
+And one final take. Um
+I've been warned a lot of times by
+llinters and um cluster scanners about
+missing uh resource limits and that that
+that I should add those. And my take on
+this is that um I don't need to because
+my CPU requests if I have them in place
+and memory requests are already enough
+to tell the kernel to do the right thing
+when I'm under contention. Why should I
+set limits and constrain my resources or
+constrain my workloads if still like if
+they still can schedule stuff, right? So
+if there's still CPU cycles available,
+right? Okay. Thank you. That's all I
+have.
+There's always a discussion about should
+we put CPU limits or not? And we can
+read a lot about it. Some people will
+tell you you should, some people will
+tell you you shouldn't. What's your take
+on this?
+>> I mean, this is basically what I tried
+to convey with that slide. So, I I I
+don't think that CPU limits are actually
+needed if if if you get your CPU
+requests right because that's what
+what's what's like enforced under
+contention. Your CPU limits are always
+in effect even if there is slack CPU,
+right? So usually you can get away
+without them and just um and just uh be
+sure that the kernel will just enforce
+it when it's needed.
+Okay.
+Um we have one question over there. Are
+there plans to add support for the other
+C groupoups like IO?
+>> Yes.
+Um I think I think I think there is caps
+out there and I maybe there is even like
+already GA or beta support for things
+like IO and certain things. uh but this
+is like again whole a whole different
+topic and um I think like CPU and memory
+is the uh like the 99% use case and yeah
+but there is of course like if you have
+seen with the memory uh request stuff
+there is also like a cap open to make
+that uh to propagate that to the kernel
+and as well there is for for the other
+Couproups and I think like like there is
+also like um um device memory so for uh
+uh uh graphic card memory and stuff like
+this and there might be also like
+already some support for it, right?
+>> Okay.
+Any one last question? Nobody in the
+audience.
+Come on.
+Okay. Well then, thanks a lot for your
+talk. It was very interesting. A round
+of applause for our speaker, please.
+from Container Days Hamburg. This video
+is proudly presented by Ducks IT.
+[Music]

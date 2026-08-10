@@ -1,0 +1,226 @@
+You type kubectl apply and a few seconds
+later your pod is running. But what
+actually happened in those few seconds?
+The truth is it was not a few seconds of
+magic. It was 12 distinct stages
+spanning eight components, crossing the
+control plane and data plane boundary,
+creating Linux namespaces, assigning an
+IP address, and passing health checks
+before a single bite of traffic ever
+reach your application. Let's trace the
+complete journey. Here is what we will
+cover.
+Before we dive in, here is the full
+architecture at a glance.
+Three lanes. The top lane is the control
+plane, the Kube API server, etcd,
+the controller manager, and the
+scheduler. The middle lane is the node,
+the kubelet, containerd, the CNI plugin,
+and kube proxy. The bottom lane is the
+pod itself, the sandbox, the pause
+container, the application container,
+and the serving state. 12 numbered
+stages flow through these lanes from
+left to right. Each stage hands off to
+the next. Let's trace each one in
+detail.
+Stage one. You write a pod spec in YAML.
+Think of it like a blueprint, a
+declaration of what you want, not an
+instruction to build it. When you run
+kubectl apply, it sends an HTTP POST
+request over TLS to the Kube API server.
+The API server is the front door to the
+cluster. It validates your request
+through admission controllers, like
+security guards checking your ID,
+mutates defaults and creates the pod
+object. Stage two, the API server writes
+to ETCD,
+the cluster's single source of truth.
+Think of ETCD like a bank vault. Under
+the hood, ETCD uses the raft consensus
+protocol to replicate your pod spec
+across multiple members. Here is the
+critical insight. This pod exists only
+as a record in a database. It is desired
+state, not actual state. Nothing is
+running on any node yet. Stage three,
+the controller manager is a collection
+of reconciliation loops. Think of them
+like hotel housekeeping staff. Each
+controller watches for drift between
+desired state and actual state. The
+deployment controller notices it needs a
+replica set. The replica set controller
+sees that desired replicas is one, but
+actual replicas is zero. So, it creates
+a pod object by writing back to the API
+server. This is the reconciliation loop
+in action.
+Continuously comparing what should exist
+versus what does exist and closing the
+gap. The newly created pod still has no
+node assigned.
+Stage four, the Cuba scheduler watches
+for pods with no node assigned. The
+scheduling process has two phases.
+First, filtering. The scheduler runs
+predicates on every node. Does the node
+have enough CPU and memory? Does it
+tolerate the pod's taints? Nodes that
+fail are eliminated. Think of it like a
+funnel. Second, scoring. Each surviving
+node gets a score. Least requested
+resources, balanced allocation. The
+highest score wins. The scheduler
+patches the pod spec.nodeName
+to the winning node. But, here is a key
+distinction. The pod is now scheduled,
+but absolutely not running. The status
+is still pending.
+Stages five and six. This is where
+control crosses from the control plane
+to the data plane. On the selected
+worker node, the kubelet runs a long
+poll watch against the API server. When
+our pod's node name matches, the kubelet
+picks it up, like a site foreman taking
+over. The kubelet calls containerd, the
+CRI runtime. Containerd creates a pod
+sandbox. New Linux namespaces, network,
+PID, IPC, UTS for isolation. Then
+cgroups are configured. cpu.max,
+memory.max.
+These are the resource fences. And here
+is the part many people miss. A pause
+container starts. This tiny container,
+just 1 MB, holds those namespaces alive.
+It is the anchor. The status updates to
+container creating.
+Stage seven. Now containerd calls the
+CNI plugin, the container network
+interface. This is a separate
+responsibility.
+The CRI creates the sandbox.
+The CNI handles only networking. Think
+of the CNI as a telecom installer.
+Someone else built the house. Now the
+telecom team runs the cables. A veth
+pair is created at the kernel level. One
+end becomes eth0 inside the pod's
+network namespace. The other end
+attaches to a bridge on the host. The
+IPM plugin assigns an IP from the pod
+CDR. Say,
+10.244.1.15.
+The pod now has its own IP address,
+reachable across the cluster.
+Stages eight and nine. Containerd checks
+its local snapshot store. If the image
+layers are cached, this is instant.
+Otherwise, it pulls from the registry.
+Each layer is a get request. Then the
+container is created inside the existing
+sandbox, joining the same namespaces.
+Under the hood, containerd calls runc,
+which uses clone with namespace flags to
+fork the process.
+The process tree is now PID one is
+pause, PID and is your app. All
+containers started. The kubelet's status
+manager sets phase to running. But
+running does not mean ready. Running
+means the process is alive. Ready means
+the app accepts traffic.
+Stages 10 and 11. The kubelet's prober
+fires a readiness probe, maybe an HTTP
+get to /healthz.
+First attempt fails. App is still
+initializing. Second attempt, 200 OK.
+The kubelet sets ready to true. The
+endpoints slice controller adds this
+pod's IP to the service's endpoint list.
+Now, on every node, kube-proxy watches
+for endpoint slice changes. It updates
+iptables rules.
+When a client hits the services cluster
+IP, the kernel DNAT translates to a
+ready pod IP. A not ready pod is never
+routed to. Its IP is simply not in the
+iptables rules. Only when the pod is
+both running and ready does it receive
+traffic. Finally, the application serves
+its first response.
+But, what happens when things go wrong?
+Crash loop back off, the most common
+failure. Your container starts, crashes,
+the kubelet restarts it, it crashes
+again. Each restart waits longer. 10
+seconds, 20, 40, exponential back off.
+The fix, check your logs with kubectl
+logs.
+Fix bad config, missing environment
+variables, or broken entry points.
+Image pull back off. The image name is
+wrong or the registry requires a secret
+you did not provide. Fix, verify the
+image name and add image pull secrets.
+OOM killed. Exit code 137.
+Your container exceeded its memory limit
+and the kernel's OOM killer terminated
+it. Fix, increase memory limits or fix
+memory leaks.
+Knowing these failure states saves hours
+of debugging.
+Let's zoom inside the node one final
+time. At the outermost layer, the
+kubelet, the node agent. One layer in,
+containerd, the CRI runtime. Inside the
+sandbox, five Linux namespaces.
+The network namespace gives the pod its
+own IP stack. The PID namespace means
+pause is PID one inside the pod, even
+though it might be PID 45,000 on the
+host. IPC isolates shared memory. UTS
+gives the pod its own hostname. Mount
+provides file system isolation. Wrapped
+around all of this, cgroups.
+CPU.max enforces CPU time. Memory.max,
+exceed it and the OOM killer terminates
+your process.
+The pause container sits at the center,
+1 MB, zero CPU, holding namespaces alive
+and reaping zombie processes.
+Here is the complete journey, 12 stages
+from YAML to serving traffic. Stage one,
+you submit YAML to the API server. Stage
+two, desired state is stored in etcd.
+Stage three, controllers reconcile.
+Stage four, the scheduler assigns a
+node. Stage five, the kubelet picks up
+the pod. Stage six, containerd creates
+the sandbox. Stage seven, CNI attaches
+networking. Stage eight, images are
+pulled. Stage nine, pod reaches running.
+Stage 10, readiness probe passes.
+Stage 11, kube-proxy routes service
+traffic. Stage 12, namespaces and groups
+anchor everything. Remember the seven
+key distinctions.
+Desired state versus actual state.
+Stored in ETCD versus executed on a
+node. Scheduled versus running. Running
+versus ready. CRI, that is container D
+versus CNI. Service existence versus
+endpoint eligibility. And pod creation
+versus pod serving traffic. A Kubernetes
+pod does not start with a container. It
+starts with declared state, gets
+reconciled by the control plane, is
+realized by node agents, becomes
+networked and healthy, and only then
+starts serving traffic. Thank you for
+watching.

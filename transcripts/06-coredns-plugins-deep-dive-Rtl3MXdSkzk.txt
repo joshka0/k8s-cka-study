@@ -1,0 +1,796 @@
+all right hello everybody uh welcome
+hope you enjoyed the the Keynotes today
+uh my name is John bam and uh from
+Google and here my uh co-speaker Yang
+Tang from ianti um thanks for joining us
+today talk about CNS a little bit
+um so uh the first uh bit of this we'll
+talk just kind of an update on the cords
+project and a little bit of an overview
+and then we Yang will drill in a little
+bit on uh what it takes to develop a
+core DNS plugin which is actually really
+really easy
+um and then we'll we'll have time for
+some Q&A
+probably
+so most of you use kubernetes I assume
+uh which means you're probably using CNS
+whether you know it or not uh most
+kubernetes clusters out there uh use CNS
+is their in-cluster DNS for service
+resolution but um in fact CNS is an
+independent project with a uh uses
+outside of kubernetes and it kind of
+grew up uh alongside kubernetes for the
+most part uh and was built to provide an
+alternative to the traditional DNS
+server so if you look at something like
+bind uh it's you know it's a very
+venerable code base uh quite difficult
+to extend um quite difficult to kind of
+manage in a cloud native way and so
+cords was built to start to
+um to to provide a DNS server that one
+was written in a sort of a modern
+language that was memory safe so it's
+written in go uh but also because there
+lot of bind vulnerabilities uh came out
+of just being in SE um a and to be able
+to be uh evolved quickly and to be able
+to add functionality quickly to be able
+to kind of adapt to the rapidly changing
+Cloud native environment that we saw
+happening uh a few years back uh as in
+the growth of containerized services so
+cord started with a focus on service
+Discovery um but kind of the most
+important part in my mind to it is this
+what we call a pluggin based
+architecture um and it's
+a different than most DNS
+servers it's a sort of request handling
+process so the individual DNS requests
+come in and we feed them through a
+series of pip sort of pipeline of of
+plugins and those plugins can make
+decisions and we can compose the plugins
+and the the configuration of those
+plugins to really do some interesting
+things uh with the DNS
+requests uh we do have quite a few
+contributors uh nearly 400 now and you
+know a lot of growth in the project uh
+part of cncf process is this idea of a
+public contributors file so we don't Mo
+there's many many more or a public
+adopter file rather so we've got 35
+people 35 companies who've said they
+they're using CNS in some way or another
+but really it's it's in the thousands uh
+or more because uh like I said anybody
+using EK or AKs um or I'm from Google
+but actually GK not uh not the C GK we
+don't use CNS but we do for our um our
+on- Prem and bare metal uh offerings we
+we use CNS so um really the vast
+majority of people using kubernetes out
+there uh are using uh CNS in some way or
+another we did um in the last year or
+two shift from a uh benevolent dictator
+for Life governance model to a steering
+committee um so now we have uh I think
+five people on the steering committee
+both of both of us are on the steering
+committee but uh it's a pretty low drama
+project so not much happens in the
+steering committee but uh uh if
+anybody's interested in you know jumping
+in and participating in in cordian us
+we'd love to have you very um friendly
+welcoming Place uh and and
+um we we'd love to love to see you there
+since the last uh ccot EU um this is
+some of the new functionality that's
+been added so uh
+a new plugin for dealing with the
+configuration of listener timeouts which
+we're just using the defaults before um
+and a bunch of new features on
+individual plugins we had a release our
+most recent uh release was in uh August
+but we should be having I think a new
+release in particular with the new using
+built with a newer version of go coming
+out pretty
+soon um like I said uh CNS is really
+originally targeted around service
+Discovery and what we'll show you in a
+moment is just an example use case of
+how you can use C DNS outside of
+kubernetes as a uh you know DNS server
+that can be backed by multiple different
+data sources rather than you know
+typical DNS server which is backed Say
+Say by bind or um maybe just serves data
+for your kubernetes cluster you can
+actually take NS out separately and
+configure it to do uh to do additional
+things um
+so what uh the the example core file so
+I guess I didn't give that much
+background so cordion s is you know as a
+process is configured by something we
+call a core file not a core dump it's a
+different thing and it's just a very
+simple file uh that allows you to
+specify for any given Zone
+what are the plugins that are active for
+that zone and what are the plugins that
+are then
+um
+uh what what data sources are used for
+that for those to serve up the data for
+that zone
+and one of the interesting things I
+think in in CNS is that a single zone
+can actually be divided among different
+data sources so you can sort of create a
+hierarchy of of your records that are
+served for your different zones uh where
+you'd say I'm going to allow the I'm
+going to allow you to override say
+directly in the core file a few a
+records for for this Zone but if you
+don't find it in that list for like a
+host file type of list you can consult
+your kubernetes cluster if you don't
+find it there you can consult a file or
+something like that so there's a sort of
+allows you to construct a single DNS
+Zone from a composition of different
+data sources and in this example that we
+have here what we've done is uh allowed
+you to compose a Zone from that that's
+backed by your three different uh clouds
+so or I guess we have two here AWS and
+Google Cloud DNS so essentially this
+allows a single zone to be served up in
+part by AWS uh backed by the AWS API and
+in part backed up by the Google Cloud
+API of services that are out there and
+in part backed up by a local local data
+source this who am I plug
+in and honestly that's all there is to
+it it's not much to say uh this is what
+this is an example core file we can
+digest this a little bit starts withon
+53 so the dot just means root zone right
+any any query coming in for any Zone
+will be processed by this block of uh of
+plugins um the first one processed is
+Route 53 so what's happening here the
+the if we go back to this this diagram
+cordion S as a process is sitting there
+you're configured with the Route 53
+plugin so what you do is uh you actually
+take your AWS credentials and you
+connect to the AWS API and you load the
+data from there and you use that to uh
+synthesize the records for the Zone
+similarly for uh Cloud DNS this uh
+connects back to Google Cloud brings in
+the
+the or synthesizes the record based on
+the API data available in Google cloud
+and the fall through statement on here
+basically says that we can um if we
+don't find an answer in this in that
+data source fall through to the next
+data source so that's why it goes from
+Route 53 to Cloud DNS which then
+eventually falls through to this just
+sort of plugin that returns an answer
+for everything um so that's really all
+you need to configure this it's a really
+very simple simple process
+um the the functionality and I don't
+know if we have a slide here Yang on the
+um no the the the functionality
+available there's many plugins available
+and we tend to divide it into three
+different uh categories so there's
+plugins that allow you to configure
+cords like the bind plugin which allows
+you to tell you which uh interface to
+bind to there's plugins that provide
+different data sources so like I said
+the different Cloud uh vendors um a file
+or a kubernetes cluster or even multiple
+kubernetes clusters can be can be used
+to back data for for zones or a database
+um and each of these plugins uh you know
+if you have your own data source you may
+decide that you want to be able to serve
+up data from that data source say an
+internal uh cmdb or something that
+manages your services and what Yang is
+going to cover in a moment is how easy
+it is to actually extend uh CNS to to do
+that kind of um
+um at at a at a data source the Third
+Kind of
+um plugin that we have is what we would
+call sort of data manipulation plugin so
+here you can um you can use policies to
+block particular queries you can add
+metadata data to a request and then you
+can alter the request based upon the
+content contents of that metadata so uh
+we have another talk tomorrow where what
+we'll look at is uh in a kubernetes
+cluster you could actually configure the
+kubernetes plug-in to append client data
+information so if a pod makes a query to
+your cdns server uh within your cord DNS
+plug-in pipeline you'll be able to see
+the the name space of that client pod
+and then can make a policy decision on
+that and say hey this this client uh uh
+pod from this particular namespace is
+trying to access a service in a
+different name space and I'm going to
+disallow that so that's the kind of
+functionality you can do with these
+plugins and with the kind of
+infrastructure uh that's really would be
+extremely challenging to do in any other
+uh DNS
+server with that um do you want to jump
+in on the demo
+piece
+okay SS okay so first of all you know
+like uh John just mentioned that uh if
+we are going to combine different
+sources of DNS information from
+different sources like from cloud
+windows from let's say your local DNS uh
+zones or from your local data servers
+you can combine them into one and that's
+the data consolidation process and why
+you need that is because sometime you
+may want to have a let's go back you may
+want to have a so-called single source
+of truths let's say you have DN server
+all the place because your it
+infrastructure had DN server your Cloud
+vendor had DN server you have some Co
+clusters on AWS uh you have some let's
+say uh uh database services on let's say
+on aure or maybe on Google cloud and
+then you have your vpns with some like a
+corporate uh internal it stuff all those
+things you can Consolidated into one and
+in this case the cing as is supposed to
+be just uh what let say a front end of
+all the source of information you can
+have one place to control the
+information uh you make sure there's no
+Collis if there a Collis qu will sort
+out like you can you can go through the
+order of different uh information so you
+can decide which information will be
+exposed first if the information is not
+available you move to the next plugin
+and maybe you'll search for the next
+Source let's say uh Google cloud or AWS
+to find out that's that's one process of
+consolidation but now here I'm going to
+share another example of
+say you have the
+same uh DS
+record and uh you want to adjust your
+response based on the the the request so
+what does that mean is it's a source IP
+based service Discovery uh let's just
+hypothetically say you maintain a let's
+say a uh DS server and uh this DS server
+is located in your uh company VPN but of
+course your company may not just have a
+vpns right your company may have some
+external information your company may
+also have some like a tester workload
+and uh sometimes uh when you're doing
+test uh when you're doing testing of
+your companies let's say your company
+have a app uh development you may want
+to manipulate in DNS to configure conf
+big additional stuff so that let's say
+uh a city tester can potentially get a
+different DS record based on which
+network it is in right so that's that's
+very common practice but then you're
+going to ask a question how do I written
+a different different response if I only
+know the source IP of the
+request right so there is the easy way
+to do that of course you're going to say
+is there any existing plugin available
+in cods so that I can utilize the you
+know qu file to manipulating different
+plugins and get the
+information uh there's no such thing uh
+unfortunately because the there there
+was some pretty know pretty extensive
+discussion in the past about you should
+we set up certain let's say Source IP
+based uh service Discovery plugins and
+the conclusion was that the source based
+service Discovery is fairly easy however
+to sort out different uh different use
+cases by different users it's a hard
+process because we had to make sure if
+we going to uh write a plugin we have to
+make sure it can fit in all different
+scenario unfortunately all the scenario
+look like to be totally different some
+people may have one request some people
+have another request sometimes they say
+they want the source IP to be based on
+side the block sometimes they say they
+want the source IP to be to be you know
+like a single standard long Source IP or
+sometimes they say okay so they have
+some additional filtering rules to
+decide how they're going to do the
+source IP based Discovery So eventually
+we say okay so maybe we can we we'll ask
+about the source IP based Discovery
+plugin for many years eventually we just
+okay so maybe we can just write a simple
+plugin as a demo plugin to let people
+see how this can be done unfortunately
+this is is super easy I I'll just show
+with let's the total of let's say lines
+of go Goan code and you can get job done
+and this is actually going to be a lot
+of fun experience right I mean you can
+actually learn little Goan you can build
+a plugin with codings and you can get uh
+get through all the necessary
+customizations as you need need and uh
+fit your scenario right so let's let's
+just give example of how exactly this
+temp plugin is going to work so as as
+this uh as this slide shows the them
+plugin
+uh is the source IP based service
+Discovery uh let's say you your assist
+admin or let's it admin and you'll just
+decided to say okay
+so uh I have a server This Server is
+going to be serving multiple purposes
+this server has a DN server uh if if a
+request is within certain uh you know
+like a CER block or within the internal
+VPN or a segment of vpm you want to
+return to one IP address which
+potentially could be your let's say your
+testing server and then you'll say if
+the request is not from this specific uh
+side block you're going to say okay so
+let's just assume anyone else uh
+requesting a
+DNS uh DS record will return by default
+one IP and uh if uh request is within a
+specific side Block it's going to return
+return another IP so this diagram as you
+can see actually separates the network
+into two parts the first part is the
+internal Network that's
+1720 z.0 sl8 that's internal Network
+then anything else will be outside so
+let let's just make is everything simple
+because we can certainly pick up any IPS
+to return but just for fun I pick up
+like two IPS one IP is
+1.11.1 another IP is 8.8.8.8
+it's very unlikely you're going to use
+those two IPS but
+1.1.11 is cloud FL sdn server and at the
+8.8.8.8 is uh actually Google's uh DS
+res right so let's just set up this
+scenario and see how we can get the job
+done with minimum lines of Goan
+code okay so as we can see if it's
+internal we're going to return
+1.11.1 IP and and if it's external it's
+going to be a do a do a do8 and the
+request just make it straightforward the
+request we always be example.org you set
+up example. server you return different
+IPS that's fairly
+simple uh so you're you're going to
+write a a plugin for coordinates and uh
+the plugin surprisingly it's very simple
+so how simple it is it don't require
+three functions to fill in and uh two
+out of three functions are just
+available star function you need to get
+the skeletons in place and there one
+function that you need as you can see
+the first function is a init function
+which will perform a onetime
+initialization because you need to
+register your plugin with coordinat so
+coordinates knows they will pass the the
+information to a plugin uh allow your
+plugin to process the request setup is
+some pluming in place so that it can
+pass the configuration from the file and
+capture it the
+struct oh sorry
+okay uh the the setup plugin uh by
+itself is also straightforward uh if you
+want to make uh your plugin a little
+complicated because you have a different
+configurations then you need to add more
+content but in case all you need to do
+is just register plugin then that's
+fairly straightforward and finally the
+the me of the plugin is a Ser DNS
+function this function is doing the
+processing of DNS request and the return
+return response uh and once the
+processing uh has been done in this
+plugin you just return and allow the
+next plugin to process the next plugin
+can be a a standalone Plugin or another
+plug-in you WR right but let's just
+focusing on one plugin uh for this uh
+demo plugin that's going to be this
+Source IP based service
+Discovery okay so as you can see the in
+and setup function are fairly
+straightforward for need function you
+register plugin because uh uh because a
+plug-in is a DS plugin so you going to
+register the server type as DNS uh by
+the way you'll probably notice there's a
+cad in place uh the reason CAD appears
+in in coding us is because uh uh coding
+has started by as a plugin of CAD
+someone may some of you may know that
+caddy is a web server read go right so
+at the beginning when cordin was
+developed uh there was some design you
+know scenarios you had to figure out so
+you need to get a pluming in place but
+you know as we we are developers
+sometimes we just think what's the best
+way to write some system you probably
+want to reuse some else code as much as
+possible in open source field right
+because you don't want to waste time
+writing something from scratch uh so
+that's how a quoting is get started
+quoting is started as a plug-in of caddy
+by itself of course you're going to say
+caddy is a is a what should I say uh ATP
+server right but it's all similar right
+it's either ATP or DNS it's it's pretty
+much the same thing you can utilize the
+plumbing to get the job done so that's
+some of the cre s to uh you know like to
+make your your code like reusable to
+reuse other people's code that's a un uh
+function now the second one is the setup
+the setup is essentially just a pass
+configuration now for the service based
+uh uh Source IP based service
+Discovery uh the the configuration we
+don't want to have any configuration
+because we just want to hard code
+everything but in the future you want to
+make it a little fun you can certainly
+write more stuffff but for now let's
+just assume there's nothing everything
+is hardcoded right okay so that's a
+setup setup is to just uh uh get a
+configuration and finally that's a sdns
+which is the truly the meat of the
+plugin you need to write in go so first
+of all you uh the Ser Ser DS will pass
+three parameters the first one is going
+to be context that's a pretty standard
+the second one is a uh response writer
+and the third one is just the uh request
+so the first thing is you have to
+construct the the requested state to
+figure out what exactly is the
+information that has been passed to this
+plugin uh as you can see you can get a
+qill name which in our case uh in our
+example set of case that's going to be
+example.org right then you're going to
+say I want to reply what can IP address
+I'm going to reply I'm going to reply
+either 8.8.8.8 or I'm going to reply
+1.11.1 and uh because I want to I want
+my plugin to be Source IP based I to
+check the IP of the request and the IP
+request I'll just make a very simple go
+on function of prefix search if it's h
+if the uh if IP start with 172 do
+something okay that's going to that
+means it's internal IP I'm going to
+reply uh
+1.1.11 otherwise I'm going to reply
+8.8.8.8 that's fairly straightforward
+right and then you have a uh there are
+some like a loging facility to say you
+you just print the Q name the IP and
+reply so that you can keep track of what
+they have done and finally you just need
+to construct the answer uh now you're
+going to say what else do you need well
+that's pretty much all you need need you
+just return the the answer and if you
+you know if if you cannot process you
+just let next plugin to to continue so
+that's that's all you need uh then you
+say okay so if if I build this plugin so
+what else do I need to launch this
+plugin uh in order to for cian to start
+you also need to initiate the plug-in in
+the cor file the qu file the
+configuration uh because our then plug
+in a hard code everything you saw the
+code we use IP addresses specific IP
+addresses in the Goan code so there
+nothing to to config as I said that's a
+setup function nothing so we just invoke
+by uh by specify that demo is a plugin
+we wanted to invoke and that's
+it now next thing is going to say how to
+build that in order to build this
+plug-in you have to do several things
+first of all you have to uh you you you
+can just download uh cording source code
+and uh your goong plugin should be
+placed under the plug-in directory uh in
+addition to that there is a plugin.
+config which is needed in order to allow
+your Goan compiler to pick up this uh
+code and build uh and that's it uh there
+are some easy way to to compile this
+plug-in you know I maned to uh draft the
+pretty lensy down me do build code you
+can just get the job done there are some
+Flags to to pass that's mostly just to
+get around some security uh related uh
+know like uh uh restrictions so you can
+you can just build if you run this one
+command one line command it's several
+lines but it's just just one uh do
+command you can build the uh build a
+plugin as well as a cords code and uh
+you will see a binary that's a CS in
+your local directory and then you can
+just write run this local directory uh
+you can just run this coding as binary
+and that's it uh just one more thing is
+you see like I in the quy use 10. 53 uh
+of course you can uh pick up a fif three
+but in case you pick up F3 in certain
+Linux system you may realize that you
+need a root address right if you're just
+doing some testing you can start with
+1053 which will award the
+CIS and that's it uh okay so you're
+going to say where the source code the
+source code in in a small repo uh the
+repo is part of the coordinat AR and if
+you just go to this rle you're going to
+realize the whole REO consists of what
+80
+lines and with 80 lines of Goan code uh
+you pretty much write a service uh uh
+service Discovery based on Source IP and
+why we showcase this plug-in is because
+many people ask okay I want to achieve
+this thing how to get the job done is
+any profile we can use and sometime the
+answer has been okay it's a little you
+know if you just want to grab the
+existing plugin and TW around some
+configurations to get job done it you
+know what it's going to take some time
+to be a little creative to to
+manipulating or even hack into the cor
+file and you to you know spend a lot of
+effort uh and then if you say you want
+to learn goolan you want to write some
+simple plugin you can just uh maybe
+spend a spend you know like several
+hours uh write like 100 Lin of code and
+get your job done right it's I think
+it's a fine process okay so that's uh
+that's a demo plugin we showcase uh as
+as I said you can go through this Ripple
+you're going to realize it's super
+simple extremely simple that's something
+very very important because we don't
+want to uh solve a problem in complex
+way we want to solve a complex problem
+in a simple way not other way around
+okay so that's uh that's a d plugin we
+showcased uh and finally we wanted to uh
+go through several bullet point about uh
+uh according as the community uh if
+anyone is interested in contribute to
+codings you have several ways to
+contribute uh you can start cods in
+GitHub to
+uh increase the visibility of qus you
+can also add uh your institution's name
+to adop the start uh MD uh this will
+actually uh you know like uh allow you
+to have a chance to create a PO request
+you know you you can just create the PO
+request and should be easy uh you can
+also uh become a maintainer in order to
+become maintainer you probably need to
+contribute uh significant po request so
+what what is the definition of sign
+request well if you write a plugin
+that's a you know that's a sign request
+you also need to to be sponsored by one
+existing Mena which is a very low
+threshold and uh then you become Mena
+which sounds like a badge small badge to
+you and you can just let people know
+that you're also part of Open Source
+community and you're part of this CNC
+project and your Mainer right so it's a
+interesting you can do uh like I said
+you know the like John mentioned we have
+28 maintenance as the threshold to be a
+Mainer is extremely low so just
+contribute something uh address some
+Goan code spend maybe several hours and
+you know have little fun okay that's uh
+that's pretty much it from outside any
+any
+questions
+thank all right looks like we have about
+five minutes for questions so gentleman
+here there's a microphone there uh you
+can go stand at that way uh you'll
+you'll show up on the recording properly
+and
+whatever um yeah thank you for the talk
+very insightful um also very interesting
+that gke does not use coordin um thank
+you for this Insight um I was wondering
+whether you considered um using web
+assembly runtime um as an extension to
+your current plug-in system because on
+the one hand side this would allow an
+author to create a plugin in basically
+any language plus you would avoid the
+recompilation step of cordas you said
+wasm is that what you said web assembly
+was yeah wasm okay um I don't I haven't
+explored that I mean it's definitely a
+possibility um at one point uh one of
+our maintainers was looking at adding
+Lua support but I I think that that's a
+reasonable thing to do we haven't I have
+not looked at it and you're welcome to
+to uh to to to to join in on GitHub and
+our slack Channel we we have a slack
+channel on the cncf slack not on the
+kubernetes slack um and uh we we'd love
+to see something like that right now
+you're right it requires a recompile of
+we don't have a a dynamic plugin system
+it's it's a built-in compiled in plugin
+system all right I created the
+ticket any other qu it looks like
+there's somebody
+here hey thank you for the presentation
+um small question about about the
+testing what do you suggest for the
+testing of the plugins are there any
+tools or
+techniques well unit tests for sure um
+just go unit test standard go unit test
+but um we have some end to end tests
+that are part of our CI infrastructure
+um and I'm not I don't recall what we're
+using there specifically but
+um years ago I put together a container
+a container image with testing Tools in
+it for DNS but I don't have anything
+specific that I can recall off the top
+of my head we we do some performance
+tests um if we go look at the tooling we
+have in our CI that's probably where I
+would start and and pick up the tools
+that we have there and what if the
+plug-in is um not going to uh land in
+the how to say in the main base uh code
+base of core DNS what if it is a
+homemade plugin and we would like just
+to run the test in our CI apart from the
+unit test of
+course um yeah I mean I I whatever you
+use in your CI now I mean it's just a
+process it's pretty it's pretty
+straightforward so as far as testing
+like query tools I mean it all depends
+if you're doing right you want to do
+sort of end to end testing from a
+functional standpoint then things like
+just your simple command line tools like
+dig or whatever are fine but if you want
+to do um load testing um sorry it's been
+a couple years since I looked at the
+testing to since I was working on the
+testing Tools in this so I can't recall
+we we there's a a few that we used um to
+like
+really so one of the interesting things
+in I don't have two one minute left um
+like when you when you do start start to
+do some of the load testing on DNS you
+know the you start to tend to be limited
+by things like the
+the the the packets per second that your
+cloud provider will even allow right on
+that on that particular level of node
+because they the packets per seconds
+tend to be pretty high on the DNS server
+so but there's a bunch of tool do do you
+recall any of the names of the tools I
+would have to look it
+up I mean frankly I'm going to say you
+know if you're going to test uh DNS I
+mean d certain is the best tool
+available frankly on the other hand if
+you're going to say you want to write
+something goong you know as as we walk
+through the plugin you'll probably
+realize the DNS by itself is fairly
+straightforward you have the query you
+you're going to response uh you're going
+to return a response I mean you you can
+find many ways to test frankly looks
+like we have one more question maybe we
+can sneak it in quick we're being yelled
+at though yeah um so my question is
+based on how C DNS might be used or be
+helpful for like blockchain networks
+where you need to find peers and stuff
+like that but it's a bit different
+because in this case it's like some
+peers my uh behave in some way that you
+might don't want to keep it up but but
+not about Behavior just like about
+finding the peers and maybe uh putting
+them down if it's not working anymore or
+something like that and this is the
+first question in in the following W is
+like if if those Spears uh are not
+supposed to be kept in there like in a f
+if they're not working anymore more or
+if we can find them anymore like is
+deploying C DNS on stateless service a
+way to go or that will be like a
+noal I think I'm going to need a little
+more context and we're out of time why
+don't you come over here we can talk
+about it offline okay thank you thanks
+everybody okay
+s

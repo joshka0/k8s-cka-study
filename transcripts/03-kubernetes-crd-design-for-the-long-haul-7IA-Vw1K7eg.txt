@@ -1,0 +1,577 @@
+Hi everyone. Um, welcome to our talk and
+thanks for coming. Um, yeah, we're
+talking about Kubernetes here designing
+for the long haul where we want to try
+to share tips and tricks and um, stuff
+we learned in our journey with cluster
+API and designing APIs. Before we start,
+we want to introduce ourselves. I'm
+Christian. I'm a maintainer in cluster
+API and a software engineer at Broadcom.
+Hello everyone. Thank you for being
+here. I'm Fitza Pandini. I'm also a
+cluster API maintainer and I work in the
+same team of Christian in in
+Broadcom.
+So the long haul. So let's start with a
+pool. How many of you are maintaining a
+project software contributed to a
+project software no matter if upstream
+or downstream open source or not? Let's
+raise hand
+please. Okay. some good developer vibes
+in the room.
+So you all probably know that every
+software project keep
+evolving. As soon as users start using
+your project, you start getting
+feedback. You start getting a request
+for improvement. And so also your API or
+your CRD have to improve.
+But your API, your CRD is slightly
+different than your binary. You need a a
+strategy to make sure that your CRD
+evolve nicely in the long
+run. In the Kubernetes ecosystem, let me
+say the most common strategy to make
+your API to evolve is based by two
+complimentary ideas. The first one is
+that you want to pick to keep
+evolving your current API version. If
+you think about it, this is what they
+are doing in Kubernetes. Kubernetes is
+V1 since a couple of year now and it
+keeps
+evolving. But sometime what you can do
+with a single API version is limited. So
+you cannot do breaking change. So
+sometime you also want to create new API
+version. But the key point here is that
+you want to create API version only
+after a careful and deliberate decision.
+This is the key. So today
+talk is about avoiding making mistakes
+that will force you to create unplanned
+version.
+Okay. Before talking about mistakes,
+let's have a a quick refresher on how we
+develop APIs or CRD in Kubernetes. So
+the process started
+by writing a go types. You write a go
+types. Then what you do? you run a uh a
+generator from controller gen and this
+generator create a CRD where the most
+important part in of the CRD is the open
+API spec that reflect your
+types. Finally, you apply this CRD to
+the API server and the user can interact
+with your API by writing YAML. So if you
+look at the at this
+process where do you think mistakes will
+happen?
+So on the right side there are the
+users. User by default are always right.
+So they cannot make the mistakes. In the
+middle we have the generator. Generator
+just work well. So what is left? Only
+got types.
+But what could possibly go wrong when
+you keep a good developer and you ask
+him to develop a Kubernetes
+API?
+Well, so with all the respect for my
+fellow devel uh maintainers and and
+contributors, a lot of things could
+could go wrong. So let's start looking
+what mistake we we could happen by going
+through some of the lesson learned in
+the la in the last few years. Yeah. So
+first we're going to dig into some go
+examples where we could do mistakes. I'd
+like to show first three antiatterns we
+identified. So the first one is
+embedding external APIs. Um in our case
+cluster API tries to create clusters and
+we do that in a provider by use for
+example using cubeadm. We want the user
+to also be able to configure things
+there like he maybe wants to enable a
+specific flag for the cube API server
+which is part somewhere there in cube
+adm's configuration.
+um a cubid ADM binary itself is normally
+supposed to work for a single cubernetes
+version. So if you take a look for
+example before v1.29 29 Kubernetes QBAM
+used the vivon beta 3 version of their
+cluster configuration. Starting with the
+version after with B130 they started
+using a newer API version because they
+introduced some changes in cluster API
+though we want to or a user wants to
+create clusters in different versions
+while running them in different
+versions. There could be classes running
+1.29 29 while still others are uh v29
+and others are already at v30. So we
+can't just embed the v1 beta 3 or v1
+beta 4 api version of cubadium and
+expose that one to the users because
+what if they want to create a cluster
+with the other version. Um so what could
+happen there is um or or what's the
+mistake here?
+uh we just can't do this because it
+would be breaking a breaking change. If
+Cubadium itself evolves, introduces
+changes, we bump our go dependency and
+have to use the newer V1 beta 4 version
+um but would not be able anymore to
+create the new the older versions then.
+So what we do instead is we copy, adapt
+and evolve. We have our own copy of that
+configuration, our own strct we use and
+expose to our users. And in the back
+end, we convert to the version we need
+when creating the cluster because the
+user defined we want to 29 or V30. And
+by that we can support a long range of
+Kubernetes versions like
+V27 to V33 while still using Cubad's V1
+beta 3 or V1 beta 4 in the back end.
+Another example of embedding external
+APIs would
+be in cluster API. We have this cluster
+object and of course we need some
+control plane to run in our cluster or
+for our cluster. For that we refer a
+control plane object in our cluster
+object. When modeling that we decided to
+use an object from the core v1 package.
+Core v1 seems to be stable. it should
+not evolve that much. So we shouldn't
+have issues when um yeah bumping to a
+new go module version of
+Kubernetes. But what's the mistake
+here? We just started using core v1
+object reference but yeah and it worked.
+We're fine. We still have it like this
+today. But there are for example three
+um fields in there which we don't need.
+Users see these fields in the API. They
+might expect something to happen if they
+set these fields but they're actually
+unused. Just removing these
+fields is not that easy because it may
+be a a breaking change if a user misused
+that field before. Um and we try to get
+rid of that when going to V1 beta 2. um
+because we don't can't do it in in our
+v1 beta 1 API. So what should we have
+done instead? We we should have seen
+okay object reference is a cool example.
+We reuse that but we create our own copy
+and only use that or have the fields in
+our API which we really need and skip
+adding the other ones. And in this way
+if we later on maybe need a UID field we
+just could add it and make use of it but
+only when we need
+it. A third example which is also pretty
+similar but does not depend on external
+APIs is in our machines we have a spec
+and a machine itself is supposed to be
+one unique item. We also have the
+concept of machine templates to create a
+fleet of machines. So at the first hand
+we thought yeah it's totally good to
+maybe just use the same spec and same
+strct because a machine template we want
+to define everything in there and create
+hundreds of machines of it. But let's
+consider the use case of adding
+something like an IP address because we
+want to do IP address management with
+our um
+controllers. What's wrong here is we did
+not consider that IP address adding it
+to the machine spec. It could also leak
+into the machine template and from the
+machine template side it just doesn't
+make sense because every machine at the
+end should have a different IP and not
+the same. So what should we have done
+here instead is the same copy adapt and
+evolve in a separate strct type. We
+should think about do we need to evolve
+these different objects separately and
+um because converting between one and
+the other strct is pretty pretty simple.
+But just swapping out go types may end
+up in completely different open API
+specs depending on what we do or if we
+do not do it
+carefully. Okay. So after seeing three
+example of bad things that can happen if
+you embed that API, you might ask
+yourself if is it is always bad to reuse
+existing code type and the answer is no.
+In some cases perfectly fine. In some
+cases you have to for instance in your
+CRD on your go in the go type for your
+CRD you have to embed the type meta and
+object meta in order to make them uh uh
+proper compliant Kubernetes object.
+There are also other type that were
+explicitly designed for reuse like
+condition meta v1 condition uh in
+kubernetes or like type uh or like time
+which provide uh nice and then this
+serialization of
+timestamps. In some cases, it is also
+good to reuse your own types, but you
+have to carefully
+consider what are the implication in
+order to avoid the problem that
+Christian just
+described. Taking a step back for a
+minute, let's let's look again at how we
+develop uh the PI. So this process
+unfortunately
+might lead or might trick maintainers
+because as a maintainer we focus a lot
+on writing go types and we just think oh
+uh controller gen will take care of
+everything and generate uh uh everything
+cor but but this could be uh misleading
+because at the
+end what impact the user is the open API
+spec.
+So pro tip or lesson learned here is
+that whenever you change your go type
+run the generator and look at the open
+API spec so it's not too too difficult
+to to read and you really can figure it
+out what impact will your change
+uh create to the
+users. as a lot last tip uh of this
+first session of the talk. Let's talk
+about uh a minute about
+rules. So when we talk about API
+guarantee or API breaking change or API
+deprecation
+rule they apply on the open API spec.
+Okay, this is what impact user this is
+where guarantee apply. If I have one
+beta, one API,
+uh when I'm going to deprecate it, it
+will take one year or three
+release.
+However, from the other from the other
+side of the equation, some other rule
+apply or some other policy. This is a go
+binary. This is a binary. This is go
+will combine into a binary. So same ver
+apply. What are the implication of these
+two rules apply to the same artifact is
+that if you are in a better corner and
+you know your audience which is super
+important you may you might find very
+pragmatic way to solve to solve an issue
+let's make an example you want to rename
+a go type you could do it if you for
+instance if your API package is used
+only by someone internally of your
+company is a breaking change but you can
+manage it. Okay. And this way might help
+to solve some of the issue that
+Christian
+described. So we talked a lot about go
+code. What about comments? It can't be
+too hard. There should no should be
+there should be no issues there. Right?
+Let's make an example. For generating
+CRDs, we often use this magic markers
+which are for example used by controller
+gen to influence the open API spec. What
+could be what could we do wrong here is
+we could simply miss setting the right
+markers
+like the max length validation is very
+important. For example, for cell, cell
+is all around us and validating
+admission policies only work if you use
+the proper if you add the proper
+validations which result to the right um
+fields to be set in our open API
+spec. Another example is setting fields
+you consider optional actually as
+optional which also might influence um
+how it results in the open API spec. So
+what we could do about this is there's a
+solution for this. There's a project
+called KL which is short for Kubernetes
+API llinter which checks for common
+practices and enforces best practices in
+your code. It's a it's a super good
+llinter which integrates nicely with
+with Golink CRIN. Um and at this point I
+want to give a shout out to Cho who
+started this project and is driving it
+and to everyone else um who is contri
+contributing to it. The project itself
+is planned to get a home in Sikk API
+machinery as repository. Um and yeah
+please it's a good thing to start using
+it and um it makes you help think about
+some decisions. Maybe not every lint
+rule applies for your API in that field
+maybe but then you can do explicit
+exception of that and um note that in
+your API or in your go docu as edition.
+So one more example where KL could help
+you in future is the following. We have
+an cluster object which for example has
+an variables um list or array in it. We
+have a second controller also trying to
+add a field to this list or to this
+array. Per default this list is treated
+as atomic. So both sides, the controller
+or the GitOps tool trying to sync the
+source to the target object would always
+try to just set the instance type and
+the zone fields here. While our other
+tool like controller which wants to just
+set a con cost center um field variable
+adding to that field just fights with
+our GitHubs tool and then we end up in
+infinite reconciliations which costs
+performance costs resources and it's
+just not good. The solution here is
+setting the list list type and list map
+key
+um markers. So, open API understands
+this array not as array but as as list
+map which then helps to have
+co-ownership of entries inside this
+list. That's the llinter which is
+planned to be implemented in kala. It's
+not there yet. There's a couple of more
+um and open misses for it. Um so
+yeah. Okay. So at this
+point you you might think that you now
+master writing go types for for
+Kubernetes
+API. You know about types. You know
+about comment and magic
+markers. Unfortunately this is not
+enough.
+So there is one last category of uh
+mistake that we can do as a developer
+when writing uh an API and this is the
+most common and the most tricky to get
+right and it is about the mistake in
+field
+names.
+So let's think
+about an API. An
+API is a representation of what your
+project is doing. Every project is
+solving a unique problem. If you think
+about cluster API, this is a a short
+project statement for cluster
+API. If you think about the
+corresponding cluster object, you can
+imagine it as a different
+representation of the same statement. It
+is the it is what you present to your
+user is what tell user what your your
+project is doing. But what is the
+biggest difference between the two form
+of project statement is that on the left
+you have context. You have full test
+sentences that explain what your project
+is doing. on the right instead you have
+only a few
+keyword
+and the the key point here is that in
+API design every one of these keyword
+matters. So it is really important to
+choose the right keyword and what are
+the common mistake
+here. There are a lot. So if you not
+choose accurately the the
+keywords the your API might be confusing
+for your
+user. If you use s synonymous or
+abbreviation for the same word word in
+two different CRD of your project, your
+user may may be confused as
+well. If you use generic
+term lightly without thinking carefully
+at it, your user might be confused. What
+does this mean?
+Okay. And making user confused is not
+the only issue. is the fact the real
+problem is that when you choose the
+wrong keyword then changing a keyword
+renaming a field in your API is a
+breaking
+change. So what is the solution
+here? Luckily there are a few tips that
+can help you and one is really simple
+and and and effective. So you can try to
+do this exercise. you can try to read
+your API
+uh and transform it and build a sentence
+that start with I want to I want to
+because it is a declarative API. So if
+you do this the exercise here is that I
+want a cluster with a topology that has
+a control plane with three replica. It
+is a simple sentence. It makes sense. It
+is easy to read. user can't understand
+it. This is a good sign a a a good
+evidence that you are creating a
+a a good API. If instead your sentence
+doesn't read well, it is not uh proper
+English or uh
+uh the word are not good etc because
+there is a a first red alarm that you
+are not building a nice API or or
+something that you will regret in the
+future.
+The second
+tip require a little bit of more of work
+but it is really really effective in the
+long run. So if you think about it every
+project has a glossaryy has a set of
+term that are specific of this
+project.
+Unfortunately not every project write
+down is is
+glossaryy. Okay. So what are the
+benefits of having a glossary? There are
+many of
+them. First of all, a glossary will help
+users in reading your API will help user
+when they look at your
+documentation will be a good companion
+for for your user. But it will be even
+more important for you maintainers and
+for the maintainers that will follow you
+because if there is a an ep a glossaryy
+which define term which give a cont
+which allows everyone to understand the
+keywords in your API. This will help
+when you will add something on top we
+try to extend the your API you you will
+create a new CRD in your API. So the
+benefit of having a CRD are very worth
+the effort and and on top of it you can
+also consider that it's something that
+you can build over time. So it is not
+something that you have to do up front
+as a huge
+effort. Let's have an example what we in
+that case for example did wrong. We have
+the concept of infra infrastructure
+providers which have for example an AWS
+machine for AWS. We added a field in our
+contract to say okay AWS machine should
+notify that in its status with a ready
+field that it's ready. But what does
+ready mean? Is it is the node ready? Is
+it up and running? Is it provisioned? If
+you had come from the glossery or from a
+definition of what we want to have out
+of that field, it would have been each
+infrastructure machine must report when
+a machine's initialization is completed
+and infrastructure is fully provisioned.
+That's what we actually present with the
+old status ready field. It's something
+we're going to try to fix with the V1
+beta 2 API 2 in our contract there. Um,
+and the mistake here is simple. just
+lightly using that wrong wording and
+which then results in a inaccurate and
+not explicit API which could be easily
+misunderstood. Another example on that
+camel casing. Let's think about having
+an API which does the same as cube
+cuddle drain. We start with having a
+flag or cube cattle has a flag for grace
+period. So we start adding a field
+called node node drain grace period. At
+the next version, we think ah grace
+period is not enough. We also need a a
+field for the timeout flag. So we add no
+drain timeout. We consist consistently
+extending our API we did before. But it
+reads a bit
+weird. What we should have done instead
+is think about embedding and
+extensibility. If we would have added a
+note drain field which contains the
+grace period, we could easily expand and
+and evolve with adding a timeout field
+or others later. So consider using
+nesting to be
+extensible. There are other examples
+where cal for example helps you like
+think about not using a boolean but
+maybe use a enum instead which because
+you maybe want to have different
+meanings later on.
+And last pro tip for today is get
+inspiration from the best. API design is
+not a oneman show and consider getting
+feedback where you can like peer
+reviews, ask users. Take a look at other
+Kubernetes projects or Kubernetes API
+types itself. But critically think of if
+the same applies to your API and if you
+should do it this way or just adapt some
+some parts of it. You could even ask an
+AI, but consider thinking about it
+again. Okay, so before wrapping up,
+let's quickly talk about what we did not
+cover in today
+presentation.
+So we did not have a deep dive on CRD
+markers. There are many of them. Some of
+them are simple and intuitive like mix
+min
+uh most of of the one uh uh about uh
+validation but there are really many of
+them. So there is a good documentation
+uh the link is there but again the trick
+is apply a mer generate userd look at
+what they looks like in the open API
+spec and test it in the server. is is
+simple. I'm very
+excited. What else we did not talk
+about? We did not talk about creating a
+new
+API and deprecating or removing the old
+API version.
+Well, this is way more complicated than
+it should be because uh unfortunately
+there are problem that you have take
+care of like storage uh uh storage
+version migration and also you have to
+deal with uh a few annoying API server
+issue that that we are also trying to
+fix in parallel. Uh maybe this will be
+the topic for the next talk. Uh we also
+did not talk about some other trick
+about API development like how to make
+your API to work well with the cap and
+restore tool like um uh Valero for
+instance and uh wrapping it wrapping it
+up. So API design is a
+journey enjoy it share your
+learning and have fun. And with this,
+thank you for attending. We will get
+your question if you have to.

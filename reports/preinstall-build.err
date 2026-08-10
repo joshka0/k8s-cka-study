@@ -1,0 +1,1 @@
+ERROR: genanki is not installed. Install it in deck/.venv after receiving approval, then run deck/.venv/bin/python deck/build_deck.py.

@@ -1,0 +1,20 @@
+{
+  "apply": 32.104375,
+  "binding": 24.764,
+  "cni": 43.049688,
+  "cold-open": 28.891313,
+  "controllers": 32.966438,
+  "dataplane": 36.519125,
+  "endpointslice": 31.790938,
+  "etcd": 30.328063,
+  "gates": 41.56075,
+  "images-containers": 32.208875,
+  "kubelet-picks-up": 26.435813,
+  "packet": 30.354188,
+  "recap": 30.537063,
+  "running-not-ready": 30.824375,
+  "sandbox": 27.454625,
+  "scheduler": 40.907688,
+  "three-lanes": 29.466063,
+  "what-breaks": 38.190938
+}

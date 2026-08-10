@@ -1,0 +1,559 @@
+Hello everyone and welcome back to my
+channel. My name is Push. This is video
+number 50. Yes, 50 in CK 2025 series.
+And in this video, we'll be looking into
+operators in Kubernetes. Yes, operators
+from the theory perspective, from the
+demo perspective. We'll do the operator
+installation. We'll see all the
+components involved, the entire flow end
+to end and everything. Right? So let me
+just share my screen and we can uh I can
+just walk you through uh what we'll be
+covering in this video. So uh we'll
+start with like explaining what exactly
+is an operator in Kubernetes by defining
+the difference between traditional and
+operator pattern. Okay. So how it works
+traditionally um the deployment and
+management of any application in
+Kubernetes versus how it works with the
+operator
+and then how operator works the key
+components involved in the operator and
+why do we use operator like what
+benefits that it comes with uh
+when it come when we compare it with the
+traditional approach. Then uh we'll do
+the operate operator example
+installation and the demo will be with
+the help of search manager. We'll be do
+that we'll be doing the entire setup end
+to end. Okay. So let's try to understand
+u the difference between manual and
+automated or operator pattern in
+Kubernetes. Okay. So let's say uh you
+are performing a traditional deployment
+in Kubernetes without using any tool
+without using any third party
+application. Okay. just the native
+Kubernetes installation. Okay. So let's
+say you are a user, a DevOps engineer, a
+Kubernetes administrator or someone who
+tries to deploy an app as a pod or as a
+deployment in Kubernetes. Okay. So you
+deploy it by defining a YAML file, a
+manifest or using Helm installation,
+customize installation or any other way
+and you do the configuration as well by
+yourself.
+Now all the updates that you have to
+make you have to do it manually. Okay.
+So you are responsible for making sure
+your application is up to date with the
+latest images with the vulnerability
+patches and all the latest um uh all the
+all the latest code as well right and
+then uh if you are not using any tool
+for the scaling like HPA, VPA, Kada or
+any other tool then you are responsible
+for manually scaling the application
+when it needs and yes of course like
+scaling you have to perform the roll
+back as well whenever you want to or
+whenever there is an issue with the
+existing version. Right? So this is the
+manual approach or the traditional way
+of deploying and managing your
+application. Now how do you do that with
+operator? Okay. So as a DevOps engineer
+uh you deploy the operator. You don't
+deploy the application directly. You
+deploy the operator. You define the
+desired state in the operator
+configuration like this is what the
+operator is all about. This is what I
+want to do with the operator. This is
+what I want my operator to do. And then
+operator is responsible for performing
+the configuration changes, the
+deployment and all other aspects like
+scaling, updates, roll back everything
+that was manual over here. Right? Now it
+will be done by operator in the operator
+pattern. It is all automated. So
+operator can be viewed as a DevOps
+engineer uh that you have hired and that
+person will be responsible for
+performing all those duty but
+automatically right you don't have to um
+make a person sit 24 by7 whenever there
+is a need need of manual scaling or roll
+back or any updates to be made in the
+application. Right? So you do that with
+the help of operator. So it simplifies
+the entire um development life cycle for
+you. Like yes you can use an CI/CD tool
+like Kitops tool with the manual
+approach. Um but then uh there is a lot
+of uh maintenance there is a lot of
+work that needs to be done for that.
+Operator is pretty simple and um you can
+do the operator installation using just
+a few commands. We'll look at that. Uh
+and it is easier to manage plus you can
+create separate operator for separate
+task and you can keep it isolated. So
+operators has a lot of benefits over any
+CI/CD tool or over the traditional
+approach.
+Okay. So let's see uh how it works. So
+as a user you um first as a DevOps
+engineer or as a user you create your
+operator you install your operator.
+Okay. And then uh you create you have
+your custom resources the custom
+resource definition which we have
+covered in the previous video. So make
+sure you watch that if you're not aware
+about these concepts. So custom resource
+definition uh will perform the
+validation uh based on sorry custom
+resource will perform the validation
+based on the custom resource definition
+and this custom resource is an instance
+of the CRD.
+Okay. And whenever a user make any
+changes in the custom resource, okay,
+whenever you are changing anything in
+the custom resource, this operator
+because this is continuously watching
+your custom resource. Okay, there is a
+reconciliation loop that we call it. So
+it's a loop that's going on. So it's
+keep on watching your custom resource
+for any changes and whenever it detects
+any changes it changes that event and
+adjust the state in the Kubernetes API.
+Okay. So it actually makes sure that
+your desired state should be also and
+should be always equal to the actual
+state of the resource.
+Now you must be thinking how is it
+different uh with any GitHubs tool.
+Okay. So with GitHubs tool it makes sure
+that your code that is there like your
+single source of truth from the GitHub
+repository
+uh that should be your actual
+environment specific configuration right
+uh it works on deployment it works on
+infrastructure as a code and so on but
+with operator it actually based on the
+events like how how is it different so
+for example uh which we'll be discussing
+now uh let's say this uh search manager.
+Okay. So let's first let's uh uh have a
+look at this searchert manager and then
+it will be uh clear to you the
+difference between any githops tool cicd
+tool or the operator. So as a user you
+deploy your operator your search manager
+operator you have deployed it then you
+have created uh CR and CRD. Okay. And
+then based on this CR you created two
+custom resources. One is issuer and one
+is certificate. Okay. Issuer who will be
+issuing the certificates and the actual
+certificate resource. So this operator
+okay it keeps on watching the custom
+resource. As soon as it find a custom
+resource it actually does the following.
+It issues the certificate. It renews
+like automatic renewal of the
+certificate and it injects that into the
+Kubernetes secret. Now
+this is the desired state. What is the
+desired state? That the certificate
+should be issued.
+Certificate should not expire. That
+means it should be valid and the uh
+secrets should be injected in the
+Kubernetes API. Okay. So these are all
+the desired event that it should take.
+So it should it like it keeps on
+watching the custom resource like you
+have a certificate whether it is
+expiring or has it expired. If it is
+expired it will renew the certificate.
+If you have created a new certificate it
+keeps on watching and it makes sure that
+the certificate is issued. Certificate
+is valid. It is issued and it's not in
+the expiry state. So that's the main
+difference. it it watches the end state
+of your resource how it should be like
+let's say you've created a pod okay and
+you want to make sure that once the pod
+is in the running state uh it waits for
+few minutes and then it should be
+completed just just an example okay so
+this operator uh will keep on watching
+your resource and keep on checking okay
+so 10 minutes have been passed and now
+it should be in the completed state so
+if it has not completed it will uh you
+know change the status to completed
+something like that. Okay. So this is
+the benefits of operator over githops
+tool or any CI/CD tool. Now let's uh
+have a look at the key components of an
+operator. So um first is CRD then CR
+which is an instance of the CRD and then
+we have the controller. So this
+controller watches the custom resource
+and reconciles the states. It's make
+sure that your desired state is equal to
+the actual state. In case of a
+certificate manager, the desired state
+is certificate should be approved. It
+should be valid and it should be
+autorenewed. So this particular search
+manager operator will make sure that
+this desired state should be the actual
+states of all the certificates that has
+been created in the cluster where the
+operator is running. Okay. Now you might
+have already understood now by now like
+why do we use operators? First is to
+automate tasks. Okay. So we are
+automating all the manual tasks. We are
+uh making it automated. Then to take
+care of all the dayto operations. What
+are day2 operations? So
+uh operations such as backup, restore,
+updates, scaling all these task for this
+you have to create a separate tool, a
+separate uh maybe a separate CI/CD tool,
+a separate observability tool or
+separate uh scaling tool. These all can
+be done using the operator the one that
+you have created. Okay. So and we have
+looked into the search manager operator.
+So now when it comes to operator
+installation
+there are different ways. So one is
+cubectl tool by installing the operator
+YAML. Then we have Helm charts available
+for each of the operators. And then we
+have OM. OM is the operator life cycle
+manager. Uh using which we can install
+any available operator from the catalog.
+We can create our own operator as well.
+But we can also install the existing
+operators from the catalog which is
+publicly available. For example,
+searchert manager, Prometheus, Argo CD,
+these all are the operators that is
+available on the um operator catalog and
+this operator catalog is called operator
+hub. Okay. So operatorhub.io
+from where you can check it. I'll I'll
+show you that. So this is nothing but an
+online repository or online registry for
+operators like we have docker hub for
+your docker images right we have
+artifact registry uh we have several
+other repositories for different purpose
+similarly we have operator hub for
+operators specifically
+okay so you actually uh uh install OM
+and then using OM you can install any
+operator from the operator hub It's
+pretty simple and straightforward. I
+will show you that. Now you can also
+write your own operators. You can
+install it publicly uh available
+operator but you can also install your
+own operator
+and you can use that you can use helm
+you can use anible or you can use a go
+based operator written in golang. Okay.
+So golang or go based operator is the
+preferred way of writing your own
+operators but you can choose any of
+these.
+All right, let's do the certificate
+manager operator installation. So I have
+logged into my free playground of
+codecloud. You can find the link in the
+description. It's free to use. So make
+uh make use of it or you can use your
+own playground or if you have any own
+kubernetes installation feel free to use
+whatever you have. Okay. So um um before
+that I want to walk you through the
+operator hub. So this is the operator
+hub like this is a repository for all
+the community operators all the paid
+operators and everything is there. So
+different providers have different
+operators and it's based on different
+categories based on different providers
+and their capability level. But you can
+search over here there are very popular
+um operators such as Prometheus. Okay.
+So you can find Prometheus over here. uh
+if you search uh you can see uh
+Prometheus operator over here then we
+have Argo CD uh which is over here then
+we have CL certificate manager the one
+that we'll be using so once you find it
+click over there and click on install so
+you will find the instructions over here
+or you can follow the GitHub repository
+as well because these instructions will
+just install the search manager operator
+but it will not have further instruction
+of how to use it right you have to
+figure out yourself or you can read the
+documentation. You know, you have to
+create all these resources. But I have
+created a simplified guide over here in
+the GitHub repository is the same um
+GitHub repository that I have been using
+for this series. I have created a
+separate folder for day 50 and the name
+is day 50- operators. You will find it
+the description. So, we'll start with
+installing OM. So, OLM is the uh package
+manager for operators. Okay. U this is
+as simplified as it gets. So, using this
+so you install your operator and then
+you provide instructions to your OM that
+install this operator from the catalog.
+Okay. So, this first step will install
+OM. Okay. So, I'm going to run this
+command over here in my playground.
+So, it should take a few minutes. It
+will install all the respective uh CRDs.
+It will install all the respective it
+will create some name spaces, custom
+rules, bindings
+uh and many other resources you will see
+uh in the on the screen like network
+policy, service accounts and so on. Once
+it is done uh this command will be
+completed. Currently it says waiting for
+the deployment OM operator roll out to
+finish. Okay. So it has the logic to uh
+watch for the resources and once the
+resources are up once the pod are
+healthy only then this command will be
+completed. So this is u how OM will be
+installed. Okay, it says install ready
+and deployment. Uh so there are a few
+deployments as you can see OLM operator,
+catalog operator and there should be one
+more I believe.
+All these um deployments will be created
+and the pods will become healthy after
+this phase. So once that is done, you
+can install the operator using this
+command. Okay, it's it's a basically a
+YAML. In this YAML there is an
+instruction of which operator you need
+to install from the catalog hub. So it
+has the name space details. It has the
+name of the certificate manager. If you
+want you can open this file in a new tab
+and view the content. But it's a simple
+file. I'm sure uh you'll be able to
+figure it out. For now I can just run
+this. And it says uh
+subscription operator core OS my search
+manager has been created. So it created
+a CRD I believe. Okay. And now you can
+wait for OM pods to be ready. So run
+this command. Get pods on the OM
+nameace. And as you can see there are
+few because there were uh one two three
+there were like four deployments. One
+was catalog operator OM operator
+operator hub IO. Why the session is
+killed?
+Let's wait if it's reconnecting or not.
+Okay, let me run the command again. It
+will take a few more minutes.
+Okay, let me pause and uh do the steps
+that I have done till now. Okay.
+Okay. So, I have done the operator
+installation again and now let's run the
+uh get pods command on OM nameace. Okay.
+So all these pods are up and healthy.
+Then as part of the next step there is
+get CSV-en and operators. So there are
+certain other CRDs that will be
+installed in the operator name space
+when we ran this command but it's going
+to take a few minutes. So I'll just put
+a watch over here so that we can see
+once they are up. Okay. Okay. So once
+they are up, you will see the status
+from installing to oh it's it's over
+there. So you will see the status from
+pending to installing to succeed. Okay.
+So I'm just going to pause the recording
+till it's doing its work.
+Okay. So after few minutes as you can
+see the status changed from blank to
+pending. Then it became install ready
+then installing and then finally
+succeeded. Okay. Okay, so the CRDs has
+been installed successfully and you will
+see the search manager version 15.5 has
+been installed. Um, so the so this was
+the default version I believe but it
+installed the latest version
+16.5. Okay, so I'm just cancel this
+command. And now you can do cubectl get
+pods on the same name space which is
+operators and you will see some pods as
+well. So these pods search manager, CA
+injector, search manager, web hook,
+these pods are now managed by the search
+manager, right? So search manager
+operator created and these parts and uh
+it will be watching these pods which
+will perform all the action, right? So
+uh now let's go to the next step. The
+next step is the verification which we
+just did. Okay. And make sure you check
+the CRDs as well that uh searchert
+manager CRDs have been installed or not.
+So you can just run get CRD and grab for
+searchert manager. You will see
+different CRDs for certificate request
+for um
+acme inst uh challenges issuers orders
+and so on. Right? These are different
+CRDs that are part of the bundle. Now
+create an operator group. So operator
+group defines a set of name spaces that
+operator will watch. Okay. So in this
+YAML as you can see this will create an
+operator group in the operator name
+space with this name and it will watch
+operators name space. You can have
+multiple name spaces. It's a list inside
+the target name space. Okay. So for now
+I'm just going to copy this YAML
+operator group dot YAML. I mean give it
+any name you want.
+and then cubectl apply-f
+og.yamel. Okay, so it says
+created uh now run the command get
+issuer and get certificate. So these are
+two custom resources but we have not
+created the custom resources yet. We
+have only created the custom resource
+definitions. So if you run these
+commands now you won't see anything,
+right? Because we have only created the
+definition. So let's create the
+resources. Now issuer, why do we need
+issuer? Because we are um we are giving
+a certificate management authority the
+permission to issue a certificate for
+us. Right? So now in this case we are
+using self-signed certificate that means
+we'll be signing it by ourself. The
+digital signature will be self-signed.
+So we need to create a self-sign issuer.
+Okay. So over here in the spec we need
+to provide self-signed and like the API
+version is search manager kind is
+issuer. Okay. So I'm going to copy this
+and create the YAML for issuer. So vi
+issuer dotyl.
+Okay. Paste the yl and then apply
+apply hyphen f issuer.
+Okay. Now this is a custom resource of
+kind issuer. So cubectl get issuer in
+the default name space. So that's why
+now it says self-signed issuer equal to
+true. Now we have created the issuer.
+Now we need to create a certificate that
+this issuer will be issuing. Right? So
+um here is the yaml for the certificate.
+Okay.
+Now vi and let's call it search.l.
+And in this what we have is as you can
+see it will create a secret with this
+name. Okay. And then DNS name is this.
+So we are telling the certificate
+authority to issue a self-signed
+certificate for this domain. Okay. And
+using the issuer this. So this is the
+issuer reference we are passing.
+So now cubectl apply - fert.
+Okay. Now do get issuer again. The
+status is true. Now if you do get
+certificate
+okay the uh status is true and it has
+created a new secret as well. So if you
+do cubectl get secret
+you will see a new secret has been
+created just now. This secret was
+created for the certificate management.
+And if you want to describe this
+describe secret and secret name is my
+app TLS
+it has three fields. It has csert TLSert
+and TLS key. So it created the it signed
+the certificate and it generated the key
+in certificates and created as a secret
+in the Kubernetes itself. Okay. So
+that's what it did. The status as you
+can see of the certificate is already
+equal to true that means it has been
+issued. So let's go over here and
+secret describe secret uh and yeah uh
+you can check the logs as well. So this
+will check the operator logs and we will
+see the status in real time. Okay. So
+run this command and over here you will
+see um let's see where it is.
+Okay, over here found status change for
+certificate my app certificate condition
+ready from false to true that means the
+certificate was created it was initially
+in the false state but then because
+operator is watching it operator checked
+the desired state which is it should be
+true the certificate should be issued so
+it did it work and it updated the status
+from false to true. So it has issued the
+certificate and that's what we wanted to
+test, right?
+Um you can follow along. You can check
+the parts and everything over here. Um
+and then finally you can do the cleanup.
+But this is pretty much basically what
+the operator did for us. So I hope you
+were able to understand like how
+operator works and what we did in this
+case especially in case of certificate
+manager how it uh how we installed the
+OM how we install operator using OM and
+then it uh it issued the certificate for
+the newly created certificate and the
+self-signed issuer. So try it out
+yourself and let me know in the comment
+if you face any issues. Then I have also
+created the GitHub repository with the
+step by step stepby-step instructions so
+you can follow along. So yeah, thank you
+so much for watching. I will see you
+soon with the next video and till then
+happy learning. Take care.

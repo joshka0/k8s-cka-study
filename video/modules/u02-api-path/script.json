@@ -1,0 +1,151 @@
+{
+  "title": "Five Gates",
+  "subtitle": "Module 02 — the API request path, admission webhooks, and who owns a field",
+  "series": {
+    "module": 2,
+    "unit": "u2",
+    "spineSegment": "admission / storage",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/content.js unit u2.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "Segment two of the spine: admission and storage. The pilot showed a write passing five gates in about forty seconds. This module is what happens inside them, why one of them can take down a cluster, and what a conflict is actually telling you.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE module 01's spineLocator with segment two lit instead of one."
+      }
+    },
+    {
+      "id": "authn-vs-authz",
+      "n": 1,
+      "stage": null,
+      "title": "Who, then may they",
+      "lane": "control",
+      "estSeconds": 62,
+      "narration": "Gate one establishes who you are. A certificate, a bearer token, a service account token — whatever the mechanism, its output is a username and a set of groups. That is all authentication does. It never decides anything. Gate two takes that identity and asks whether it may perform this verb on this resource: get pods, delete secrets, create deployments in this namespace. RBAC is the usual answer, and RBAC only grants. There is no deny rule to find. When a request is refused, look for a missing grant, not a rule that blocked it. And the two gates fail differently: a bad token is a 401, a good token without permission is a 403.",
+      "visual": {
+        "type": "authGates",
+        "spec": "NEW. Two gates side by side. A request token carries a certificate; gate one strips it and emits 'user: joshka, groups: [dev, sre]'. Gate two takes that identity plus verb+resource and consults a stack of RBAC rules, showing that they only ever add. Show both failure modes as labelled bounces: 401 at gate one, 403 at gate two."
+      }
+    },
+    {
+      "id": "admission-shape",
+      "n": 2,
+      "stage": null,
+      "title": "Mutate, then validate",
+      "lane": "control",
+      "estSeconds": 58,
+      "narration": "Gates three and four are admission, and they come in that order for a reason. Mutating admission may change your object — injecting a sidecar, filling in a default, adding a label. Validating admission may only accept or reject. If validation ran first, a later mutation could store something nobody ever checked. So mutation runs first, and what gets validated is the final object. That ordering also constrains how you write them. Other webhooks edit the object, so a mutation can run more than once. It has to be idempotent. Injecting the same sidecar twice is the classic way to find out yours is not.",
+      "visual": {
+        "type": "gateSequence",
+        "spec": "REUSE the pilot's GateSequence, focused on gates three and four. Extend it: on the mutation gate, run the object through twice and show a non-idempotent mutation appending a second sidecar, flagged red, beside an idempotent one that stays stable."
+      }
+    },
+    {
+      "id": "webhook-cost",
+      "n": 3,
+      "stage": null,
+      "title": "Your Service, on the hot path",
+      "lane": "control",
+      "estSeconds": 66,
+      "narration": "Both admission stages can call out to a webhook you wrote. This is where a policy change takes down a team that has never heard of you. Registering a webhook puts four things into the API server's critical path: your Service, its DNS, its TLS trust and its response deadline. That applies to every request its rules match. Breadth of those rules is your blast radius. A webhook scoped to one CRD in one namespace is a contained risk. The same webhook with a wildcard rule means every pod creation in the cluster now waits on your deployment being healthy.",
+      "visual": {
+        "type": "webhookBlast",
+        "spec": "NEW. API server in the centre with requests streaming through. A webhook registers with a narrow rule — a thin slice of requests detours to it, the rest flow past. Then the rule widens to a wildcard and the detour swallows the whole stream. The webhook Service then goes unhealthy and the whole stream backs up. Show the queue building."
+      }
+    },
+    {
+      "id": "failure-policy",
+      "n": 4,
+      "stage": null,
+      "title": "Fail closed or fail open",
+      "lane": "control",
+      "estSeconds": 60,
+      "narration": "Which forces a decision you cannot avoid: failurePolicy. Fail closed means a timeout rejects the request — your policy is never bypassed, and your webhook being down stops writes. Fail open means a timeout admits it — writes keep flowing, and your policy silently stops applying exactly when something is wrong. There is no correct default. A webhook enforcing a security invariant should probably fail closed. One adding a convenience label should probably fail open. Saying that out loud, rather than picking one, is what a good answer sounds like.",
+      "visual": {
+        "type": "failurePolicy",
+        "spec": "NEW. Split screen, same webhook timing out on both sides. Left, Fail: the request bounces, a red 'rejected' stamp, and a counter of blocked writes climbing. Right, Ignore: the request passes through untouched, green, with a subtle amber note that the policy did not apply. Neither side framed as the winner."
+      }
+    },
+    {
+      "id": "webhook-design",
+      "n": 5,
+      "stage": null,
+      "title": "Before you write one",
+      "lane": "control",
+      "estSeconds": 56,
+      "narration": "So before writing a webhook: scope the rules as narrowly as correctness allows, and use object selectors so unrelated traffic never reaches it. Pick failurePolicy from the domain, not from habit. Budget the timeout against API latency, because that timeout is now part of every matching request. Run enough replicas that a rolling update does not take the API path with it. Manage the certificate lifecycle before it expires at three in the morning. Keep the verdict deterministic — the same object must always get the same answer, or you have built something nobody can debug.",
+      "visual": {
+        "type": "webhookChecklist",
+        "spec": "NEW. Six items building as a checklist, each with a small icon and the failure it prevents in muted text beside it: match scope → blast radius, failurePolicy → silent bypass, timeout → API latency, replicas → self-inflicted outage, certs → 3am expiry, determinism → undebuggable. Not a bullet list — lay them out as a design card."
+      }
+    },
+    {
+      "id": "still-rejected",
+      "n": 6,
+      "stage": null,
+      "title": "RBAC allows it, it still fails",
+      "lane": "control",
+      "estSeconds": 52,
+      "narration": "A successful authorisation clears exactly one gate. When RBAC allows something and the API server still refuses it, six suspects remain. Admission policies and webhooks. Schema validation. Resource quota. Immutable field rules. API conversion. And storage failures. They fail with different messages, which is the fastest way to tell them apart — a quota rejection reads nothing like an immutability error. Reading the message properly is usually faster than reasoning about the pipeline.",
+      "visual": {
+        "type": "rejectionLadder",
+        "spec": "NEW. The five gates drawn as before, with authorisation lit green. Below the path, the six remaining rejection sources fan out, each with a representative error message in monospace. As each is named it lights. Emphasise that they sit downstream of a green authorisation."
+      }
+    },
+    {
+      "id": "concurrency",
+      "n": 7,
+      "stage": null,
+      "title": "Two writers, one object",
+      "lane": "control",
+      "estSeconds": 58,
+      "narration": "Past the gates the object is stored. It immediately becomes something more than one actor writes to. resourceVersion keeps that safe. You read an object and send back the version you read. If anything changed in between, your update is rejected with a conflict. A conflict is not an error to retry blindly. Replaying your stale body destroys whatever the other writer did. Fetch the current object, recompute your delta against it, and retry with backoff.",
+      "visual": {
+        "type": "optimisticConcurrency",
+        "spec": "NEW. Two controllers read the same object at resourceVersion 41. A writes, bumping it to 42. B submits its edit still carrying 41 — rejected, conflict. Show the wrong path first, greyed: B force-writes and A's change vanishes. Then the right path: B re-reads at 42, recomputes, writes 43, both changes present."
+      }
+    },
+    {
+      "id": "field-ownership",
+      "n": 8,
+      "stage": null,
+      "title": "Who owns this field",
+      "lane": "control",
+      "estSeconds": 60,
+      "narration": "Server-side apply takes that further and tracks ownership per field path in managed fields. When your apply conflicts, the API is telling you another manager already owns those fields. Your HPA owns replicas. Your service mesh owns that annotation. Forcing the apply resolves it by taking the field, and the previous owner will simply set it back on its next reconcile. You have built a fight, not a fix. Force is right when ownership is genuinely moving, and you know who held the field and why.",
+      "visual": {
+        "type": "managedFields",
+        "spec": "NEW. One object with its field paths listed, each tagged with an owning manager. An apply arrives claiming spec.replicas, already owned by the HPA — conflict raised. Then show force: ownership flips, and on the next tick the HPA's loop flips it back, and back again, oscillating. Let the oscillation run long enough to read as a fight."
+      }
+    },
+    {
+      "id": "close",
+      "n": 9,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 40,
+      "narration": "Segment two, then. A failure here has a signature: your write is refused, or accepted and then quietly altered. Both leave a trace in the API response, and neither produces a pod. If you got an object back and nothing happened afterwards, you are past this segment. You are into the next one: controllers, watches, and the loop that is supposed to notice. That is module three.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: segment two shrinks back into the spine, segment three lights to preview the next module."
+      }
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive, lesson-by-lesson course on Kubernetes architecture: control loops, scheduling, runtime, networking, storage, availability and scalability. Short drills, immediate feedback, spaced review, and a timestamped video clip for every idea.">
+  <title>Kubernetes Beyond YAML — Interactive Architecture Course</title>
+  <script>
+    // Every asset here is referenced relatively, so the page must be at a path
+    // ending in "/" (or a real .html) or the browser resolves them one level
+    // too high. Matters when mounted under a prefix — e.g. tailscale serve
+    // --set-path /k8s, where /k8s and /k8s/ are both served but only the
+    // second resolves assets correctly. Path-agnostic: no mount point baked in.
+    (function () {
+      var p = location.pathname;
+      if (p && !/\/$/.test(p) && !/\.html?$/i.test(p)) {
+        location.replace(p + '/' + location.search + location.hash);
+      }
+    })();
+  </script>
+  <link rel="icon" href="assets/favicon.svg">
+  <meta name="theme-color" content="#172554">
+  <meta name="apple-mobile-web-app-title" content="K8s Course">
+  <link rel="stylesheet" href="assets/learn.css">
+</head>
+<body>
+
+<header class="topbar">
+  <button class="mark" id="homeBtn" type="button" style="border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer">
+    <span>Architecture interview course</span>
+    Kubernetes Beyond YAML
+  </button>
+
+  <button class="stat due" id="reviewBtn" type="button" hidden title="Practise the items that are due">
+    ↻ <span id="reviewLabel">Review</span> <b id="dueN"></b>
+  </button>
+  <span class="stat" title="Day streak">🔥 <b id="streak">0</b></span>
+  <span class="stat" title="Total XP">⭐ <b id="xp">0</b></span>
+  <span class="stat sync" id="syncStat" hidden></span>
+  <button class="stat" id="soundBtn" type="button" aria-label="Toggle sound">🔊</button>
+</header>
+
+<main class="wrap" id="screen"><!-- screens render here --></main>
+
+<div class="checkbar" id="checkHost" hidden></div>
+<div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+
+<script src="assets/content.js"></script>
+<script src="assets/advanced-content.js"></script>
+<script src="assets/learn.js"></script>
+</body>
+</html>

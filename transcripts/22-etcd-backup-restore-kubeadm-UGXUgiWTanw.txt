@@ -1,0 +1,510 @@
+Hello everyone, welcome back to TechOps
+tutorial. In today's video, we are going
+to learn something very important exit
+backup and restore in a cubedm cluster.
+This is not just another Kubernetes
+topic. This is about the disaster
+recovery.
+We will be working on three node setup,
+one control plane node and two worker
+nodes created using QBDM.
+In this session, I will show you where
+its set runs in QBDM, how to take a
+proper backup, how to simulate a real
+failure and most importantly, how to
+restore the cluster safely. This topic
+is very important for real production
+environments and also very important if
+you are preparing for CK exam. So, let's
+start by first understanding why backup
+is so critical in Kubernetes.
+Now let's understand why it set backup
+is mandatory in Kubernetes.
+restores the entire cluster state.
+Everything you create in the cluster
+goes into your pod deployments service
+config maps secrets rolebase access
+control rules all of it stored inside
+its set. The API server talks to set for
+every read and write operations. So
+whenever you run cubectl get cubectl
+create or cubectl delete the actual data
+is stored in its set.
+Now imagine this if the exit data
+directory gets deleted or disk crashed
+or the control plane node fails your
+cluster state is gone. Kubernetes will
+still be installed but our objects will
+disappear. That's why backup is only
+recover options. Without a valid
+snapshot, you cannot rebuild your
+cluster state. So always remember this
+line. If it set is gone, the cluster is
+gone. That is why its set backup is not
+optional. It is mandatory in production.
+Now let's understand where its runs in
+Cubadium cluster. In QBDM setup runs
+only on the control plane node. It does
+not run on worker nodes and very
+importantly it runs as a static pod.
+What does that means? A static pod is
+not created using cubectl apply. It is
+directly managed by cublet service
+running on the node. If you look at this
+path itet kubernetes minifist/set.l
+camel.
+This file defines the headset pod. The
+cublet continuously monitor this folder.
+If the file is present, cublet ensures
+the pod is running. If the pod is
+crashed, cublet recreates it
+automatically.
+Now let's talk about the data storage.
+The actual set data is stored in where
+lib/set.
+This directory contains the full cluster
+state. So if the directory is deleted or
+corrupted the cluster state is lost.
+That's why during restore we must be
+very careful with this data directory.
+So remember in cubeadm
+runs as a static port minifist is inside
+etc/ kubernetes/minifist
+data is stored in libet.
+This understanding is very important
+before we move to backup and restore
+step. Now let's look at a full workflow
+before we start the live demo.
+Now before we move to the terminal,
+let's quickly understand the full backup
+and restore workflow. First we start
+with the backup phase. Step one, we
+check headset health. We must confirm
+that is running properly before taking a
+snapshot.
+Step two, we take a snapshot using its
+set CDL.
+Step three, we verify the snapshot file.
+We don't just trust it, we confirm it is
+valid. That completes the backup phase.
+Now comes to restore phase.
+Step four, we simulate a disaster. We
+will break the cluster intentionally so
+you can see what really happens. Step
+five, we stop the API server. This is
+very important because the API server
+continuously talks to it set. Step six,
+we restore the snapshot to a new data
+directory. Step seven,
+we update the set miniface to point to a
+new directory. Step eight,
+the control plane restart automatically.
+And finally step nine we validate the
+cluster recovery. We check whether our
+deleted resource are back. One very
+important rule to remember always
+restore to a new data directory. Never
+restore on top of existing one. Now that
+you understand the full flow, let's move
+to the live demo and perform each step
+one by one.
+Let me access the terminal. Before
+touching to its set, let's confirm our
+cluster is healthy
+cubectl
+get nodes.
+All nodes are in ready state.
+Now check the component status.
+This is optional step. If you want you
+can skip this.
+This shows the control plane components
+like scheduleuler, controller manager
+and headset are also healthy. So our
+cluster is fully operational.
+Now let's confirm where headset is
+running and inspect its configuration.
+cubectl
+get ports - n
+cube system.
+This confirms its set is running as a
+pod in cube system name space. Now let's
+inspect its minifest.
+Sudo cat etc
+kubernetes
+manifest
+grap
+d
+give the sudo password
+this is the directory where the full
+cluster state is stored
+before taking anet snapshot we need a
+tool called set cdl this tool allow us
+to interact with its it for example
+checking the health taking a backups and
+restoring the snapshot in cubadium
+cluster headset ctl is usually not
+installed by default so we need to
+download it before downloading it set
+binaries it's always a good idea to
+check which headset version is currently
+running in your cluster this ensures we
+download a compatible ctl version
+cube Ctl
+describe pod
+get s master master
+master-
+n cube system graph- i image.
+So here you can see 3.5.16.
+This shows the headset container image
+version running in cluster which is
+3.5.16. So we should download a matching
+or compatible settl version. Now let's
+download the set binaries
+version.
+Now run the duplicate command.
+This downloads the officialset binaries
+from the headset GitHub release page.
+So I will pause the video. Once this is
+done, I will resume back.
+Let's extract the package.
+- xvf
+you will see files like sets ctl set
+utils readme for our backups and restore
+operations. We mainly need the adset ctl
+tool.
+Now let's move at setct ctl and adset
+utils to a system path.
+the sudo password.
+Let's verify the installation.
+It's settl
+version. It's 3.5.16.
+Now it's ctl is installed and available
+systemwide.
+Before taking any backup, we must
+confirm that Esset is healthy. If EDSET
+itself has a problem, the snapshot may
+not be reliable. Since certificates are
+stored under /c/ Kubernetes/PKI,
+they are owned by root. So, we must
+runct
+with sudo to access them.
+This is the command for health check.
+Perfect. It said is healthy. Now we can
+safely proceed with taking a snapshot.
+Before taking a snapshot, we need some
+Kubernetes resource in a cluster. So I
+will create a new name space and a
+deployment running in GX. Later in this
+video, we will simulate a disaster
+scenario and then recover this resource
+using its set backup.
+First, let's create a name space
+ubectl
+create nameace
+disaster
+test.
+Let's verify cubectl get name space.
+Here it is. We have created a name
+space.
+You can see the name space disaster
+hyphen test has been successfully
+created. We will use this name space
+later to verify whether our cluster
+resource are restored correctly after
+disaster recovery.
+Now let's create a simple engineext
+deployment
+cubectl
+create
+deployment engine x- image
+verify it cubectl get deploy Good.
+Okay, now it is up and running.
+Deployment shows one available pods. If
+the image was not prepulled, the pod
+might show container creating until the
+image is downloaded.
+Let's check the pod cubectl get pods
+and run.
+It is created on K's worker.
+Pod is running on K's worker.
+In the next step, we will take an Esset
+snapshot backup. Before taking an exit
+snapshot, let's ensure that our admin
+user has the required cluster
+permission. Rolebased access control
+objects like cluster roles and cluster
+role bindings are stored in its set. So,
+whatever exist at the time of the
+snapshot will also be restored later.
+If the admin binding does not exist in
+the snapshot after restoring the
+cluster, we may get forbidden errors
+when running cubectl commands. So let's
+verify whether the admin binding exist.
+cubectl
+cluster
+binding
+grapes
+admit
+no output. If nothing appears, it means
+the binding does not exist yet. Let's
+create it.
+Let's verify.
+Now the Kubernetes admin user has a full
+cluster access. Since rolebased access
+control objects are stored in its set,
+this configuration will also be included
+inside our snapshot backup. So after
+restoring the headset snapshot later in
+this video, we will still be able to
+access the cluster normally without
+needing additional role-based access
+control fixes.
+Usually QADM does this for you, but we
+are doing it explicitly to ensure our
+backup definitely contains our
+permissions.
+First, let's create a directory where we
+will store our backup
+ink-pack.
+Now take this snapshot.
+This is the command.
+Snapshot saved at this location.
+Our headset snapshot has been created
+successfully. Never trust a backup
+blindly. Always verify the snapshot. Now
+we verify the snapshot using headset
+util.
+This is the command.
+This command shows metadata like
+revision number, total keys and snapshot
+size. If this information appears
+correctly, it confirms our backup file
+is valid. Everything you see in this
+cluster name space deployments pods all
+of the information is stored inside it
+set which is the key value store used by
+Kubernetes.
+Now let's simulate a real disaster
+scenario. In real production environment
+the most critical components in
+Kubernetes is headset because it stores
+the entire cluster state.
+If headset data is lost or corrupted,
+the cluster control plane cannot
+function properly. So now we will
+simulate the situation. First we stop
+the quiblet service on the control
+plane.
+System ctl
+we need to provide sudo system ctl
+stop cublet.
+Let's verify it.
+The service is inactive.
+Cublet is responsible for running the
+static ports like its set cube API
+server, cube control manager, cube
+scheduleuler. Once cublet stop these
+control plane components will stop as
+well. Let's wait for 10 seconds.
+Now we have stopped asset container
+manually.
+List the running containers by using
+sudo.
+sudo crilps.
+So now stop the headset container.
+Stop. Give the ID
+and
+enter.
+Verify it is stopped or not.
+It is stopped. No output. This means the
+headset container is no longer running.
+Now I'm going to simulate an edetet data
+loss scenario by moving the headset data
+directory. This is similar to what can
+happen during disruption or accidental
+deletion.
+sudo ls where
+li x
+sudo mv
+where lip x
+where lip
+x- backup
+ls/ / where lip
+the directory / where liet stores the
+entire kubernetes cluster state by
+moving this directory we simulate a
+scenario where set data is lost now
+restart the cublet
+system ctl
+cublet it. Check the status.
+The status shows active and running.
+Wait around 1 to 2 minutes for control
+plane components to restart. Now check
+if its set is running or not.
+Still it is not started. Let's wait till
+it gets started.
+Yes, now it is running.
+Now try to access the cluster resource.
+UCTL
+get ports
+ubectl get nodes.
+Now you can see the cluster is not
+functioning correctly. Earlier we were
+able to list the pod nodes without any
+issue. But after removing the headset
+data directory the control plane has
+lost the cluster state. Because of that
+the API server cannot properly process
+our request and we are now seeing
+forbidden errors. This is exactly the
+kind of situation where an adset backup
+becomes critical. In the next step we
+will restore the cluster using snapshot
+we created earlier.
+Let's stop the API server
+sudo mtc
+kubernetes
+manifest
+cube api server.ml/
+empmp/
+press enter wait until the api server
+ports disappear
+you can check with ci
+CDL
+ts scrap cube- API server.
+Let's wait for 30 seconds.
+So cube API server is stopped now. Do
+not wait for API server to start while
+minifest is in /tmp.
+We will bring it back after restored.
+Now let's restore the headset snapshot
+we created earlier. This is useful if
+your Kubernetes cluster state gets
+corrupted or you accidentally delete the
+critical resource. First we restore the
+snapshot to a new data directory.
+This is the command.
+Here you can see added a member
+and restored snapshot.
+Snapshot restored to new data directory.
+Sudo ls where lip
+it is ready
+restore.
+This confirms that the set snapshot has
+been successfully restored into the new
+directory. At this point, the restored
+data exist on disk
+sudo vim
+/c
+kubernetes minifest.l
+I will search for web.
+I will rename this set -
+restore.
+I will update this data directory to set
+restore.
+Press escape. Press enter or press N. It
+will search.
+You need to edit here as well. Restore
+volume mounts and the host path.
+Let's verify
+one I have updated here. This is the
+first one. Next is this
+volume mounts and next is host path.
+Once you have done this, save and exit.
+Wait for it port to restart. You can
+verify with sudo crlps
+repetity.
+5 seconds ago it restarted.
+Now bring back API server sudo/
+empi
+server.ml.
+Move this to etc. Kubernetes
+manifest. Press enter.
+CDL
+PS
+grape cube server.
+Wait till API server start again. This
+may take more time to start.
+API server is running.
+Now let's verify our cluster
+using cubectl. Get nodes
+get ports
+name server.
+We are just verifying everything.
+If everything is back
+and running, deploy
+our deleted resource are back. Cluster
+successfully recovered.
+Let's quickly verify that our admin user
+and its rolebased access control
+permissions were also restored from the
+snapshot.
+QCTL
+cluster ro
+binding you can grab it
+kubernetes
+admin
+as you can see the kubernetes hyphen
+admin binding still exist which proves
+that set stores rolebased access control
+objects as well after restore all
+permission s are intact.
+Now let's do health check after
+recovery.
+This is the command
+headset is healthy after restore and our
+cluster state is fully recovered. That
+makes the recovery complete and clean.
+So today we took its set snapshot
+simulated full data loss restored from
+backup recovered entire cluster state.
+This is a real disaster recovery in
+Kubernetes.
+Now let's switch to the slide.
+Now let's talk about something common
+restore mistake. These mistakes are very
+common in real environments
+and also very common in CK exam. First
+restoring to existing data directory.
+Never restore on top of where liet
+always restore to new directory. If you
+mix old and new data, the cluster may
+not start properly.
+Second, forgetting certificates. When
+you are using it set ctl you must
+provide the correct csert and keys.
+Without proper certificates the restore
+or health check will fail. Third
+not stopping API server the API server
+continuously communicate with its set.
+If you try to restore while it is
+running it can cause a problem. Always
+stop the API server first.
+Next, using the wrong endpoints. Make
+sure you are using the correct set
+endpoints in QVDM.
+Next,
+not updating the ETS AL manifest. After
+restoring to a new data directory, you
+must update the manifest file to point
+to a new path. Otherwise, its set will
+still try to use the old directory.
+And finally, skipping the health check.
+Always check the set health check before
+taking a snapshot. If you remember these
+points, your restore process will be
+smooth and safe.
+All right, before we wrap up, if this
+helped you, make sure you like the video
+and subscribe the channel and also
+comment CK below if you want more exam
+labs and real practice scenario to help
+you prepare better. And if you want the
+complete QBDM series, check the
+playlist. The link is in the
+description.
+Practice this lab yourself. Break it
+again. Restore it again. That's how you
+build a real confidence. I will see you
+in the next one.

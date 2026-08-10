@@ -1,0 +1,632 @@
+good afternoon everyone welcome to the
+talk I'm timing a software engineer of
+airb B I work in Cloud infra team I'm
+currently focusing on building a high
+performance and reliable system for
+Airbnb internal DNS previously in AWS I
+worked on their blog storage platform I
+love my current job as it motivates me
+every day to learn think and explore
+something new I outside of work I enjoy
+baking hiking skiing and growing
+tomatoes and sunflowers in my
+yard today I'm going to talk about their
+DNS in kubernetes and share about the
+Airbnb kubernetes DNS use cases and
+solutions here is our agenda today first
+I will talk about their DNS
+functionality inside kubernetes then I'm
+going to share how CS works as a cluster
+DS server some takeaways of integration
+of cordings in airbnb's kubernetes
+infrastructure also share some major DS
+use cases in Airbnb and our
+Solutions finally I'm going to talk
+about some multic claster DS
+Explorations before I start let me ask a
+question how many of you have had to
+deal with or troubleshoot DNS issues in
+kubernetes and found it confusing
+wow I see so many hands thank you then
+today we are going to break it down by
+the end of the talk we will have a
+better understanding of kubernetes
+DNS so let's have a look together of how
+a DS request is generally resolved in
+the kubernetes cluster the DS request is
+sent out by the application running
+kubernetes pod the resolver is a first
+step of DS look up here the resolver
+refers to the DS resolver library that
+runs in the system to provide core
+functionalities for resolving domain
+names into IP
+addresses the actual resolver Library
+usage can be various depending on the
+programming language and operating
+system example in go there are two type
+of resolvers one is CTO resolver that
+calls standard C library GC and the
+other is pure gold DS
+resolver the resolver consumes the DNS
+configuration on the pod which is are
+specified in the resolve file the DNS
+configuration file contains the name
+server IP that the resolver will send
+the query to if we are using a cluster d
+as server this name server IP should be
+the cluster IP of the cluster DS service
+example the service is is called kubs
+with class IP 10. 32.0 do10 that
+resolver will send the traffic to this
+IP after the request reaches C Service
+CP proxy will route the traffic to
+Cluster DS server pod if your coup proxy
+runs in I table mode that traffic will
+be R via app table rules here the
+cluster DS server is cor DS
+C DS is a flexible extensible DS server
+that is currently used as a default
+kubernetes cluster DNS when C DS runs as
+a cluster DS server it interacts with a
+CO API server as asynchronously to
+resolve their kubernetes defined service
+and P
+DNS for the other domain record that are
+not defined in kubernetes cluster can be
+forward to Upstream the server example
+Route 53 Route 53 as a recursive DS
+server can resolve public domain
+names we just mentioned that the resolve
+confile holds the P DS
+configuration now let's have a closer
+look at how this configuration affects
+DS
+quaries you're able to read the P DS
+configuration from SL Etc SL resolve.
+com pass on your pod here is an example
+of the resolve com file we can see it
+contains name server search paths and
+options the name server spe specified
+the DS name server's IP address their
+search fied defines a list of search
+domains and the option section allows
+modification to certain internal
+resolver settings the commonly use
+option like OSS time out attempts
+and do Define the threshold for the
+number of dot which must appear in your
+name before an initial absolute query
+will be made time out sets amount of
+time the resolver will wait for a
+response from a remote name server
+before retrying the query via a
+different name server at times set their
+number of times the resolver will send a
+query to its name servers before giving
+up and returning an error to the in
+application this configuration might
+still seems confusing let's work through
+some
+examples here is a configuration and
+let's configure ww.
+airbnb.com there are two dots in this
+record which meets the UND do Strat cold
+that the query will be directly sent to
+the name server and the DS server used
+here is Route 53 which can response with
+a result
+great let's see another example of pqd
+resolution what is our pqdn PQ represent
+partially qualified domain names which
+means only a portion of the full domain
+name in contract fqdn stands for fully
+qualified domain names which represent
+the complete domain names of an address
+with the property as configuration
+settings both pqdn and fqdn can be
+resolve to the IPS
+successfully kubernetes defined DS
+record of service in format of service
+name. namespace SVC do cluster domain
+which can be resolved to their service
+cluster IP which is a virtual IP within
+the range of a cluster service IP range
+example service name is full Nam space
+is bar and the cluster domain is a
+cluster. loal the service pqdn is a
+full.box
+and the fqdn is full. bar. SVC do
+cluster. loal the fqdn here is a record
+that can be resolved by the cluster DNS
+with the proper DNS configurations the
+pqdn can also be
+resolved how does it work let's see this
+in as
+configuration in this example n do is
+one full do bar record has one dot meets
+their n do stretch good full record is
+directly sent to DS server but cluster
+DS server can't resolve it so return NX
+domain represent the domain name does
+not
+exist this result is not returned to the
+client yet as a configuration contains a
+search domain list the resolver will
+append each search domain and send the
+request to the name server in sequence
+full. bar append the first search domain
+here construct the record as full. bar.
+bar. SVC do cluster. local and sent a
+request to the name server unfortunately
+this is still not the correct record and
+got another NX Dom here don't give up
+keep trying okay append next searchman
+and the record is constructed as full.
+bar. SV c.c. local nice this is a record
+we can get the correct response and this
+result will be returned to the
+client interesting story is that n.5 is
+our kubernetes cluster First DS policy
+default DS option settings which makes
+their domain name to append all the
+search domains in the search pass before
+finally sending out the query as it is
+client is still able to get the correct
+response but client side DNS request
+latency is not
+optimized not
+good then you may ask can I customize
+these
+configurations yes there are ways to
+customize P DS
+configurations the P DS configuration
+can be customized with different
+settings first is kuate configuration
+kuate contains logic to construct pod DS
+configuration when creating a pod kuate
+configuration can be used to customize
+the Pod DS
+configuration specific fils to use as a
+first cluster DS is a list of IP
+addresses for cluster DS server if set
+Cate will configure all container in the
+cluster to use these addresses as name
+server for a pod using clust First DS
+policy
+example in Airbnb we configure it to the
+coordinat service cluster
+IP cluster domain is our DS domain for
+this cluster if set Cate will configure
+all containers in the cluster to search
+this domain in addition to the basis
+container DS configuration search
+domains of pod using cluster First DS
+policy resolve C is a resolver
+configuration file used as a basis for
+the positing resolution configuration
+this is a configuration used by pod
+using default DS policy you can set it
+to a pass that is amount on the Node
+during node bootstrapping that contains
+the desired DNS configuration you want
+to customize to which is also the way we
+use in
+Airbnb P DS policy is also a way to
+define p DS configurations kuate
+contains logic to create P config DNS
+configuration based on DS policy
+kubernetes defines four DNS policies
+theault is targeted to inherit
+configuration from the host or basis
+container DS resolution configuration in
+Cate clust first is a target to use
+cluster DS server to resolve cluster
+domain DS record note that default is
+not the default DS policy if a DS policy
+is not specifically specified then
+cluster first is
+used cluster first with host net is for
+p running with host Network should
+explicitly set the policy to use Custer
+DS server now means ordinance settings
+are supposed to be provided using their
+DS config fil in their P Spike and yep
+the DS config file in the PO is the
+are there another way to customize PA DS
+configuration it allows you to Define
+all the P DS
+configurations if we choose to customize
+PA DS
+configuration then it should accommodate
+the applications DS use cases let's see
+an example here in airb we have the use
+case that the application run in service
+mesh and need to reach AWS Services
+service mesh is a dedicated
+infrastructure layer for facilitating
+service to service communication using a
+proxy application running service MH can
+reach other applications using pqdm
+format defined of service name.
+namespace and the full DNS record is
+service name. namespace mesh domain and
+this mesh DNS is stored in Route 53 so
+we can Define that the search list
+contains a search domain and their end
+do set head two name server is Route
+53 their MH pqdn only contains one dot
+that will always be appended appended to
+the match domain first then sent out a
+query to the name server which is what
+we
+want and AWS Services endpoint contains
+at least two dots and it meet the stret
+cold here will be directly sent out to
+the name server so with this this DS
+configuration both kind of DS requires
+are optimized for achieving the
+functionality through a single DNS
+request one notice is to pay attention
+to the DNS configuration limit gipc
+standard Library DS resolver removes the
+limit of the number of search domains
+and characters of search pass since
+since v2.26
+kubernetes also extended its search
+domains and the search pass limit since
+v1.28 B utils contains their dig host
+and xlo up utilities for quing DS still
+has a limit so if you're using
+kubernetes version higher than v128 and
+uses more than its search domains in
+their search pass but use dig or host or
+NX loab command which is using b ut
+tails that have eight search domain
+limit that the search domain larger than
+eight won't be
+used now everyone should have a decent
+understanding of PA DS
+configurations in the DS request life
+ccle cycle we talked about C DS can be
+used as a cluster DS server to resolve
+kuber netics defined service and P DS
+let's have a deep per look at this
+part how is cording s used as a
+kubernetes cluster DS server cords is a
+DS server also forwarder WR in go that
+change plugins each plugin performs a
+specific DS function C DS provide a
+bunch of plug-in which Powers its
+functionalities and
+flexibilities to make cords perform as a
+Custer server you need to enable and
+configure the kubernetes plug-in
+kubernetes plugin implements the
+kubernetes D as based the service
+Discovery it uses kubernetes client API
+watch function to track their service
+and endpoint objects from CP API server
+and construct their DNS record based on
+their kubernetes defined service and P
+DS format it maintains a local cache of
+the watched object
+you can also enable other commonly used
+plugins as shown in the graph like ready
+plug-in serves a ready Endo required for
+Readiness probe Health plug-in serves a
+health end point required for laes probe
+promises plugin serves a matrix and
+point required for export Matrix log
+plugin enables query login cach plugin
+enables a server side front and cache
+and forward plugin is for facilitating
+proxy DS requests to Upstream
+resolvers cordings also support
+customized plug-in when you can write a
+plugin for che in your specific DS
+functionality note that the plugins
+order is very important the order is
+defined in the according as code plugin.
+CFG file if you develop a custom plugin
+you also need to properly insert it into
+the right position of the plugins
+chain each plugin can be configured to
+handle different domain or Zone request
+cords uses or cor file stored in config
+map for
+configurations in the cor file you can
+configure cluster. loal domains request
+be handled by kubernetes plug-in and all
+the other domains request be handled by
+forward plugin which forwards the DS
+request to an upstream DS
+server here is an example callil in the
+callil you can also apply other useful
+configurations like enable query login
+for eror response queries set a frontend
+cach TL enable automatic reload when
+cording core file change
+Etc C DS as a cluster DS a server can
+resolve kuber netics defined DS for
+services and PS record as shown in the
+graph This Record are used for
+kubernetes service discovery which is
+widely adopted in various kubernetes
+services and
+projects by March 2024 Airbnb have been
+fully integrated with cordings in our
+kubernetes platform it's a successful
+integration and noticeable for its
+operational excellence and
+soreness here are some takeways I'd like
+to share that probably can help folks
+who are going to murate to use coding s
+first is to evaluate the function and
+performance before adoption in our
+evaluation we found that we can get
+around 70% performance Improvement of
+average DS request latency which
+elevates our confidence of ating CS into
+our
+platform you the second is using the
+same DS service during
+migration when cumul cluster is
+bootstrapped we can easily Reserve an IP
+for cluster DS service but creating a
+new service in the cluster with another
+IP and changing the P DS configuration
+to use the new name server IP are tons
+of work a KU service can select a pod it
+is supposed to abstract through a label
+selector so we can use the same DS
+service during
+migration example the previous service
+is created as coup DS we can create a
+new deployment with a p spec selector of
+the same CS
+service in this way we don't need to
+create a new kubernetes service or
+change part DS configuration
+it saves us lot of e migration effort
+and can also gradually shift the DNS
+traffic in the cluster which we want to
+control the blast
+radius the other takeaway is are making
+sure to set appropriate memory and CPU
+request for the cords
+container when cins serve as a clust in
+as server its memory usage scales with a
+number of services and end points due to
+the local cache from the kubernetes
+plugin all PS have the same local cach
+size which doesn't automatically scale
+with HPA AKA horizontal p
+autoscaler in our evaluation we found
+cording as performance is a CPU driven
+enabling HBA based on CPU usage is
+beneficial now we have a comprehensive
+understanding of DS request within the
+kubernetes
+cluster next I would like to share some
+multicluster DNS use cases we have in
+Airbnb and how we set up the DNS
+architecture to fulfill the use cases we
+have one use case I want to share is a
+service to service Communication in
+service mesh in previous slides we
+mentioned a bit about service mesh
+record here service mesh is a dedicated
+infrastructure layer for facilitating
+service to service communication between
+services or microservices using a proxy
+e is an open- Source service MH that
+helps organizations run distributed
+microservices based applications
+anywhere in Airbnb we are using e
+service mesh our service MH architecture
+is using a dedicated MH management
+cluster for E steel control plan and
+applications running other multiple
+workload
+clusters e proxy setar is injected for
+all applications run in service MH as a
+e data
+plan e control plan will watch all the
+Clusters end points and merge end points
+in the same name space together this end
+points information will be pushed to the
+E proxy set cars for traffic routing
+applications running in workload
+clusters can communicate with each other
+through pqd
+format to achieve it we create a service
+object in MH management cluster using
+their same names space of applications
+pod this guarantees each application run
+mesh have a unique IP
+this service DS record is synced to
+Route 53 through external DS
+service external DS service is targeted
+for synchronizing exposed kubernetes
+service with DNS providers applications
+running workload clusters can resolve
+DNS through Route
+53 I think you all know how to configure
+DS configuration to allow resolver
+resolve DS with pqd in
+format after getting this Ser service IP
+the rest of the traffic route to the
+Target endpoint will be handled by E
+proxy another use case I want to show
+here is a multicluster direct P
+addressing in distributed database
+running on the kubernetes cluster saful
+set is important for data par ation and
+synchronization seful set pod has a
+predictable DS name each pod in a state
+for set derives its host name from the
+name of State for set and the ordinal of
+the Pod direct P addressing ensures that
+database queries can reach their target
+data partition and cross-cluster
+replicas can sync the data with each
+other to achieve multicluster state for
+set direct P addressing we can also
+leverage external DNS with Route
+53 in each cluster the P IPS are synced
+to Route 53 with their different domain
+name and the application can reach the
+target P by querying the Ping s with
+Target domain from Route
+53 pretty easy right
+but there are also challenges you may
+notice that we are heavily using Cloud
+DS services like Route 53 there are some
+limitations we might like Route 53
+throttling route 503 API have five
+requests per second per AWS account
+limit which is a hard limit that impacts
+Route 53 managed DS record
+update and adabs has 1,000
+24 package per second per elastic
+network interface limit which is also a
+hard limit that can impact the DS
+queries there are some other approaches
+we are exploring
+around kubernetes provides multicluster
+service API and coordinat have a
+multicluster plugin that supports
+kubernetes multicluster DNS resolution
+it introduces cluster set terminology
+ology a placeholder name for group of
+clusters with a high degree of mutual
+trust and shared ownership that shared
+services amongst themselves and is using
+a multicluster service controller that
+syncs service across clusters and Mak
+them available for multicluster service
+Discovery and
+connectivity as we're using e service
+mesh inside Airbnb e d aear also support
+multicluster DS request resolution
+within the
+mesh when proxy DS or as request from an
+application will be redirect to the
+sidecar which stores a local mapping of
+domain names to IP addresses but the
+limitation is it's only apply to the
+applications run with e proxy side
+car and welcome to discuss if you're
+using multicluster DS resolution in your
+system and we'd like to get more ideas
+and takeaways from the
+community this concludes today's talk
+welcome to scan the QR code to give me
+feedback and we have several minutes for
+the Q&A are there any
+questions thank you
+for cords how does it support cash inv
+validation as as records
+change you're asking uh how cording as
+cash validation change yeah or for cash
+invalidation so as a record changes
+where does that invalidation come in
+yeah it's are for if you're using the
+front end cash of cording s there you
+need to set the TTL of the record that
+is a the time you said if that expired
+the TTL then it is invalid okay thank
+you are there any other questions yeah
+is it possible to use NS update to
+dynamically update DNS zones with C
+DNS uh Dynamic update cords using NS
+update sorry could you say again NS
+update NS update
+this is are like if this uh I I heard
+you're asking about the NX update which
+is
+our yeah it's RFC I forget which one it
+is it's what bind n uses for dynamic
+updates it would be use we have a use
+case where it could potentially be
+useful for internal zones for testing
+purposes so that is our if for you find
+it uh for cording as that plugin if
+support that functionality that will be
+uh able to support cuz there are a bunch
+of airb uh C uh coordinat plugins that
+you can explore around the of it so you
+may refer to their uh specific plug-in
+manual that can find their uh answer
+there thank
+you I have a question here
+um sorry in terms of uh no local cach
+DNS uh have you explored that options
+what are what are the challenges you
+face with local cash DNS versus the code
+DNS itself not cach DNS right not local
+cach DNS yeah not the local cash DNS the
+is the other DNS cach layer you can
+apply it on the uh on on the Node that
+is a rent as a demon set which is also
+rent a kubernetes uh sorry a cord as
+service as a demon set in their node
+that is depends on that is depends on
+your like their service requires like
+how performance latency you want to have
+it's definitely can improve their DS
+request uh performance but you may
+evaluate if your system is really need
+there or this is doesn't really uh need
+it because that introduce additional
+part on each node and introduce add cost
+so if you use not local um cach that is
+request first come to their node local
+cach then you can configure this not
+local cache DS request to reach
+cordings so in Airbnb have you tried it
+and you found any challenging with that
+and you didn't like it that pattern uh
+we are still evaluate about that part
+this is are like in
+progressing uh okay last question okay
+uh the question is more about uh how did
+you do the puff testing about the core
+DNS versus the DNS core U did you use
+like a cash invalidate when you're doing
+the testing or how are you as assuring
+that the performance is improved sorry
+could you speak louder yeah uh can can
+you explain a little bit more about how
+do how does your puff test was running
+and uh how do you evaluated that cordan
+is a problem and how how much efficiency
+you improved on all of that because in
+general you your client will be caching
+your I resoled IP right so did you have
+any client that will invalidate the or
+is it going to establish new resolution
+whenever you make a new call and how did
+you do that yeah when you want to
+evaluate that is uh related with how
+you're going your uh applications use
+case and how you want to evaluate based
+on um their specific use case you want
+to evaluate example if you don't want to
+evaluate the cash you can just disable
+it so that is a fully just the evaluate
+which is without cash but if your you
+see the cash size is enough to um to
+hold your like DS record in the cluster
+which means most of the DS record will
+be cached in that case you can also
+enable the cash evaluate with the cash
+enabled so that is a based on like your
+use case and your DS patterns okay okay
+thank you yeah thanks everyone if
+there thanks everyone so in the end we
+invite you to explore career
+opportunities with airb B visit careers.
+arb.com and we look forward to welcom
+you to our team thanks everyone

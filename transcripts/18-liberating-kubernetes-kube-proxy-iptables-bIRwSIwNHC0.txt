@@ -1,0 +1,678 @@
+hi everyone and thanks for the intro and
+thanks for the for coming to my talk so
+my name is Martinez and I work at AI
+surveillant a company behind the cilium
+project so we work with biggest probably
+and most sophisticated kubernetes users
+and we help them to network and secure
+their clusters so all the work which I'm
+going to present in this talk is going
+to be done in the cell in the scope of
+the cilium project which is an
+open-source CNI plugin and also a
+network security plugin and all this
+work which I'm presenting has been done
+together with Daniel Berkman Thomas
+Crafton unremarked ins and other members
+from the Salima team so okay so this
+talk is about getting rid of cube proxy
+from kubernetes and removing cube in a
+way that we can still have this cube
+Renatus services functionality so the
+removing cube proxy has one nice
+advantage that kubernetes can finally
+get rid of IP tables and netfilter
+and those two are legacy technologies
+which were built over 20 years ago
+so netfilter is a packet processing
+framework in the linux kernel and which
+is used by IP tables and IP vs and IP
+tables and IP vs is used by q proxy to
+implement the service abstraction and IP
+tables or IP VSS use depending on their
+mode in which keep proxies running
+so before we start getting into details
+I would like to show you some demo so
+hopefully it's working so I have a
+little Q&A disclosure and I have some
+pods there so it's nginx part 1 and 2
+and I also have the quite anxious of
+sorry for miss types so I have also one
+service and janeck service and i'll be
+trying to access the service from a host
+so it works then I will try to access
+the service from by using the cluster IP
+from pod it works and then I will try to
+access the service from remote client so
+over the note port and again it works
+and if we take a look into the IP tables
+rules which we have you will see that we
+have no IP tables rules so maybe I'm
+hiding those rules let's try to add
+iptables row let's say for word j drop
+and we can see that oops we don't have
+even the IP tables modules installed in
+the system and let's check whether we
+have the what was the kernel version
+whether we have installed netfilter
+and the kernel whether we have compiled
+it in and we see that config netfilter
+is not set so it basically means that
+the netfilter was compiled out of the
+kernel so this talk is going to be about
+how we made it possible that you can
+have the service abstraction without IP
+tables and netfilter
+ok let's move back so before we begin so
+why do we want to get rid of IP tables
+and netfilter so on this slide I have
+the kernel profile which I got while
+doing some network stress testing and
+long story short me and my colleague
+we're trying to connect docker
+containers by using IP villain instead
+of the traditional way with the virtual
+Ethernet peers and we were expecting to
+see much lower latency but in the end we
+didn't see and we took a look into the
+kernel to see what what's going on and
+we saw that quite a huge amount of time
+like percentage of total time of packet
+processing was
+in iptables modules and netfilter module
+to which I put in bolt so basically that
+cluster which we used for testing it
+even didn't have many
+iptables rules it just had some rules
+which talkie installs by default and the
+situation because even worse when you
+have the rules which iptables rules
+which match your traffic
+another reason is reliability of
+netfilter and iptables
+so probably many of you got hit by this
+issue where a cube dns was taking five
+seconds to replies to your dns request
+and the culprit of the issue was that
+netfilter had some race conditions which
+got fixed but I believe that still many
+of you are experiencing this issue
+because you're probably running not
+decent enough kernel version and it's
+understandable because updating the
+kernel in the large production fleet
+let's say takes time and also it's kind
+of risky operation but also fixing the
+kernel it takes time so to give you the
+timeline so I got the root cause of this
+issue in 2008 DNA and then I submitted
+some kernel touches to the net filter
+project in August 2000 18 and those
+patches got merged by the net filter
+team only in 2000 19 February so it took
+almost half a year to merge the patches
+and undefined amount of time to four
+distros to back for those patches so the
+fix should be available now but it took
+a while to make it available and fun
+fact is that I was doing some archeology
+of this issue and I found out that first
+of currents of this bug was mentioned
+almost a decade ago so yeah so another
+issue is debugger built debug ability so
+I would say that's kind of easy to debug
+IP table rows when you have just a
+couple of them and you can use the
+packet
+hunters or you can I'd know add the new
+rule which would log all your packets
+and you see which rule got exactly here
+but situation becomes more interesting
+when you have a bit more rules so in
+this slide I tried to place all the IP
+tables rules which were created by cube
+proxy and I had just 100 services which
+used the same endpoint so unfortunately
+I didn't manage to put all the rules on
+it into a single slide and to add more
+fun cube proxy periodically resets the
+IP tables packet counters so good luck
+with debugging so I think I could talk
+more about what's wrong with the IP
+tables I think I could spend all slot
+about this but let's move on
+so let's better understand where is the
+overhead coming from net filter and I up
+tables first so you don't have to
+understand anything what is inside those
+boxes I just wanted to show you that for
+each individual packet in the kernel
+there are quite a few steps which should
+be taken so the orange boxes denotes the
+execution of the IP tables chains and
+usually as a user you install your IP
+table rules into those chains and those
+orange boxes were that's where the
+execution is taking place so for
+instance if we have the packet being
+sent from outside somewhere to the pot
+on the localhost
+kernel first has to allocate this skb
+which is the processed representation of
+the packet then the traffic control
+takes place and then the IP all the IP
+table rules in orange are executed and
+all the rules inside those chains and
+then the routing decision has to be made
+which is denoted in the fehb lookup box
+and then again more iptables chains and
+IP table rules and finally the packet is
+being sent to the one end of the virtual
+Ethernet device and then that packet
+enters into the network namespace of the
+pot and again inside that network name
+space because the chains are pretty
+Network name space again you have to
+traverse all those chains again so
+that's where the latency is coming from
+and let's take a look how queue proxy
+takes advantage of those chains so in
+this example we have a simple service
+nginx of the cluster ap type with the
+virtual IP allocated by two brunettes
+and with two endpoints so first it
+installs generic rule into the three
+routing chain to steer all the traffic
+regardless whether it's kubernetes
+traffic related or not into the cube
+services chain where the matching for
+the kubernetes service takes place so if
+the destination is three dots three dots
+three dots three which is the virtual IP
+of the service then we entered this
+service specific chain which was called
+cube - SVC nginx and in that chain the
+endpoint selection is taking place and
+based on the probability and either
+engine x1 or nginx - is chosen and
+finally in those chains we do the
+dinette which means that we changed the
+destination IP address from the cluster
+IP to a real IP of the path which runs
+nginx so you might start wondering why
+oopsie I think I miss one slide but you
+might start wondering in the previous
+slide worthy worthy whether we can
+basically bypass those netfilter
+change somehow IP tables change whether
+we can just jump from the TC ingress
+directly to the TC egress and this is
+possible with the let me move here with
+the technology which is called EBP F
+alternative approach would be just to
+modify the kernel and to
+do some changes to Brunetti specific
+ones but I think such approach wouldn't
+work because the kernel community would
+not accept such patches
+you could also maintain the kernel your
+version of the kernel but I wouldn't
+recommend you to do with that but
+luckily we have the technology
+a BPF which allows us to jump directly
+from TC ingress to Otzi egress in this
+case so IPPF is a virtual machine inside
+the linux kernel which allows us to
+dynamically reprogram the kernel and
+let's take an example so a user can
+write a little program in the language
+which is a subset of the C programming
+language then compile it with the C lank
+and next it can load the program into
+the kernel the kernel verifies the
+program it basically checks that the
+program doesn't crash the kernel that it
+terminates that doesn't hang the kernel
+that doesn't try to access some memory
+out of bound memory or memory from some
+other processes and then if it doesn't
+reject the program a JIT compiles the
+program into a native machine code and
+that program can access I can store and
+access its state from beep so called BPF
+Maps and this maps are shared among can
+be shared among different programs and
+this maps are also can be accessed by
+processes running in user space and also
+they can be modified and the execution
+of EBP F programs
+event-driven is then driven and in this
+example we have loaded the program at
+the TC ingress of f0 device so it means
+that when that network interface gets a
+packet
+the following program will be executed
+and this little program which I have
+probably can use
+it probably can see it so what it does
+it if the destination of the TCP packet
+is destination port is equal to 18 which
+is HTTP just redirect the packet to the
+interface Aleksey zero which is of the
+pot and if it's not just them drop the
+packet so it's kind of simple and EBP F
+is currently probably one of the most
+active subsystems in the kernel and it's
+being maintained by Daniel from the
+cilium project together with Alexei from
+Facebook and up to this date there were
+268 active contributors and the adoption
+is very huge I would say more and more
+tech companies are started to look into
+this technology and to adapt and that
+you adapt it and I listed just some
+prominent users so for instance Facebook
+has recently replaced their load balance
+edge load balancer with which previously
+was using IP vs and they replaced with a
+new one which is written with EBP F and
+they saw the next performance
+improvement so each request sent to
+facebook.com is being handled by a BPF
+program and also an interesting fact
+that the original creator of IP tables
+and that filter rested russell has
+acknowledged EBP F as technology which
+should replace the IP tables in the
+future so yeah so having this in mind
+let's see how we have to replace the
+proxy with EBP F in the cilium project
+so to replace Q proxy we have to
+implement all service types which keep
+proxy supports so first one is the
+cluster IP so the cluster IP allows you
+to access bot
+inside the cluster either from a pod or
+from some host local process running in
+a cluster and the access you can access
+it by using this virtual IP or cluster
+allocated by kubernetes another service
+type is a node port so you can this
+makes your services actually accessible
+from outside so kubernetes allocates a
+special port and we basically use the
+notes IP plus that allocated port and
+this node port also allows you to access
+services from inside the cluster and the
+free service type although it's not
+listed the service type is external IP
+it's very similar to a node port but
+except that it allows you to access the
+services just outside of the cluster to
+avoid man-in-the-middle attacks and the
+access happens through the IP address
+which was defined by a user and the
+first one is load balancer we don't have
+to do anything here because usually it's
+done outside the kubernetes cluster by
+cloud providers or balancer and they are
+using the building blocks of the cluster
+EP node or external IP so let's start
+with the cluster IP when and with the
+case when the pod tries to reach another
+pod via cluster IP so to make this
+happen we have to consider two things so
+first one is that when a client bought
+sends a request we need to check that
+the destination IP is of some service
+and if it is then we need to select any
+endpoint of that service and then we
+have to do the D net which means that we
+have to change the destination IP of
+that packet into the veal pot ID because
+previously it had the cluster ID which
+is a virtual IP and another thing is for
+the reverse path of a reply we have
+to change the source IP of the reply
+because it will be a real puppy and the
+client is expecting to get the reply
+from the this cluster IP and if we don't
+change then the kernel will drop the
+packet for us so let's see how we can do
+that so again I have a little BPF
+program written in pseudocode English
+and basically that program we attached
+to the TC ingress of the LXE 0 which is
+the device of the one end of a plot
+device virtual Ethernet here and that
+program does the following it checks
+whether a destination IP address is in
+the service ebps now remember I
+mentioned that programs vpf programs can
+access its state or some data inside the
+vpf maps and read that data and modify
+the data so we have a service map for
+the services and then if it's the
+service was found then select the
+endpoint for the service and then
+replace the destination IP with that
+endpoint IP which is a pot VIP and then
+we create two connection tracking
+entries again in the martin the net
+filters cone a connection tracking table
+but we have a separate EBP of connection
+tracking table which is again EBP as nap
+so for the service we have for instance
+for this case we have service map which
+contains two entries for two endpoints
+because previously we saw that we have
+two engine export and the key is
+basically the cluster IP plus port and
+the value is like service ID endpoint ID
+and poit IP address and and endpoint
+port and for the connection tracking
+again we have this e BPF map where we
+have the top of the key is a tuple
+basically a source part in this nation
+part and the value is either depending
+on this sorry on the contract entry type
+is either d and point in d and this
+service
+because the first entry is like of the
+service type and because we want to make
+sure that each packet which belongs to
+the same connection is being routed to
+the same endpoint so we have to store
+the endpoint ID so that subsequent
+packets could know to which end point
+that the packet requests have to be sent
+and for the reply because we have to
+change back the source IP address we
+need to know to which source IP we have
+to change so for this we attach another
+program which does this reverse nap
+translation and we attach it on the TC
+ingress of the native device in this
+example ok so how do we update the
+service Maps so this is relatively
+simple because we run Salem agent on
+each node in the cluster and this sodium
+agent gets those instances of cilium
+agent get notification from the cube API
+server about the services so basically
+we are interested in service object and
+endpoint object and once we get those
+objects we parse them and we do the DPF
+map update which is a sis call to update
+the map with a particular file
+descriptor so basically we populate the
+service entries ok so how do we enable
+the communication from from host not
+from a part but from the host process
+which is running not in the part and how
+do we enable the communication via
+cluster B so we could imagine that we
+have this client which is running some
+go code and and we could have created a
+dummy device and install the IP route
+rules that would be similar I think with
+IP vs does Q per action the IP vs mode
+does but it's not elegant at all so
+under the word this what this client
+roses does
+when it wants to establish a connection
+it does the connect Cisco and there's a
+special set of EB PF hooks so it's
+called EPP FC groups they are called EB
+PLC group hooks and they allow us to
+attach a EB PF program at that point at
+the particular point and the program is
+going to be executed just before the TCP
+or UDP protocol handler in the kernel
+will handle that particular Cisco so
+what can we do we can attach again a
+little vpf program with a similar thing
+but check the service map and if it
+finds that entry like the destination IP
+and port belongs to a service it can
+change the destination address and port
+but this type not in the packet but in
+the socket and it this is super exciting
+because we this is totally transparent
+to the application as was in the
+previous case but the cost for load
+balancing is being paid only once just
+doing for the first packet during the
+connection establishment and the rest
+the rest of the flow even will not
+trigger this PPF program and recently we
+have enabled this feature for previous
+case where we had the pod communicating
+with another pot here cluster IP okay
+and we have the same for the connected
+UDP and for unconnected UDP we do
+similar thing but for different system
+calls so the next one is the node port
+this is a bit more complicated so let's
+say that we have a node a which is
+running red spot and we have node B
+which is friend running engine expert
+and we have a client somewhere outside
+outside our cluster E and the client
+wants to connect to the nginx
+node port we are not IP of the node
+and the part of the nginx service so it
+first sends the request to the node a so
+again we attach a little program to the
+TC ingress of is 0 and this time we have
+this extra step which is 2.1 we have to
+do because node a doesn't run the part
+we have to test that request to the node
+B which runs the destination part and
+before passing we have to do the ash net
+we have to change the source IP of the
+request because otherwise the node B
+will get a request with this original
+source IP of the client and it will
+reply back to the client and it will not
+know that it has to change also the
+source IP and remember I previously
+mentioned that the in such situation the
+packet is being dropped because it
+cannot be recognized by the kernel so
+for this reason we do that as net we
+change the IP address of the request to
+a node a IP address and then we forward
+the packet and on the way back the reply
+is being sent back to the note a the
+node a this time has to do the reverse
+as net reverse denied translation and
+finally to redirect this with this
+approach we kind of see two problems is
+the first one that engine expert doesn't
+see the real IP address of the client
+and the second problem is that we have
+this extra hop so the extra hop from
+node B to note a instead of node a node
+B sending directly back to apply to node
+a so to prevent from this situation
+kubernetes has this special service
+annotation which is called external
+traffic policy equal local where does it
+basically drops a request if the
+destination node which was to which a
+request was sent first doesn't run
+required port
+but with eb PF i mentioned that we can
+do whenever we want with the packet so
+no nothing prevents us from implementing
+director berry return for the note port
+so what we can do how we can implement
+this we can basically before when when
+we want to forward attack it to a note D
+we can append into IP either this
+service address so that note B can use
+this service address when sending back
+replied to the client instead of note a
+so in this example you see that the
+client real IP is being preserved so the
+engine acts will see the bill IP and
+then on the way back the note B will
+change the source IP to this service IP
+and it will redirect directly to the
+client so we have solved two problems so
+the source IP is being preserved and we
+avoid this extra hop
+okay so the talk is cheap so let me show
+you some numbers so we did some
+benchmarks on bare metal machines on AWS
+connected with 100 Gigabit link and we
+were running 5.30
+and we used networks TCP is your art so
+what it does it opens a TCP connection
+sends some payload sends a payload back
+and closes the connection and it
+measures how long it takes to do this
+whole transaction and because I'm
+showing the latency for you so lower is
+better so first thing to see is the
+first thing to mention is that the our
+EBP EFT implementation has outperformed
+both cube fraction IP vs mode and in the
+IP tables mode also another thing is
+that we can see that with the number of
+services once we have more services the
+latencies
+creasing for the IP tables because of
+the cube services chain which I showed
+you in the beginning so this chain gets
+more and more more rules and for the and
+the packets have to traverse many rules
+like instead of doing this hash table
+based lookup as we do in EB PF and
+another thing is that IP tables actually
+outperforms IP vs implementation when
+there's a relatively small number of
+services and another benchmark which I
+would like to show with you is TCP are
+are of the network this time the
+benchmarking suit is reusing the same
+open connection and basically again EB
+PF outperforms both IP vs and IP tables
+and this time we don't see this pattern
+with the IP tables that latency
+increasing increases with the number of
+term services increasing because we are
+reusing the same connection and EB PFDs
+re has even better performance lower
+latency because of the of the hop being
+avoided which I showed in the previous
+slides
+so to recap I have presented you the
+replacement of Q proxy in IPPF and this
+replacement allows you to run the
+cluster with netfilter compiled out
+without IP table modules and cetera and
+it gives you a better performance
+compared to q parks in both modes and
+also it doesn't suffer from slow service
+updates which I didn't mention in the
+beginning but basically with the IP
+tables you cannot update a single rule
+you have to update all the rules so the
+more services you have them the longer
+it takes to update the services I also
+reliability so I would say that our data
+path has it's very small and it's easier
+to debug it and it has less lines of
+code so the surface of bug
+surface for bug is smaller and also for
+security issues is much better and also
+we can write the unit test for the
+networking code and it's easier to write
+them than before for instance for the
+Linux kernel networking and also cool
+thing is that remember I mentioned that
+ok we had this net filter a race
+condition and took a while to fix and
+also you had to compile the kernel to
+redeploy the kernels and with EBP F we
+don't have this when I have to do this
+because we can automatically replace the
+programs running programs without
+interrupting any connections and yeah
+again the bug ability is much better
+yesterday there was a talk from Nathan
+from digitalocean about debugging
+psyllium troubleshooting silly and we
+have the psyllium monitor tool which
+allows us to which says as exactly why
+the packet was being dropped why it went
+to this pot instead of that pot and why
+this decision was taking so we cannot
+see this information with the TCP dump
+another thing is compatibility so the
+way people configure IP tables they use
+IP tables executable and recently some
+distros has switched the backend of IP
+tables so some districts like Debian by
+three I think they started to use enough
+tables and it's not compatible with the
+legacy IP tables so I think in the
+future we're gonna see quite interesting
+bug reports and finally customization so
+with the EBP F we have flexible what we
+want to do we can as we thought with the
+node port example so we can modify the
+packet and we can implement interesting
+like we can it's up to us how to do the
+load balancing so we can implement
+different load balancing strategies okay
+so that was it so I think I got a couple
+of minutes for questions so thanks for
+your attention if you have some
+questions yeah
+[Applause]
+hi so I actually asked this at
+yesterday's digitalocean talk but my
+main question I should relate some more
+to BPF than it does to psyllium and you
+know with the the concept of user space
+applications we've done a fairly good
+job of you know removing a lot of the
+risks and being running untrusted code
+for example we have sandboxes set comp
+app armour profiles etc now that we're
+allowing users to basically take
+untrusted code and run it directly into
+the kernel environment
+what checks are in place to make sure
+that we don't essentially have a bug end
+up running in ring zero and essentially
+taking over the system inside of the
+kernel thanks that's very good question
+so as I mentioned we have this EBP F
+verifier which tests a lot of checks for
+us and also you have to be a privileged
+user to allow the program so you can
+disable EBP after some subsystems for
+instance and you can do it just for
+networking so yeah I think I hope that
+answers your question yeah thank you on
+your earlier performance slides what was
+the horizontal axis it says number of
+services is that number of services per
+node or never services in the cluster
+altogether so the question so it's a
+number of services per cluster but
+basically what happens is that you have
+to install all service definitions
+either for for IP vs IP tables etc on
+each node well I think that's all the
+time we really have for questions so if
+you have more questions we have a booth
+so feel free to come to the booth and
+ask people questions and we have some
+psyllium members which are over there so
+they can happy to answer your questions
+yes so thanks

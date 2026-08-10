@@ -1,0 +1,758 @@
+Welcome everyone. This is the CubeCon
+North America update meeting of the
+working group device management and yes
+this is the place and talk where we are
+going to cover dynamic resource
+allocation. A small thing that you might
+have heard about and yeah we have done
+more on it. Uh we do these update
+meetings pretty much every CubeCon or at
+least the CubeCons that we go to. So the
+last one was at CubeCon Europe and we
+are going to cover new content that went
+into Kubernetes uh 134 and the one that
+we just almost finished with 135.
+My name is Patrick. I work for Intel on
+cloud native. I've been doing dynamic
+resource allocation for a while. With me
+on stage is Kevin Grizz from Nvidia.
+And in the front row we have John
+Bellame kicking it back and enjoying
+that he's not talking and we're here. Uh
+but he will be available for questions.
+Um if you get the slides later on all of
+these are links to our working group. Um
+we'll also have it on the slide later on
+again.
+So what is a working group and why do we
+have it in the first place? So as I as I
+mentioned we have done the array dynamic
+resource allocation for a while even
+before the working group was formed but
+it became fairly popular at some point
+and we decided that we really need to
+have a place to discuss it and a working
+group in Kubernetes is cutting across
+multiple six. In this case we have
+pretty much all of the major ones in
+fact included. It's an architectural
+change for Kubernetes. It changes what
+Kubernetes is good for. It affects uh
+the node part where we actually have
+devices. That's where it came from
+originally. But it became very
+scheduling heavy because we need to make
+very difficult decisions uh in the
+scheduling part that also affects then
+autoscaling and we've branched out in
+terms of what kind of devices we are
+supporting. in reality today with
+drivers. So sick no s networking is
+involved because they want to make sure
+that the devices that are network
+hardware also work well.
+Um,
+I've mentioned hardware. It's started
+out as focusing on GPUs, but it's
+certainly not limited to that. Network
+devices are covered by existing drivers,
+and we have an overall design that is
+supposed to be flexible enough to cover
+everything that we want to do with
+special hardware in Kubernetes going
+forward.
+Um so DRA as I mentioned is a is a large
+part of what we've been focusing on but
+we kept discussing other things in the
+scheduling space just this week and I
+think we kind of have a tentative
+agreement that this is the working group
+where we are also going to cover uh
+advanced scheduling topics in general
+like gang scheduling but stay tuned I
+think we will branch out and we will
+just continue discussing all the work
+all the problems that you people have
+and try to come up with a solution.
+So what what actually is dynamic
+resource allocation? Uh you can think of
+it as a replacement for device plugins.
+Um that's where we started and we wanted
+to have something that is more flexible
+first in the first part. How do we
+actually describe hardware with device
+plugins? You just have a count, a list
+of devices at the look at the node level
+and then it gets exposed in the node
+status as a list of things, but it's
+really just a string and a number.
+That's not very expressive. With
+resource slices, we have a way to list
+devices. Each device can have
+attributes. Um, an example might be an
+Nvidia GPU with a certain amount of
+memory as an attribute, certain number
+of compute cores.
+That's how the scheduleuler is informed
+about what's available. The user then
+requests devices again using a new top
+level type the resource claim
+and that resource claim can have filters
+that are based on these attributes of
+the device. So you can have a very
+specific requirement. If you want a just
+a special CPU, a GPU of a certain
+vendor, you can ask for it. Or you can
+be more flexible. If you are if you are
+okay with some other kind of GPU also,
+you can express that.
+You can also provide configuration
+parameters, something that just didn't
+have a place in the traditional extended
+resource API. And that configuration
+could basically tell the the driver on
+the node how to configure the hardware
+when it makes the hardware available
+uh for specific workloads
+uh that could change between type
+slicing for example things like that can
+be configured. It's opaque at that point
+to Kubernetes but it gets passed
+through. So we have a reliable way to
+specify that handle it pass it down.
+The third part in core kubernetes is uh
+the scheduleuler. So that's where we do
+the mix and match what's available, what
+does you what does a user want, what is
+in use at the moment and then we
+allocate the resource claims.
+And when we have an allocated resource
+claim, we record for which port it is.
+We schedule the port and then the fourth
+step happens. The cublet sees a
+scheduled port. It gets the resource
+claim. knows which driver it needs to
+notify and the driver on the node makes
+that hardware then available. The
+resource claim is also very flexible in
+terms of who's getting access to it. So
+you can share a single resource claim
+between multiple pods. Uh it gets
+prepared once and then different ports
+get access to it. You can say inside
+your uh pod which device gets used in
+which container. So you can basically m
+and mix and match arbitrarily as needed
+by your workload.
+And perhaps big announcement, we
+actually reached GA in 134. [applause]
+Thanks. I this is my chance to say it. I
+think it has been mentioned in the
+keynote this morning. It's not news, but
+it is an important milestone because
+people have been waiting for it. It is
+GA in cord Kubernetes the basic
+functionality and people have been
+waiting for that because it means that
+they can now start using it in DRA
+drivers. So I what I described so far is
+the the core part what we support in
+Kubernetes but Kubernetes itself doesn't
+manage any hardware that is what we need
+drivers for like we did with device
+plugins before uh we do have a bunch of
+those uh public available available uh
+from Nvidia from Intel from Google doing
+different things in fact some of them
+are for network devices like dret
+uh others are for GPUs
+the Intel ones, Nvidia Foza AI and we
+want yours to be listed also. So we we
+do not do that in the core Kubernetes
+documentation
+um because we have a policy in
+Kubernetes that we are vendor neutral
+but we do have in our working group repo
+a a readme file where it is okay if you
+just go and submit a pull request and
+add your driver just to inform others
+because it it is useful to have one
+place to see what's going on and it it
+helps us if we compile such a list but
+we actually know where your stuff is.
+So, you're welcome to add that.
+Um,
+the
+barcode will take you to the place. It's
+a bit it's a bit hidden, but you know,
+if you know where it is, you will you'll
+find it. So, yeah, let's let's talk
+about the other big thing besides GA in
+134. Uh, we started branching out. So
+the the core idea always has been that
+we have core functionality that we need
+to get to GA as quickly as possible
+because people were waiting for it very
+urgently and we didn't want to delay
+that graduation to add more things.
+Instead what we are doing is we have
+branched out we have additional caps and
+I'll show you a very long list on the
+next slide. These are the main ones
+perhaps that we added in 134. Um the
+first one is something that eases the
+graduation of migration of a cluster an
+entire cluster from traditional device
+plugins extended resources to the array.
+So it's a quality of life thing in some
+extent but it also simplifies uh the
+request mechanism. What it does is that
+the traditional extended resource
+requests in a in a container get mapped
+to a DRA device class perhaps by
+matching the name or by a by a field in
+a DRA device class
+and the scheduleuler when it sees a
+traditional resource request will
+automatically figure out whether on a
+certain node that resource is provided
+by a device plug-in or by a DRA driver
+running on that node. That's the first
+advantage. So workloads don't need to be
+modified to you to to continue working
+in a world that might moves on to to
+DRA. And we'll we'll support that in
+perpetuity. It's it's a simpler request
+mechanism than using resource claims
+directly. It's also more limited of
+course, but it's it's your choice which
+of these two APIs you are using and it's
+not dictated by the cluster.
+Uh the other choice that an admin has to
+make is on a node a certain kind of
+hardware can only be provided either by
+a device plug-in or a DRA driver. We
+can't do both. That [snorts] would be
+potential race or overs subscribing a
+device. So it is a choice but you can
+gradually convert a cluster. Start with
+a few nodes where you try out DRA and
+then you continue. Um the other thing
+binding conditions is a new way that
+gets a bit more dynamic dynam dynam
+[laughter]
+dynamic back into dynamic resource
+allocation because we have the ability
+to block pot binding until a controller
+does something with a pending
+allocation. Uh it's used to uh attach
+devices to a node uh at runtime before
+scheduling the port. If it goes wrong,
+the pot goes back and will be
+rescheduled. That's the difference
+compared to scheduling it onto the node
+and then failing on a node when it's
+stuck. That's a different failure mode.
+And last but not least, consumable
+capacity is another extension of how
+complex or what a device is. We had
+another talk on that just today earlier.
+U it makes it possible to share the same
+device
+until its resources or some unless until
+some capacity is exhausted. That's a new
+way of making device sharing a bit more
+dynamic than what we had before.
+Now that's a long list to give you just
+an idea. You I'm not going to go into
+the details. Uh all the all the caps
+that we are currently have pending their
+state as they were at certain Kubernetes
+releases.
+In this release 135 that just almost
+wrapped up with code freeze uh last week
+uh is where we improved some of these
+features that I just described. So they
+stayed at the same stage. We haven't
+graduated anything but they are now
+feature complete and we hope that with
+your feedback we will be in a position
+to say yes it works. It does not need
+further changes and we can graduate them
+in 1636. That's the plan for several of
+them uh including the the extended
+resources all all of the free rad I just
+mentioned and some others have other
+concerns where we just wanted to bit
+have a bit more time but I I expect
+quite a few graduations in 136.
+So I've talked about features now I am
+coming to the part where I actually I
+perhaps even like a bit more than just
+talking about features. It's about the
+persons that have made that possible and
+we have had new contributors
+um coming helping us with that all whole
+effort. Some of them even contributing
+to Kubernetes for the first time. Let me
+just call them out. Uh first is Pang uh
+consumable capacity. She's been driving
+that for a while doing very diligent job
+defining a cap implementing it for two
+releases and now it's complete. Julio
+has taken on the task of extended
+resources. Got a little bit of help from
+from Sai in the last cycle. Allay has
+really stepped up helped us with GA
+graduation dealing with the scale
+testing that was tremendous. It really
+helped us a lot unplugged the GA and
+also helped out with the others external
+resources cube vertq and some people
+from Fitsu. They they are about into the
+dynamically attaching devices. They
+implemented Kobayashi Dauka implemented
+that in 134 and in 135 Tubaza Tabarabi
+continued driving that feature forward
+and with that I hand over to Kevin.
+>> Thanks Patrick. Um yeah so uh first
+thing I wanted to cover really quickly
+is just to call out a bunch of the
+different talks that we have at this
+KubeCon related to DRRA. You know, I
+think past KubeCons, a lot of the talks
+we've given have been dominated by
+Nvidia, Google, and Intel. But at this
+uh KubeCon, we actually have quite a few
+from um from other companies. Um most
+notably, SCMD, IBM research, and a few
+others uh from talks that have been
+given between Sunday and today. Um and
+then we also have a bunch of upcoming co
+talk talks that will be happening
+tomorrow and on Thursday with uh
+contributors from uh Red Hat, Microsoft
+and and Fluid Stack as well. So it's
+just great to see all of the, you know,
+community members that have started to
+step up and actually embrace DRA and
+start, you know, experimenting with it
+and and trying out new features and then
+obviously also giving talks here at
+KubeCon about it.
+Um so with that I wanted to highlight a
+few of the um uh new features andor
+drivers that have been uh implemented
+since the last KubeCon uh since we last
+gave an update on on everything that's
+been going on. One of them is that a new
+driver DRA driver for CPUs has been
+pushed to uh as a Kubernetes sig repo
+that anyone can you know download start
+playing around with uh contribute to. Um
+and the idea is that you have uh you
+know the same way that you can you know
+use DRA to allocate GPUs, nicks and
+whatnot, you can now use it to allocate
+exclusive access to CPUs as well. Um
+with the main uh goal of doing this
+being that you can actually align CPUs
+and GPUs on the same uh NUMA domain or
+PCI root complex. uh also along with
+Nick so that you can get a much more
+performant system by aligning all of
+these before you go and you know give
+them uh give your workload access to
+them. Um and in in one of the demos that
+was given at a talk that was uh around
+this at the maintainer summit one of the
+examples they gave is that you can ask
+for you know up to say like 20 CPUs and
+you make sure that all 20 of those CPUs
+are aligned on the same L3 cache and at
+the same time that they're aligned to
+the GPUs and nicks that you also give to
+your um to your workload before you
+start it. So it's just a much richer and
+more you know feature-filled way for
+making sure that everything can be
+aligned all the way down to the CPU
+level.
+Um a second one is uh uh a DRA driver
+called DRET which has now become uh
+generally available. I think there's a
+keynote on it uh tomorrow either
+tomorrow or or Thursday I'm not sure. Uh
+we're going to go into some of the
+details of of what DRNet is and how it
+works. Uh but the basic idea is that it
+uh it offers a DRA native way for pods
+to request access to high performance
+networking resources such as RDMA nicks.
+Uh, and just as what I talked about with
+CPUs, you know, with DREET, there's a
+way for you to align your nick
+allocations with your GPU allocations
+through the use of a new standardized
+attribute that we've uh published that
+any DRRA driver if they publish devices
+with this attribute, you can use it to
+align devices across different uh
+vendors. And so using this uh this this
+standardized attribute across GPUs and
+nicks, we're able to see uh boosts of
+bus bandwidth by up to to 60%. And the
+way you do this alignment is what you
+see on the the YAML on the right. You
+can request a GPU, you can request a
+nick, and then you say you want those
+two devices to be matched on this
+attribute of PCI route, and then it
+guarantees that those two devices come
+from that same PCIe root complex.
+Um, another key thing that was that was
+added since the last KubeCon is we now
+have integration
+um of DRA with Kubvert. So you can start
+a Cubver VM and you can uh make sure
+that DRA allocated resources are uh
+given to that Kubver VM. Um I don't
+think this has actually been merged yet.
+Um it it has sorry has it been released
+as well or or it has been released as
+well. Okay sorry I take that back. It
+has been both merged and released. Um
+but it allow it's it's alpha level
+support. So you have to enable an alpha
+feature gate in order for for it to be
+used. Um
+next one is is Q integration. So you
+know
+Q has its own mechanism for allowing you
+to set up quota on on devices that are
+given to a pod that are that are
+launched with Q. uh and the the Q
+integration that we have allows you to
+express these quotas against DRA
+allocated resources the same way you've
+been able to in the past with your
+extended resource um allocations and so
+you know it's just yet another
+integration that we've done and seen in
+the community beyond just writing
+drivers and adding new features to
+Kubernetes core we're seeing these
+integrations start to um happen in in
+external components thirdparty
+components as well um and then last but
+not least uh I talked about this a
+little bit at the last uh working group
+device management update uh the the
+support that we built for multi-ode and
+Vlink with Nvidia GPUs. Uh but since
+that time we've now released an official
+version of our driver that supports this
+and uh we wrote a blog post about this
+that was published on Monday uh which is
+available at the the URL at the bottom
+here. Um and I'm happy to answer any
+questions about what this looks like and
+how it works after the talk if anyone's
+interested.
+Um, so with all of those, you know,
+integrations, those all those couldn't
+have happened if we didn't have people
+in the community actually, you know,
+working with us, uh, on all of these
+features that we're building. And so we
+just want to give a shout out to allow,
+you know, you guys to, you know, to to
+to invite you guys to join us in this
+effort. Uh we have weekly meetings every
+other Tuesday at at 8:30 or I guess we
+have weekly meetings. One in a PST time
+zone uh at 8:30 a.m. and then on
+alternating weeks uh at 9:00 a.m. in the
+central European time zone. Um we have a
+very active Slack channel. There's
+questions posted, you know, almost daily
+on there and you know all of the core
+members that have been contributing to
+this are there and available to to
+answer questions. We have a less active
+mailing list, but the mailing list is
+there for announcements and uh we
+encourage you to to join that in case
+there's something that we want to spread
+more, you know, broadly that want people
+to to to get access to. And then we've
+got a community page which has our
+charter and some of the other things
+around what the device management
+working group um is responsible for and
+uh what we're going to be working on
+going forward.
+Okay. And with that, uh, we'll take any
+questions you have and feel free to scan
+this QR code and and give us feedback,
+uh, after the talk. Thank you.
+[applause]
+>> Not everyone all at once.
+>> We answer We answered all the questions.
+>> We answered everything. Uh, if you have
+a question, come to the microphone here,
+please. Thanks.
+Uh the answer to this might be an
+automatic no, but uh I'm trying to solve
+network contention and I'm considering
+using DRA, like a custom plugin to
+basically uh hand out bandwidth to pods
+on a node. Uh is that a dumb idea to use
+DRA for that? I'm pretty sure it's
+mostly intended for splitting up the
+nicks or like more discrete resources.
+Uh but yeah, that's something I'm
+interested in.
+>> Good. or John, do you want to Yeah.
+>> Uh uh no, it is probably not a dumb idea
+at all. Uh in fact, that's what the
+previous talk I did an hour or two ago
+was on a new feature. We have this
+consumable capacity feature and the
+specific use case we talked about there
+was uh allocating guaranteed bandwidth
+on secondary nicks in your pods um in a
+way that you don't oversubscribe them.
+So um it sounds interesting like I need
+to know a little more details but feel
+free to reach out on our workg groupoup
+management um workg groupoup device
+management slack on the kubernetes slack
+um and and we can we can see that we may
+even already have an in the works
+solution that that helps you out.
+>> Awesome. Thank you.
+And and I I feel obligated because uh
+Kevin talked about the CPU driver and
+Pine explicitly who's who's developed it
+primarily wanted me to emphasize it's
+alpha the CPU driver. Don't uh don't
+start putting it into production yet.
+[laughter]
+>> Well, that was going to be my question.
+The CPU driver. Um thanks for writing
+that because I was about to start that
+project. Um, on the subject of writing
+drivers, is there a framework for
+writing drivers beyond just the example
+driver? So, we do have the DRA example
+driver. If you Google for it, search for
+it, you will find it. It is meant to be
+the basis for third party drivers. You
+can just copy the repo, rip out some
+small vendor specific logic where we
+currently just pretend to have a certain
+number of of GPUs and you plug in your
+own logic. It interacts with Kubernetes
+through a helper package that we are
+publishing in the staging repo. Uh it's
+under KS uh dynamic resource allocation
+cublet plugin that typically the array
+drivers are cublet plugins. Um they can
+also have a controller plane control
+plane part but typically they are node
+plugins and that go package has fairly
+extensive documentation. If you just
+read it from top to bottom, you will get
+a good understanding of what your
+implementation of a go interface needs
+to do to work as a cublet plug-in to
+publish resource slices. All the things
+that we are expecting from a DRA driver
+will be handled through that go
+interface.
+>> Gotcha. Thanks.
+>> One one other thing I'll add there,
+sorry, is uh there's a lightning talk on
+this from from John. Is it tomorrow or
+is it Thursday? for tomorrow if you want
+to learn more about the example driver
+and how it's architected and you know
+what what it all contains.
+>> Um yeah,
+>> one thing that's perhaps worth adding if
+you're using that Go helper package your
+driver will automatically be compatible
+with all Kubernetes releases starting
+from 132. So it hides a little bit the
+details of gRPC API versioning
+uh which resources uh which which API
+version is enabled in the cluster and
+you automatically get fairly full
+support. As long as you are sticking to
+features that were supported by older
+Kubernetes as soon as you start using
+things that we only recently introduced
+you get a runtime error if you're trying
+to publish a resource slice for example
+that uses advanced features.
+>> Cool. Thanks.
+>> Uh hey, hi. Thank you for this wonderful
+session. Um I have two questions. Uh
+like um if we wanted to build a cluster,
+uh is there any limitation? Can we use
+some of the nodes with GPUs and some
+with regular CPUs? Do you see any
+limitation if we do do the topology?
+>> Sorry, I missed the beginning of the
+question. Can you see it again? Yeah, if
+we wanted to build a Kubernetes cluster
+uh with some of the nodes uh with just
+CPUs, just regular nodes and some of the
+nodes with the GPU uh with the high
+capability hardware. Um is that okay?
+>> Yeah, that's that's perfectly
+reasonable. when you when you put your
+request in for a GPU, the scheduler
+knows to how to find the nodes that have
+the GPUs on them and make sure that the
+workloads get the GPUs get allocated
+from those nodes and then the workloads
+land on those nodes instead of the CPU
+only nodes.
+>> Okay. Okay. So just a follow-up question
+on this right. Yesterday there is a
+session by Google I think on the
+intelligent scheduleuler is that part of
+this 134 uh intelligent scheduleuler
+which basically schedule the pods on
+Sorry again I missed the beginning.
+>> Intelligent scheduleuler is the
+>> whatuler
+>> um I'm not sure there was a talk was it?
+>> Yeah yeah yeah there was a talk
+yesterday that they spoke about
+intelligent scheduleuler I don't know if
+the scheduleuler that shown in the first
+slide is that the
+>> so the the cubeuler
+is I don't know what that talk was
+referring to specifically do you do you
+know who who gave that talk? Uh, no. I
+just talk about
+>> Yeah, we can talk about it afterwards. I
+I'm not sure. I'll have to look it up. I
+cubeuler is DRA is part of the standard
+upstream cubeuler. And so, um, it's
+possible to build other schedulers. It's
+also possible to build extension.
+Theuler has a lot of extension points.
+In fact, DRA is primarily one an
+extension point and uses one of those,
+but um, or several, but uh, I don't know
+what that talk is specifically referring
+to. So does that mean that this
+scheduleuler that we get with this DRA
+uh is that uh the new version of the
+scheduleuler?
+>> This is the standard. Yes, DRA is in is
+ships as a standard API and standarduler
+plugin in 134 and later. And you saw
+that long list of caps. CAPS are how we
+track feature enhancements in
+Kubernetes. We've got tons of work we're
+doing. So
+each of those individually needs to be
+enabled with feature gates until they're
+ready and made made GA but like the core
+functionality is there and the of course
+you also need the drivers right so uh
+those are some of those drivers are
+already released like DRET some of those
+drivers are soon to be released um and
+and in supported formats but are there
+maybe in a in a um preview format right
+now
+>> so perhaps my my take on this is that
+all the features that we've listed will
+be supported in Kubernetes components,
+cube controller manager, cube v's cube
+scheduleuler that ships with kubernetes,
+all of that needs to be implemented. So
+if you bring up a cluster with just the
+upstream components, all of this works.
+As soon as you start replacing the
+cubeuler with some other scheduleuler,
+then it might be a bit dodgy whether it
+supports the latest features. You would
+need to talk to the implementers of
+those scheduulers to figure out whether
+they support resource claims, whether
+they support consumable capacity.
+Basically, look for a description of
+what what you are deploying, whether
+it's as complete as the upstream
+scheduleuler. Not sure whether that
+help, but
+>> thank you so much. Thank you.
+>> Thanks for the talk. This is uh very
+exciting, I think, for everybody who's
+been dealing with static allocation. Um,
+I'm curious about autoscaling. Does
+everything just work? Like VPA just
+works, node autoscaling just works, or
+is that something that's still for the
+future?
+>> So, sort of [laughter] sort of just
+works. I mean, um, we don't have so so
+couple of the things that have been
+added recently in Kubernetes are like in
+place pod resize. in place pod reside
+work works with a VPA to let a pod have
+its resources increased without you know
+having to
+>> reschedule
+>> but
+we can't change the resource claims
+that's not yet part of in place pod
+resize um so VPA works in that yes if we
+can create a new pod with that that
+scales I don't know that they've
+integrated resource claims in there
+particularly um
+other autoscaling though as far as like
+cluster autoscaling that does have uh
+DRA support that was that was built um
+uh and and should be available and
+should be working. Now the trick with
+cluster autoscaling is almost nobody
+uses upstream cluster autoscaler. Every
+cloud vendor has their own. So I don't
+know about Carpenter um I'm from Google.
+I know that at Google uh we're
+all of this will be supported with GK135
+as far as our drivers are concerned and
+and and things like node
+autoprovisioning and all those pieces um
+we're targeting to to be in our GK 135
+which is coming up um you know shortly
+after open source 135 so hopefully by
+the end of this year. Okay.
+>> Yeah. One one other thing I'll add there
+is that um you may if you're reading
+documentation or hearing some of the
+people that have been involved in this
+project for a while you might hear us
+talk about something called classic
+DRRA. It's because about 3 years ago or
+I guess two years ago at this point we
+had to change the entire way that DRRA
+was designed and operated specifically
+because the original design didn't work
+well with cluster autoscaling. And so,
+you know, the changes that we made were
+specifically with the ability for
+cluster autoscaling to work well with
+this with this design, even if it's not
+quite where it needs to be in the long
+term. Quiet.

@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A source-grounded interview course on Kubernetes architecture, control loops, scheduling, runtime, networking, storage, availability, and scalability.">
+  <title>Guidebook — Kubernetes Beyond YAML</title>
+  <link rel="icon" href="assets/favicon.svg">
+  <meta name="theme-color" content="#172554">
+  <meta name="apple-mobile-web-app-title" content="K8s Course">
+  <link rel="stylesheet" href="assets/course.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="eyebrow">Guidebook &middot; full reference</div>
+    <div class="brand">Kubernetes Beyond YAML</div>
+    <p>Trace one declaration through policy, reconciliation, placement, execution, storage, and packets.</p>
+    <a class="back-to-path" href="index.html">&larr; Back to the lesson path</a>
+    <nav aria-label="Course modules">
+      <a href="#method">Study protocol</a>
+      <a href="#m1">1 · Control-plane map</a>
+      <a href="#m2">2 · API path &amp; security</a>
+      <a href="#m3">3 · Reconciliation &amp; watches</a>
+      <a href="#m4">4 · Workloads &amp; disruption</a>
+      <a href="#m5">5 · CRDs &amp; operators</a>
+      <a href="#m6">6 · Scheduling &amp; pressure</a>
+      <a href="#m7">7 · Kubelet, CRI &amp; Pods</a>
+      <a href="#m8">8 · Networking &amp; data plane</a>
+      <a href="#m9">9 · DNS &amp; CoreDNS</a>
+      <a href="#m10">10 · Storage &amp; CSI</a>
+      <a href="#m11">11 · HA, etcd &amp; recovery</a>
+      <a href="#m12">12 · Scalability, APF &amp; tracing</a>
+      <a href="#m13">13 · Bootstrap &amp; lifecycle</a>
+      <a href="#m14">14 · Configuration, QoS &amp; eviction</a>
+      <a href="#m15">15 · Gateway API &amp; policy</a>
+      <a href="#m16">16 · NUMA-aware resources</a>
+      <a href="#m17">17 · Devices &amp; DRA</a>
+      <a href="#m18">18 · Advanced API machinery</a>
+      <a href="#m19">19 · Coordination &amp; gates</a>
+      <a href="#m20">20 · CKA troubleshooting</a>
+      <a href="#sources">Sources &amp; caveats</a>
+    </nav>
+  </aside>
+
+  <main>
+    <header class="hero">
+      <div class="eyebrow">Reference companion to the lesson path</div>
+      <h1>Follow intent all the way to a packet.</h1>
+      <p>A 20-stage systems course built from 33 video transcripts, the official CKA v1.35 curriculum, and current upstream documentation. Learn stable invariants, then diagnose the asynchronous boundaries where real clusters fail.</p>
+      <div class="hero-grid">
+        <div class="hero-stat"><strong>20</strong> architecture modules</div>
+        <div class="hero-stat"><strong>60</strong> interview drills</div>
+        <div class="hero-stat"><strong>33</strong> transcript sources</div>
+      </div>
+    </header>
+
+    <section class="module" id="method">
+      <div class="module-head"><div><div class="eyebrow">Study protocol</div><h2>Explain, predict, discriminate, diagnose</h2></div></div>
+      <div class="grid-3">
+        <div class="card signal"><h3>Explain</h3><p>State the invariant without jargon, then map every role to a Kubernetes component or object.</p></div>
+        <div class="card signal"><h3>Predict</h3><p>Given one write or failure, predict the next API object, queue, controller, node, or packet transition.</p></div>
+        <div class="card signal"><h3>Diagnose</h3><p>Name evidence that distinguishes competing causes. A command list without a hypothesis is not a strong answer.</p></div>
+      </div>
+      <p class="callout">For every answer: identify the authority, the asynchronous boundary, the convergence mechanism, and one discriminating failure signal.</p>
+      <button class="complete" id="expand-all" type="button">Reveal all answers</button>
+      <details>
+        <summary>Recommended video path: 23 captured talks plus two supplements</summary>
+        <div>
+          <p>This is a learning order, not a claim that Kubernetes executes as one linear pipeline. Autoscaling, reconciliation, scheduling, storage, and node sync are concurrent loops. Direct video links replace the supplied Google-search wrappers.</p>
+          <ol class="watch-path">
+            <li><a href="https://www.youtube.com/watch?v=gjk82Y2vyro">Kubernetes Architecture: Deep Dive</a><small>Orientation: build the component map first.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=jqelVFwhx4g">Admission Controllers Explained Visually</a><small>Fast API-gate overview.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=6GOnHdM90Zg">API Server: API Paths and Request Lifecycle</a><small>Supplemental source; captions exist, but retrieval was request-blocked.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=d0Yq5vU_maQ">Creating and Debugging Admission Webhooks</a><small>Optional supplement; YouTube captions are disabled.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=kss081c8EqY">Controllers Deep Dive</a><small>List/watch, cache, queue, reconcile.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=xlBMpLNaPlg">Custom Resources Explained</a><small>CRD, CR, controller, and operator boundaries.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=7IA-Vw1K7eg">CRD Design for the Long Haul</a><small>Compatibility, validation markers, API linting, and deliberate evolution.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=mTC3UZ8bHJc">Operator and Kubebuilder Tutorial</a><small>Concrete controller construction after the concepts.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=fEZezc_zqJg">VPA vs HPA for Stateful Workloads</a><small>A parallel control-loop topic, not a pipeline stage.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=0swOh5C3OVM">PV, PVC, and StorageClass</a><small>Learn storage intent before topology-aware placement.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=6p1XcgsFHsU">Kubernetes Scheduler: How It Works</a><small>Filter, score, reserve, permit, bind.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=-QAyxUWI7Fs">Pod Priority and Preemption</a><small>Keep scheduler preemption distinct from other eviction paths.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=k_8rWPwJ_38">From Storage to Writing a CSI Driver</a><small>Controller/node split and the scheduling-storage handshake.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=PLCt3lSoXOw">Pod Lifecycle: Apply to Live Traffic</a><small>End-to-end bridge before descending into runtime internals.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=f4x8Yk5rhUg">Container Runtime Interface Deep Dive</a><small>Kubelet → CRI runtime → OCI runtime.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=YWXucnygGmY">Introduction to CNI</a><small>Maintainer session: the plugin execution contract and chaining.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=zChkx-AB5Xc">Deep Dive: CNI</a><small>The operations and the result the chain returns.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=lkXLsD6-4jA">kube-proxy: iptables and IPVS</a><small>Historical backend mechanics; add current nftables context.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=bIRwSIwNHC0">Liberating Kubernetes from kube-proxy and iptables</a><small>eBPF Service translation and BPF connection-state maps.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=VcWpZoRAQXE">Understanding CoreDNS in Kubernetes</a><small>Practical Corefile and cluster lookup introduction.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=lAUmdIGP_fE">DNS Deep Dive in Kubernetes</a><small>The single real identity behind three conflicting supplied titles.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=Rtl3MXdSkzk">CoreDNS Plugins: A Deep Dive</a><small>Ordered plugins, fallthrough, and composed zones.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=bfUzLOFwns8">Scale the Internet with DNS</a><small>CoreDNS architecture and scale.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=n9VKAKwBj_0">Distributed Consensus in etcd and Kubernetes</a><small>Raft, quorum, durability, elections.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=UGXUgiWTanw">etcd Backup and Restore</a><small>Operational recovery after the consensus model.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=YnPPHBawhE0">Kubernetes Priority and Fairness</a><small>Visual APF introduction.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=Tps4eAjuCr8">API Priority and Fairness Deep Dive</a><small>Historical alpha talk for queueing and shuffle-sharding mechanics.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=jVwXcuNEDYE">Evicted! All the Ways Kubernetes Kills Your Pods</a><small>API eviction, node pressure, OOM and disruption boundaries.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=6vkMSmDwD8U">Demystifying Kubernetes QoS and Linux cgroups</a><small>How requests and limits become a cgroup hierarchy.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=KU_EtejzXp0">Topology Manager Is Here</a><small>CPU/device hint providers and NUMA-aware kubelet admission.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=fbf9jv_vwVE">Enabling Low Latency in Kubernetes Clusters</a><small>CPU Manager, topology and node tuning as one system.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=Op4DNDTij1U">DRA Is GA</a><small>ResourceSlices, DeviceClasses, claims and current device-management direction.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=ifwNDvRSQWU">The Hidden Power of Aggregated API Servers</a><small>CRDs versus APIService-backed extension servers.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=7NO8HXzjLAk">CEL-ebrating Simplicity</a><small>ValidatingAdmissionPolicy structure and CEL policy design.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=WslJyYb81w8">Kubernetes Leader Election for Fun and Profit</a><small>Lease-backed leadership and client-go mechanics.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=3w5sZSxh4RI">kubeadm Deep Dive</a><small>Supplemental watch; transcript retrieval was request-blocked.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=lCRuzWFJBO0">Gateway API for Advanced Traffic Routing</a><small>Supplemental watch; transcript retrieval was request-blocked.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=sEOZVKpvbV8">Diagnosing a Kubernetes Control Plane Problem</a><small>Supplemental watch; transcript retrieval was request-blocked.</small></li>
+            <li><a href="https://www.youtube.com/watch?v=920BZXvQpVs">Surviving Day 2: Troubleshoot Kubernetes Networking</a><small>Supplemental watch; transcript retrieval was request-blocked.</small></li>
+          </ol>
+        </div>
+      </details>
+    </section>
+
+    <section class="module" id="m1">
+      <div class="module-head"><div><div class="eyebrow">Module 1</div><h2>The control plane is an asynchronous state machine</h2><p class="lede">The API server owns the contract and etcd persists API state. Controllers create and repair intent. The scheduler binds Pods. Kubelets turn assignments into node-local reality.</p></div></div>
+      <div class="flow"><div>API write</div><div>Persist canonical object</div><div>Controllers create dependents</div><div>Scheduler binds Pod</div><div>Kubelet realizes it</div></div>
+      <div class="grid-3">
+        <div class="card"><h3>kube-apiserver</h3><p>The HTTP API and policy boundary. Components coordinate through it rather than reading etcd directly.</p></div>
+        <div class="card"><h3>etcd</h3><p>A strongly consistent Raft-backed store for API-server data. Quorum and latency affect the entire control plane.</p></div>
+        <div class="card"><h3>Scheduler, controllers, kubelet</h3><p>Controllers decide what objects should exist, the scheduler chooses a node, and kubelet executes the assigned Pod.</p></div>
+      </div>
+      <div class="mental-model"><strong>Invariant:</strong> no component “runs a Deployment.” Several independent loops advance distinct API objects until a kubelet has enough durable intent to start containers.</div>
+      <aside class="references" aria-label="Module 1 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/architecture/" target="_blank" rel="noopener">Cluster Architecture</a><span>The upstream component map and control-plane/node boundary.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/overview/components/" target="_blank" rel="noopener">Kubernetes Components</a><span>Fast role-by-role reference for every core component.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/" target="_blank" rel="noopener">Control-plane communication</a><span>Which direction connections travel and where the API server mediates.</span></li>
+      </ul></aside>
+      <details><summary>Who starts a container after a Deployment is created?</summary><div><p class="rubric">Strong answer:</p><p>The Deployment controller creates a ReplicaSet. The ReplicaSet controller creates Pods. The scheduler binds each Pod. The selected node's kubelet then asks the runtime to create its sandbox and containers.</p></div></details>
+      <details><summary>What survives a control-plane outage?</summary><div><p class="rubric">Strong answer:</p><p>Existing processes and programmed data paths may continue. API writes, placement, repair, endpoint changes, leases and most day-two actions degrade. “Traffic still flows” does not mean the cluster is healthy.</p></div></details>
+      <details><summary>Why should a controller not read etcd directly?</summary><div><p class="rubric">Strong answer:</p><p>It would bypass authentication, authorization, admission, defaulting, validation, conversion, audit, versioning, and supported watch semantics while coupling itself to storage representation.</p></div></details>
+    </section>
+
+    <section class="module" id="m2">
+      <div class="module-head"><div><div class="eyebrow">Module 2</div><h2>Trace every API request through policy and persistence</h2><p class="lede">A request is authenticated, authorized, admitted, defaulted and validated before persistence; audit and flow control surround that path. Reads and watches then expose canonical API state to clients.</p></div></div>
+      <div class="flow"><div>Authenticate identity</div><div>Authorize attributes</div><div>Mutate / default</div><div>Validate / admit</div><div>Persist + notify watches</div></div>
+      <figure class="diagram" aria-labelledby="api-diagram-title">
+        <p class="diagram-title" id="api-diagram-title">Request gates: each success only advances to the next boundary</p>
+        <div class="diagram-row"><div class="diagram-node">HTTP request<small>verb + resource + identity evidence</small></div><div class="diagram-arrow">→</div><div class="diagram-node policy">Authenticate<small>who?</small></div><div class="diagram-arrow">→</div><div class="diagram-node policy">Authorize<small>may they?</small></div><div class="diagram-arrow">→</div><div class="diagram-node policy">Mutate then validate<small>built-in, policy, webhook</small></div><div class="diagram-arrow">→</div><div class="diagram-node state">etcd write<small>canonical API object</small></div></div>
+        <p class="diagram-note">APF may queue or reject before execution; audit observes stages around the path. Reads do not follow the same write/admission path.</p>
+        <figcaption>Original reconstruction from the admission-controller visual overview and API-server request-lifecycle material; current policy mechanisms are checked against upstream documentation.</figcaption>
+      </figure>
+      <div class="grid-2">
+        <div class="card"><h3>Authentication vs authorization</h3><p>Authentication establishes user and groups. Authorization decides whether that identity may perform the verb on the resource or non-resource path. RBAC grants permissions; it does not authenticate.</p></div>
+        <div class="card"><h3>Admission</h3><p>Mutating admission may change an object; validating admission may accept or reject it. Webhooks add network and certificate dependencies to the API request path.</p></div>
+        <div class="card"><h3>Optimistic concurrency</h3><p><code>resourceVersion</code> protects updates against stale state. Controllers should refetch and recompute after conflicts rather than blindly overwrite.</p></div>
+        <div class="card"><h3>Server-side apply</h3><p>Managed fields record ownership of field paths. Conflicts are ownership signals, not errors to suppress with unconditional force.</p></div>
+      </div>
+      <h3>Webhook failure analysis</h3><ul class="checklist"><li>Scope rules and object selectors: should this request call the webhook?</li><li>Service endpoints, DNS, TLS trust, timeout, and API-server reachability.</li><li><code>failurePolicy</code>: fail closed for safety or fail open for availability is a domain decision.</li><li>Mutation idempotency and reinvocation; validation must be deterministic and fast.</li></ul>
+      <aside class="references" aria-label="Module 2 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/reference/using-api/api-concepts/" target="_blank" rel="noopener">Kubernetes API Concepts</a><span>Resources, verbs, list/watch, resource versions, patches, and deletion.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/access-authn-authz/" target="_blank" rel="noopener">API Access Control</a><span>Canonical authentication, authorization, and admission entry point.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/cluster-administration/admission-webhooks-good-practices/" target="_blank" rel="noopener">Admission webhook good practices</a><span>Latency, availability, loops, matching scope, and fail-open/fail-closed design.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/access-authn-authz/authorization/" target="_blank" rel="noopener">Authorization reference</a><span>Request attributes, authorizer decisions, and deny-by-default behavior.</span></li>
+        <li><a href="https://github.com/kubernetes/apiserver/blob/master/ARCHITECTURE.md" target="_blank" rel="noopener">kube-apiserver architecture</a><span>Implementation-level server delegation, handler filters, schemes, conversion, admission, watch cache, and storage.</span></li>
+      </ul></aside>
+      <details><summary>Why can one admission webhook stall unrelated deployments?</summary><div><p class="rubric">Strong answer:</p><p>If its rules match broadly, each API request synchronously depends on the webhook Service, TLS, and response deadline. Failure policy determines whether timeout rejects or bypasses the request.</p></div></details>
+      <details><summary>RBAC allows the request, but it is still rejected. What layers remain?</summary><div><p class="rubric">Strong answer:</p><p>Admission policies/webhooks, schema validation, quotas, immutable-field rules, API conversion, and storage failures remain. A successful authorization decision only clears one gate.</p></div></details>
+      <details><summary>What is the safe response to an update conflict?</summary><div><p class="rubric">Strong answer:</p><p>Fetch the latest object, recompute the desired delta, and retry with bounded backoff. Overwriting stale state can destroy another writer's changes.</p></div></details>
+    </section>
+
+    <section class="module" id="m3">
+      <div class="module-head"><div><div class="eyebrow">Module 3</div><h2>Reconciliation makes unreliable events safe</h2><p class="lede">Events schedule work. A controller reads current state, compares it with intent, and takes an idempotent step toward convergence.</p></div></div>
+      <div class="flow"><div>List + resourceVersion</div><div>Watch changes</div><div>Cache objects</div><div>Queue stable key</div><div>Reconcile latest state</div></div>
+      <figure class="diagram" aria-labelledby="controller-diagram-title">
+        <p class="diagram-title" id="controller-diagram-title">Informer-to-worker loop: events are hints; current state is truth</p>
+        <div class="diagram-row"><div class="diagram-node state">API server<small>list + watch</small></div><div class="diagram-arrow">→</div><div class="diagram-node">Reflector<small>relist on expired history</small></div><div class="diagram-arrow">→</div><div class="diagram-node">Shared cache<small>latest objects</small></div><div class="diagram-arrow">→</div><div class="diagram-node policy">Workqueue<small>namespace/name keys</small></div><div class="diagram-arrow">→</div><div class="diagram-node runtime">Reconciler<small>observe, diff, act</small></div><div class="diagram-arrow">↺</div></div>
+        <figcaption>Original reconstruction of the controller/informer architecture taught in the controllers deep dive.</figcaption>
+      </figure>
+      <div class="grid-2">
+        <div class="card"><h3>List-watch recovery</h3><p>A list establishes current state and a collection resource version. Watches stream later changes. On expired history, relist and resume.</p></div>
+        <div class="card"><h3>Level-based behavior</h3><p>Correctness comes from recomputing what should be true now, not replaying every historical transition.</p></div>
+        <div class="card"><h3>Rate-limited queue</h3><p>Handlers enqueue namespace/name keys; workers fetch current objects. Burst deduplication and backoff isolate producers from retries.</p></div>
+        <div class="card"><h3>External side effects</h3><p>Use stable external idempotency keys, observe before create, persist provider identity, and make every phase resumable.</p></div>
+      </div>
+      <aside class="references" aria-label="Module 3 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/architecture/controller/" target="_blank" rel="noopener">Controller pattern</a><span>The official desired-state/current-state control-loop model.</span></li>
+        <li><a href="https://pkg.go.dev/k8s.io/client-go/tools/cache" target="_blank" rel="noopener">client-go informer/cache API</a><span>Precise SharedInformer, reflector, cache, and notification contracts.</span></li>
+        <li><a href="https://github.com/kubernetes/sample-controller" target="_blank" rel="noopener">Kubernetes sample-controller</a><span>Upstream code showing informer, workqueue, and sync-handler wiring.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/using-api/api-concepts/#efficient-detection-of-changes" target="_blank" rel="noopener">Efficient change detection</a><span>List/watch semantics, bookmarks, expiration, and recovery.</span></li>
+      </ul></aside>
+      <details><summary>Why queue a key instead of an event payload?</summary><div><p class="rubric">Strong answer:</p><p>A key deduplicates bursts and makes the worker read current truth. Payloads preserve stale intermediate states and encourage fragile event-replay logic.</p></div></details>
+      <details><summary>A watch event is lost. Is correctness lost?</summary><div><p class="rubric">Strong answer:</p><p>Not in a correct controller: relist/reconnect, resync or related changes schedule reconciliation, which compares current levels. Events improve latency, not correctness.</p></div></details>
+      <details><summary>What causes a controller hot loop?</summary><div><p class="rubric">Strong answer:</p><p>It writes on every pass even when semantic state is unchanged, triggering its own watch repeatedly. Compare before patching and avoid status timestamps or reordered fields that always differ.</p></div></details>
+    </section>
+
+    <section class="module" id="m4">
+      <div class="module-head"><div><div class="eyebrow">Module 4</div><h2>Workload controllers encode different lifecycle promises</h2><p class="lede">Deployments, StatefulSets, DaemonSets, Jobs, autoscalers, and disruption controls are distinct state machines—not interchangeable YAML wrappers.</p></div></div>
+      <div class="grid-3">
+        <div class="card"><h3>Deployment</h3><p>Manages ReplicaSets for replaceable Pods and controlled rollouts using surge, unavailability, readiness, and progress conditions.</p></div>
+        <div class="card"><h3>StatefulSet</h3><p>Adds stable ordinal identity, ordered lifecycle, and per-Pod claims. It does not make the application itself replicated or consistent.</p></div>
+        <div class="card"><h3>DaemonSet and Job</h3><p>A DaemonSet targets eligible nodes; a Job targets successful completion. Their replacement and retry semantics solve different invariants.</p></div>
+      </div>
+      <div class="mental-model"><strong>Autoscaling:</strong> HPA changes replica count from metrics; VPA recommends or changes resource requests. If both act on CPU or memory requests, the denominator can move beneath HPA. Stateful systems add identity, quorum, storage, and disruption constraints.</div>
+      <h3>Disruption distinctions</h3><p>A PodDisruptionBudget limits API-initiated voluntary disruption; it does not prevent node failure, OOM, direct Pod deletion, or every controller action. Scheduler preemption selects victims for a higher-priority Pod; kubelet eviction reacts to node pressure.</p>
+      <aside class="references" aria-label="Module 4 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/workloads/controllers/" target="_blank" rel="noopener">Workload controllers</a><span>Deployment, StatefulSet, DaemonSet, Job, and ReplicaSet semantics.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/" target="_blank" rel="noopener">Horizontal Pod Autoscaling</a><span>The control loop, utilization calculation, behavior, and stabilization.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/disruptions/" target="_blank" rel="noopener">Disruptions and PDBs</a><span>Voluntary versus involuntary disruption and what budgets actually protect.</span></li>
+        <li><a href="https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler" target="_blank" rel="noopener">Vertical Pod Autoscaler</a><span>Upstream VPA components, modes, recommendations, and limitations.</span></li>
+      </ul></aside>
+      <details><summary>Deployment vs StatefulSet: what is the real discriminator?</summary><div><p class="rubric">Strong answer:</p><p>Use StatefulSet when stable network and storage identity and ordered lifecycle are part of correctness. “Has a database” is not enough. Explain the application's own replication and failure semantics too.</p></div></details>
+      <details><summary>Can HPA and VPA safely control the same workload?</summary><div><p class="rubric">Strong answer:</p><p>They can conflict when VPA changes CPU/memory requests used as HPA utilization denominators. Separate signals—such as HPA on queue depth and VPA recommendations—or constrain update modes and test disruption.</p></div></details>
+      <details><summary>Does a PDB guarantee availability?</summary><div><p class="rubric">Strong answer:</p><p>No. It constrains voluntary eviction through the Eviction API. It cannot stop involuntary failures and is only useful alongside replicas, readiness, topology, and adequate capacity.</p></div></details>
+    </section>
+
+    <section class="module" id="m5">
+      <div class="module-head"><div><div class="eyebrow">Module 5</div><h2>CRDs are public APIs; operators give them behavior</h2><p class="lede">A CRD registers a resource and schema, a CR is one stored object, and a controller reconciles it. Long-lived APIs require compatibility, conversion, ownership, and deletion design.</p></div></div>
+      <div class="flow"><div>CRD registers GVK</div><div>API validates CR</div><div>Controller observes</div><div>Children / external state</div><div>Status reports</div></div>
+      <div class="grid-2">
+        <div class="card"><h3>Spec and status</h3><p>Spec is intent. Status is observation, including conditions and <code>observedGeneration</code>. A controller should not rewrite intent to hide limitations.</p></div>
+        <div class="card"><h3>Structural schema</h3><p>Accurate list/map semantics, pruning, defaulting, validation, and server-side apply behavior are part of the API contract.</p></div>
+        <div class="card"><h3>Served and storage versions</h3><p>Several representations may be served; one is used for new stored writes. Changing the storage marker does not migrate old objects.</p></div>
+        <div class="card"><h3>Ownership and deletion</h3><p>Owner references guide garbage collection. Finalizers hold an object after deletion request until the owning controller completes cleanup.</p></div>
+      </div>
+      <aside class="references" aria-label="Module 5 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/" target="_blank" rel="noopener">Custom Resources</a><span>When to use a CRD and how custom controllers create a declarative API.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/" target="_blank" rel="noopener">CRD versioning</a><span>Served/storage versions, conversion, migration, and retirement.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/using-api/cel/" target="_blank" rel="noopener">CEL in Kubernetes</a><span>Current expression features for CRD validation and admission policy.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/extend-kubernetes/operator/" target="_blank" rel="noopener">Operator pattern</a><span>How domain-specific automation combines controllers with custom resources.</span></li>
+      </ul></aside>
+      <details><summary>CRD, CR, controller, operator: distinguish them.</summary><div><p class="rubric">Strong answer:</p><p>The CRD registers an API kind. A CR is one instance of that kind. A controller reconciles state. An operator packages a controller with domain lifecycle knowledge, RBAC, installation and upgrades.</p></div></details>
+      <details><summary>Can you switch storage to v2 and immediately remove v1?</summary><div><p class="rubric">Strong answer:</p><p>No. Serve both, verify conversion and round trips, switch new storage, migrate existing objects, inspect stored versions and client use, then retire v1.</p></div></details>
+      <details><summary>A CR is stuck Terminating. Remove its finalizer?</summary><div><p class="rubric">Strong answer:</p><p>Only after identifying its owner and proving cleanup completed or was safely performed elsewhere. Blind removal can leak external resources and violate invariants.</p></div></details>
+    </section>
+
+    <section class="module" id="m6">
+      <div class="module-head"><div><div class="eyebrow">Module 6</div><h2>Scheduling is constraint solving under changing information</h2><p class="lede">The scheduler queues unscheduled Pods, filters infeasible nodes, scores candidates, reserves state, permits or rejects, and records a binding. Kubelet—not scheduler—then executes.</p></div></div>
+      <div class="flow"><div>Queue</div><div>PreFilter / Filter</div><div>Score</div><div>Reserve / Permit</div><div>Bind</div></div>
+      <figure class="diagram" aria-labelledby="scheduler-diagram-title">
+        <p class="diagram-title" id="scheduler-diagram-title">Scheduling context: choose, then commit</p>
+        <div class="diagram-lanes"><div class="diagram-lane"><h4>Scheduling cycle · serial</h4><div class="diagram-stack"><div class="diagram-node">QueueSort → PreFilter</div><div class="diagram-node policy">Filter nodes<small>PostFilter may attempt preemption</small></div><div class="diagram-node">Score → NormalizeScore</div></div></div><div class="diagram-lane"><h4>Binding cycle · may overlap</h4><div class="diagram-stack"><div class="diagram-node policy">Reserve → Permit<small>Unreserve rolls back failure</small></div><div class="diagram-node state">PreBind → Bind → PostBind</div><div class="diagram-node runtime">Pod.spec.nodeName<small>kubelet can now act</small></div></div></div></div>
+        <figcaption>Original reconstruction based on the scheduler talks and the current Scheduling Framework extension-point model.</figcaption>
+      </figure>
+      <div class="grid-2">
+        <div class="card"><h3>Hard vs soft placement</h3><p>Resources, required affinity, taints, ports, volume topology, and policy may filter. Preferences and scoring rank remaining nodes.</p></div>
+        <div class="card"><h3>Requests are scheduling currency</h3><p>Placement uses declared requests, not live usage. Bad requests create overcommit, low utilization, or node pressure later.</p></div>
+        <div class="card"><h3>Priority and preemption</h3><p>Priority orders work and may allow a pending Pod to displace lower-priority victims. The nominated node is still a proposal, not a guarantee.</p></div>
+        <div class="card"><h3>Eviction</h3><p>Kubelet eviction responds to local pressure using usage relative to requests, priority, and pressure signals. It is distinct from scheduler preemption.</p></div>
+      </div>
+      <aside class="references" aria-label="Module 6 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/" target="_blank" rel="noopener">Scheduling Framework</a><span>Current scheduling/binding cycles and every extension point.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/" target="_blank" rel="noopener">Assigning Pods to Nodes</a><span>Selectors, affinity, taints, and hard/soft placement constraints.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/" target="_blank" rel="noopener">Priority and Preemption</a><span>Queue order, victim selection, nominated nodes, and limitations.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/" target="_blank" rel="noopener">Resource management</a><span>Requests, limits, allocatable capacity, and runtime enforcement.</span></li>
+        <li><a href="https://github.com/kubernetes/enhancements/blob/master/keps/sig-scheduling/624-scheduling-framework/README.md" target="_blank" rel="noopener">Scheduling Framework KEP</a><span>Design rationale, cycle state, plugin lifecycle, extension points, rollback, and concurrency.</span></li>
+      </ul></aside>
+      <details><summary>Why is a Pod Pending when CPU appears free?</summary><div><p class="rubric">Strong answer:</p><p>Check requests against allocatable capacity plus affinity, taints, topology spread, ports, PVC topology/capacity, quotas, and scheduler events. Observed utilization is not the scheduler's feasibility input.</p></div></details>
+      <details><summary>Preemption vs eviction?</summary><div><p class="rubric">Strong answer:</p><p>Scheduler preemption removes lower-priority Pods to make a pending higher-priority Pod schedulable. Kubelet eviction terminates Pods under node pressure; API eviction represents voluntary disruption and honors PDBs.</p></div></details>
+      <details><summary>Why have Reserve and Unreserve phases?</summary><div><p class="rubric">Strong answer:</p><p>Stateful scheduler plugins can tentatively claim resources before binding and roll them back if a later phase fails. Unreserve must be idempotent.</p></div></details>
+    </section>
+
+    <section class="module" id="m7">
+      <div class="module-head"><div><div class="eyebrow">Module 7</div><h2>Kubelet turns a binding into processes, mounts, and probes</h2><p class="lede">The kubelet observes Pods assigned to its node, coordinates runtime, network, storage, secrets, probes, and status, and continuously syncs desired Pod state.</p></div></div>
+      <div class="flow"><div>Bound Pod</div><div>Volumes + sandbox</div><div>CNI network</div><div>Images + containers</div><div>Probes + readiness</div></div>
+      <figure class="diagram" aria-labelledby="runtime-diagram-title">
+        <p class="diagram-title" id="runtime-diagram-title">Do not collapse CRI, OCI, CNI, and CSI into “the runtime”</p>
+        <div class="diagram-lanes"><div class="diagram-lane"><h4>Kubernetes side</h4><div class="diagram-stack"><div class="diagram-node state">API server<small>bound Pod</small></div><div class="diagram-node runtime">kubelet<small>Pod sync, probes, status</small></div><div class="diagram-node policy">CNI + CSI calls<small>network and storage plugins</small></div></div></div><div class="diagram-lane"><h4>Runtime side</h4><div class="diagram-stack"><div class="diagram-node runtime">CRI gRPC<small>runtime + image services</small></div><div class="diagram-node">containerd / CRI-O<small>sandbox, images, containers</small></div><div class="diagram-node">OCI runtime<small>namespaces, cgroups, process</small></div></div></div></div>
+        <figcaption>Original reconstruction of the responsibility boundary explicitly discussed in the CRI deep-dive diagram.</figcaption>
+      </figure>
+      <div class="grid-2">
+        <div class="card"><h3>CRI boundary</h3><p>CRI is the gRPC contract between kubelet and a runtime such as containerd. OCI describes lower-level runtime and image specifications; it is not the kubelet API.</p></div>
+        <div class="card"><h3>Pod sandbox</h3><p>The runtime creates an isolation and network namespace anchor before normal containers. CNI configures its network attachment.</p></div>
+        <div class="card"><h3>Probe semantics</h3><p>Startup gates liveness/readiness during slow initialization; liveness restarts containers; readiness controls endpoint participation without restarting.</p></div>
+        <div class="card"><h3>Termination</h3><p>Deletion starts a grace period, lifecycle hooks and TERM, endpoint removal, and eventual force. Ordering is concurrent and should not be treated as a transaction.</p></div>
+      </div>
+      <aside class="references" aria-label="Module 7 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/" target="_blank" rel="noopener">Pod Lifecycle</a><span>Binding, sandbox readiness, phases, conditions, and termination flow.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/containers/cri/" target="_blank" rel="noopener">Container Runtime Interface</a><span>The kubelet/runtime gRPC boundary and runtime endpoint configuration.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/node/kubelet-sync-loop/" target="_blank" rel="noopener">Kubelet Sync Loop</a><span>Pod workers, SyncPod variants, CRI calls, PLEG events, and delayed status observations.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/probes/" target="_blank" rel="noopener">Startup, liveness, and readiness probes</a><span>Exact consequences and common probe-induced failure patterns.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/" target="_blank" rel="noopener">Container lifecycle hooks</a><span><code>PostStart</code>, <code>PreStop</code>, ordering, delivery, and grace-period behavior.</span></li>
+      </ul></aside>
+      <details><summary>Pod is Running but receives no traffic. Why?</summary><div><p class="rubric">Strong answer:</p><p>Running is a phase, not readiness. Inspect readiness gates/probes, container readiness, EndpointSlice membership, Service selection and ports, then the data plane.</p></div></details>
+      <details><summary>CRI vs OCI vs CNI?</summary><div><p class="rubric">Strong answer:</p><p>CRI connects kubelet to the container runtime; OCI specifies image/runtime primitives used below that boundary; CNI configures network attachment for the Pod sandbox.</p></div></details>
+      <details><summary>Why can the API show stale Pod status during node failure?</summary><div><p class="rubric">Strong answer:</p><p>Status is reported asynchronously by kubelet. Loss of node/API connectivity prevents updates until lease/node controllers infer unreachability and other controllers react.</p></div></details>
+    </section>
+
+    <section class="module" id="m8">
+      <div class="module-head"><div><div class="eyebrow">Module 8</div><h2>Networking separates Pod reachability from Service identity</h2><p class="lede">CNI attaches Pod networking. EndpointSlices represent ready backends. kube-proxy or an eBPF replacement translates stable Service semantics into a node data plane.</p></div></div>
+      <div class="flow"><div>DNS / Service VIP</div><div>Node data-plane lookup</div><div>Select EndpointSlice backend</div><div>Route to Pod IP</div><div>Policy + listener</div></div>
+      <figure class="diagram" aria-labelledby="network-diagram-title">
+        <p class="diagram-title" id="network-diagram-title">One Service contract, alternative node data planes</p>
+        <div class="diagram-row"><div class="diagram-node">Client packet<small>ClusterIP:port</small></div><div class="diagram-arrow">→</div><div class="diagram-node state">Service + EndpointSlices<small>control-plane intent</small></div><div class="diagram-arrow">→</div></div>
+        <div class="diagram-lanes"><div class="diagram-lane"><h4>kube-proxy family</h4><div class="diagram-stack"><div class="diagram-node policy">iptables / IPVS / nftables</div><div class="diagram-node">DNAT / select backend</div></div></div><div class="diagram-lane"><h4>eBPF replacement</h4><div class="diagram-stack"><div class="diagram-node policy">socket / TC hooks</div><div class="diagram-node">BPF Service + CT maps</div></div></div></div>
+        <div class="diagram-row"><div class="diagram-node runtime">Backend Pod IP<small>routing, policy, listener still matter</small></div></div>
+        <figcaption>Original reconstruction from the IPVS director diagram and Cilium's netfilter-bypass architecture. It deliberately preserves connection state in the eBPF branch.</figcaption>
+      </figure>
+      <div class="grid-2">
+        <div class="card"><h3>iptables, IPVS, nftables</h3><p>These are kube-proxy implementations, not different Service APIs. Simple O(N) vs O(1) slogans omit rule update, locality, kernel, and semantic tradeoffs; current clusters may use nftables.</p></div>
+        <div class="card"><h3>eBPF replacement</h3><p>An eBPF data plane can implement Service translation and connection tracking in BPF maps, at hooks such as socket or traffic control. It bypasses traditional netfilter, not connection state itself.</p></div>
+        <div class="card"><h3>Headless Service</h3><p><code>clusterIP: None</code> removes VIP proxying and returns endpoint addresses through DNS, moving selection to clients.</p></div>
+        <div class="card"><h3>Policy and routing</h3><p>NetworkPolicy declares allowed flows when the plugin enforces it. It does not create routes or prove an application listens.</p></div>
+      </div>
+      <h3>How a Pod gets its network</h3>
+      <p>A CNI plugin is an executable, not a service. The container runtime, not the kubelet, creates the sandbox’s network namespace. It reads CNI configuration from disk on that node and executes the plugin chain. The operation arrives in <code>CNI_COMMAND</code> and the configuration on stdin. A JSON result returns on stdout describing the IP, routes, DNS and MAC. Allocation is delegated to an IPAM plugin so every interface plugin does not reimplement it. If IPAM fails during <code>ADD</code>, the caller issues <code>DEL</code> to roll back. Each plugin in a chain acts on the same single interface, composing behaviour rather than adding interfaces.</p>
+      <p class="callout">Currency: the maintainer talks describe four operations. CNI 1.1 adds <code>GC</code> and <code>STATUS</code> alongside <code>ADD</code>, <code>DEL</code>, <code>CHECK</code> and <code>VERSION</code>. Products such as Calico and Cilium also run a node agent, but that agent is not the CNI plugin binary.</p>
+      <aside class="references" aria-label="Module 8 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/services-networking/service/" target="_blank" rel="noopener">Services and EndpointSlices</a><span>The stable Service contract, selectors, backends, and endpoint readiness.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/networking/virtual-ips/" target="_blank" rel="noopener">Virtual IPs and Service proxies</a><span>iptables, IPVS, nftables, traffic policies, and packet behavior.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/services-networking/network-policies/" target="_blank" rel="noopener">NetworkPolicy</a><span>Isolation semantics, selectors, ingress/egress combination, and limitations.</span></li>
+        <li><a href="https://docs.cilium.io/en/stable/network/kubernetes/kubeproxy-free/" target="_blank" rel="noopener">Cilium kube-proxy replacement</a><span>Primary implementation guide for eBPF Service load balancing.</span></li>
+        <li><a href="https://www.cni.dev/docs/spec/" target="_blank" rel="noopener">CNI specification</a><span>Plugin execution contract, operations, result types, and IPAM delegation.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/" target="_blank" rel="noopener">Kubernetes network plugins</a><span>How the runtime loads CNI configuration and what Kubernetes requires of a plugin.</span></li>
+      </ul></aside>
+      <details><summary>Service DNS resolves, but ClusterIP times out. Trace it.</summary><div><p class="rubric">Strong answer:</p><p>Inspect Service ports and EndpointSlices, test ready Pod IPs, inspect kube-proxy/BPF programming and conntrack, verify routing/MTU/policy, then the target listener.</p></div></details>
+      <details><summary>Does Cilium “remove conntrack”?</summary><div><p class="rubric">Strong answer:</p><p>It can bypass netfilter's conntrack path for Service handling while maintaining connection state in eBPF maps. Separate implementation from the need for stateful flow tracking.</p></div></details>
+      <details><summary>CNI vs kube-proxy?</summary><div><p class="rubric">Strong answer:</p><p>CNI configures Pod network attachment; kube-proxy implements Service VIP forwarding. A single product may replace both paths, but the contracts and failure questions remain distinct.</p></div></details>
+    </section>
+
+    <section class="module" id="m9">
+      <div class="module-head"><div><div class="eyebrow">Module 9</div><h2>DNS is resolver policy plus a configured server pipeline</h2><p class="lede">kubelet writes Pod resolver settings. Search expansion and <code>ndots</code> shape queries. The DNS Service reaches CoreDNS, whose compiled handler chain and Corefile configuration answer cluster names or forward upstream.</p></div></div>
+      <div class="flow"><div>Application resolver</div><div>search + ndots</div><div>kube-dns Service</div><div>CoreDNS plugins</div><div>cluster answer / upstream</div></div>
+      <figure class="diagram" aria-labelledby="dns-diagram-title">
+        <p class="diagram-title" id="dns-diagram-title">A conceptual CoreDNS handling path—not Corefile textual order</p>
+        <div class="diagram-row"><div class="diagram-node">Query<small>after search/ndots expansion</small></div><div class="diagram-arrow">→</div><div class="diagram-node policy">kubernetes<small>Service + EndpointSlice records</small></div><div class="diagram-arrow">→</div><div class="diagram-node">cache<small>answer or continue</small></div><div class="diagram-arrow">→</div><div class="diagram-node state">forward<small>upstream resolver</small></div></div>
+        <p class="diagram-note">A plugin may answer, modify, fall through, or forward. The compiled <code>plugin.cfg</code> defines execution order; the Corefile enables and configures plugins, server blocks, zones, and fallthrough behavior.</p>
+        <figcaption>Original reconstruction of the plugin-chain and fallthrough diagrams referenced in the CoreDNS plugin talks.</figcaption>
+      </figure>
+      <div class="grid-2">
+        <div class="card"><h3>Kubernetes plugin</h3><p>Watches Services and EndpointSlices to synthesize ClusterIP, headless endpoint, and named-port records.</p></div>
+        <div class="card"><h3>Plugin chain</h3><p>The Corefile selects and configures plugins, but its textual order does not reorder execution. The binary's <code>plugin.cfg</code> defines chain order; zone selection and plugin behavior determine the resulting path.</p></div>
+        <div class="card"><h3>Search amplification</h3><p>Names below the dot threshold may be expanded across search domains before absolute lookup, multiplying NXDOMAINs and latency.</p></div>
+        <div class="card"><h3>NodeLocal DNSCache</h3><p>A per-node cache can shorten the path, reduce load and UDP/conntrack pressure, but adds another cache, listener, and configuration surface to diagnose.</p></div>
+      </div>
+      <aside class="references" aria-label="Module 9 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/" target="_blank" rel="noopener">DNS for Services and Pods</a><span>Record shapes, search paths, Pod DNS policy, and hostname behavior.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/" target="_blank" rel="noopener">Debugging DNS Resolution</a><span>A practical evidence-first CoreDNS troubleshooting sequence.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/" target="_blank" rel="noopener">NodeLocal DNSCache</a><span>Architecture, motivations, packet-path changes, and deployment modes.</span></li>
+        <li><a href="https://coredns.io/plugins/kubernetes/" target="_blank" rel="noopener">CoreDNS kubernetes plugin</a><span>Zones, watches, records, fallthrough, readiness, and multicluster options.</span></li>
+        <li><a href="https://coredns.io/manual/configuration/" target="_blank" rel="noopener">CoreDNS configuration</a><span>Server blocks, zones, Corefile directives, and the crucial distinction between configuration order and compiled plugin order.</span></li>
+      </ul></aside>
+      <details><summary>Resolve <code>payments.prod.svc.cluster.local</code> end to end.</summary><div><p class="rubric">Strong answer:</p><p>The resolver sends the absolute cluster name to its configured DNS endpoint, possibly NodeLocal DNS. CoreDNS's kubernetes plugin answers from watched Service/EndpointSlice state; the reply then follows the node network path back.</p></div></details>
+      <details><summary>Why can <code>ndots</code> slow external names?</summary><div><p class="rubric">Strong answer:</p><p>A partially qualified name can be tried with every search suffix first. Inspect actual Pod <code>resolv.conf</code>, query metrics or captures, cache behavior, and application resolver implementation.</p></div></details>
+      <details><summary>CoreDNS Ready is true; what remains unproven?</summary><div><p class="rubric">Strong answer:</p><p>Service routing, API watch freshness, record correctness, upstream health, cache freshness, node-local path, and client resolver behavior remain separate.</p></div></details>
+    </section>
+
+    <section class="module" id="m10">
+      <div class="module-head"><div><div class="eyebrow">Module 10</div><h2>Storage binds application intent to topology-bound infrastructure</h2><p class="lede">A PVC requests storage, a StorageClass selects provisioning behavior, a PV represents provisioned capacity, and CSI controllers/node plugins coordinate creation, attachment, staging, and publishing.</p></div></div>
+      <div class="flow"><div>PVC</div><div>StorageClass + provisioner</div><div>PV binding</div><div>VolumeAttachment</div><div>CSI stage / publish</div></div>
+      <figure class="diagram" aria-labelledby="storage-diagram-title">
+        <p class="diagram-title" id="storage-diagram-title">CSI has a controller path and a node path joined by API objects</p>
+        <div class="diagram-lanes"><div class="diagram-lane"><h4>Provision and attach</h4><div class="diagram-stack"><div class="diagram-node state">PVC + StorageClass</div><div class="diagram-node policy">external-provisioner<small>CSI Controller RPC</small></div><div class="diagram-node state">PV + VolumeAttachment</div><div class="diagram-node policy">external-attacher<small>ControllerPublishVolume</small></div></div></div><div class="diagram-lane"><h4>Stage and publish</h4><div class="diagram-stack"><div class="diagram-node runtime">kubelet<small>selected node</small></div><div class="diagram-node">CSI node plugin<small>NodeStageVolume</small></div><div class="diagram-node">Pod target path<small>NodePublishVolume</small></div><div class="diagram-node runtime">container mount</div></div></div></div>
+        <p class="diagram-note"><code>WaitForFirstConsumer</code> couples provisioning to the scheduler's tentative topology choice; storage is not simply a post-scheduling phase.</p>
+        <figcaption>Original reconstruction of the “whole diagram” narrated in the CSI-driver talk: claim, class, PV, attachment, node publish, and container mount.</figcaption>
+      </figure>
+      <div class="grid-2">
+        <div class="card"><h3>Control-plane sidecars</h3><p>External provisioner, attacher, resizer, and snapshotter watch Kubernetes objects and call CSI controller RPCs.</p></div>
+        <div class="card"><h3>Node plugin</h3><p>A privileged per-node plugin handles node-stage and node-publish operations; kubelet coordinates mounts through the CSI socket.</p></div>
+        <div class="card"><h3>Topology</h3><p><code>WaitForFirstConsumer</code> delays provisioning so scheduling constraints can choose a compatible zone/node before storage is created.</p></div>
+        <div class="card"><h3>Lifecycle</h3><p>Access mode, reclaim policy, expansion, snapshots, finalizers, and attachment semantics determine whether rescheduling or deletion is safe.</p></div>
+      </div>
+      <aside class="references" aria-label="Module 10 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/storage/persistent-volumes/" target="_blank" rel="noopener">Persistent Volumes</a><span>PV/PVC binding, access modes, reclaim, protection, and expansion.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/storage/storage-classes/" target="_blank" rel="noopener">Storage Classes</a><span>Dynamic provisioning, binding modes, topology, and parameters.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/storage/storage-capacity/" target="_blank" rel="noopener">Storage Capacity</a><span>How CSI capacity and topology participate in scheduler filtering.</span></li>
+        <li><a href="https://github.com/container-storage-interface/spec/blob/master/spec.md" target="_blank" rel="noopener">CSI specification</a><span>The authoritative Controller and Node RPC contract.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/storage/volume-snapshots/" target="_blank" rel="noopener">Volume Snapshots</a><span>Snapshot API objects, controller, sidecar, and driver responsibilities.</span></li>
+        <li><a href="https://kubernetes-csi.github.io/docs/developing.html" target="_blank" rel="noopener">Developing a CSI driver</a><span>Identity, Controller and Node services, advertised capabilities, deployment modes, and standard sidecars.</span></li>
+      </ul></aside>
+      <details><summary>PVC is Pending. What evidence distinguishes causes?</summary><div><p class="rubric">Strong answer:</p><p>Inspect StorageClass/binding mode, provisioner and CSI capacity, PVC events, topology, quota and access mode. Under WaitForFirstConsumer, Pending may intentionally await Pod scheduling.</p></div></details>
+      <details><summary>Why can a scheduled Pod remain stuck mounting?</summary><div><p class="rubric">Strong answer:</p><p>Binding succeeded but attachment, CSI registration, controller RPC, node-stage/publish, credentials, device, filesystem, or multi-attach constraints can still fail. Follow VolumeAttachment, CSI sidecars, node plugin and kubelet logs.</p></div></details>
+      <details><summary>PV vs PVC vs StorageClass?</summary><div><p class="rubric">Strong answer:</p><p>A PVC is a namespaced request, a PV represents cluster storage capacity and lifecycle, and a StorageClass describes dynamic provisioning parameters and binding behavior.</p></div></details>
+    </section>
+
+    <section class="module" id="m11">
+      <div class="module-head"><div><div class="eyebrow">Module 11</div><h2>Availability depends on quorum, replaceability, and rehearsed recovery</h2><p class="lede">API-server replicas are replaceable; etcd members form a consensus group. Leader election protects active writers. Backups are only credible after verified, documented restoration.</p></div></div>
+      <figure class="diagram" aria-labelledby="etcd-diagram-title">
+        <p class="diagram-title" id="etcd-diagram-title">A write is durable only after a majority commits it</p>
+        <div class="diagram-row"><div class="diagram-node">API server<small>write request</small></div><div class="diagram-arrow">→</div><div class="diagram-node state">etcd leader<small>append WAL entry</small></div><div class="diagram-arrow">⇄</div><div class="diagram-node">follower A<small>ack</small></div><div class="diagram-arrow">+</div><div class="diagram-node">follower B<small>ack or unavailable</small></div><div class="diagram-arrow">→</div><div class="diagram-node policy">2 of 3<small>commit, then respond</small></div></div>
+        <figcaption>Original quorum reconstruction from the distributed-consensus talk. Snapshot restore is a separate recovery workflow, not part of the live commit path.</figcaption>
+      </figure>
+      <div class="grid-2">
+        <div class="card"><h3>Raft quorum</h3><p>A majority commits writes: <code>floor(N/2)+1</code>. Three and four members both tolerate one failure; odd membership usually buys better fault tolerance per member.</p></div>
+        <div class="card"><h3>WAL and snapshots</h3><p>Committed log entries and durable synchronization protect consensus; snapshots compact state. etcd filesystem copies are not a substitute for supported snapshot procedures.</p></div>
+        <div class="card"><h3>Leader election and leases</h3><p>Scheduler and controller replicas use leases so one active leader writes while standbys can take over. Node leases provide lightweight liveness signals.</p></div>
+        <div class="card"><h3>Upgrade and restore</h3><p>Respect version skew, drain and sequence components, preserve PKI/configuration, verify snapshots, restore to a new data directory, and test application-level recovery.</p></div>
+      </div>
+      <aside class="references" aria-label="Module 11 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://etcd.io/docs/v3.6/" target="_blank" rel="noopener">etcd v3.6 documentation</a><span>Current operations, learning material, APIs, and upgrade guidance.</span></li>
+        <li><a href="https://etcd.io/docs/v3.6/op-guide/recovery/" target="_blank" rel="noopener">etcd disaster recovery</a><span>Snapshot integrity and supported restore workflows.</span></li>
+        <li><a href="https://etcd.io/docs/v3.6/op-guide/failures/" target="_blank" rel="noopener">etcd failure modes</a><span>Follower, leader, majority, partition, and bootstrap failures and their availability consequences.</span></li>
+        <li><a href="https://etcd.io/docs/v3.6/learning/persistent-storage-files/" target="_blank" rel="noopener">etcd persistent storage internals</a><span>bbolt backend, Raft WAL records, snapshots, hard state, and on-disk recovery boundaries.</span></li>
+        <li><a href="https://etcd.io/docs/v3.6/op-guide/monitoring/" target="_blank" rel="noopener">Monitoring etcd</a><span>Health, leader, proposal, WAL, backend, latency, and alarm signals.</span></li>
+        <li><a href="https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/" target="_blank" rel="noopener">Highly available kubeadm clusters</a><span>Stacked versus external etcd topology and control-plane bootstrap.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/architecture/leases/" target="_blank" rel="noopener">Leases</a><span>Leader election, node heartbeats, and API-server identity.</span></li>
+      </ul></aside>
+      <details><summary>Why does adding a fourth etcd member not increase failure tolerance?</summary><div><p class="rubric">Strong answer:</p><p>Quorum rises from two-of-three to three-of-four, so both tolerate only one failed member. Five members tolerate two failures, at higher replication and coordination cost.</p></div></details>
+      <details><summary>What does an etcd snapshot not contain?</summary><div><p class="rubric">Strong answer:</p><p>It captures API state, not necessarily PKI, static Pod manifests, component configuration, external load balancers, container images, CSI data, or cloud resources. Recovery requires the full control-plane context.</p></div></details>
+      <details><summary>How do you prove disaster recovery works?</summary><div><p class="rubric">Strong answer:</p><p>Restore a verified snapshot into an isolated environment. Rebuild API access. Validate critical objects and controllers. Then test workload and data recovery against documented RPO and RTO. <code>snapshot status</code> alone proves nothing.</p></div></details>
+    </section>
+
+    <section class="module" id="m12">
+      <div class="module-head"><div><div class="eyebrow">Module 12</div><h2>Protect the API under load and trace bottlenecks by boundary</h2><p class="lede">Scalability is not one number. API Priority and Fairness protects limited concurrency, while watches, caches, queues, scheduler throughput, etcd latency, logs, metrics, and audit reveal different pressure points.</p></div></div>
+      <div class="flow"><div>Classify request</div><div>Priority level</div><div>Queue / reject</div><div>Allocate seats</div><div>Execute + observe</div></div>
+      <figure class="diagram" aria-labelledby="apf-diagram-title">
+        <p class="diagram-title" id="apf-diagram-title">APF classification and shuffle-sharded isolation</p>
+        <div class="diagram-row"><div class="diagram-node">Request<small>user + verb + resource</small></div><div class="diagram-arrow">→</div><div class="diagram-node policy">FlowSchema<small>first matching rule</small></div><div class="diagram-arrow">→</div><div class="diagram-node policy">PriorityLevelConfiguration<small>limited or exempt</small></div><div class="diagram-arrow">→</div><div class="diagram-node">shuffle-sharded queues<small>bounded overlap between flows</small></div><div class="diagram-arrow">→</div><div class="diagram-node state">seats execute<small>fair concurrency</small></div></div>
+        <p class="diagram-note">Shuffle sharding limits how many queues a noisy flow shares with others; it reduces blast radius but cannot repair a pathological client.</p>
+        <figcaption>Original reconstruction of the APF overview diagram and the shuffle-sharding picture explicitly narrated in the two APF talks.</figcaption>
+      </figure>
+      <div class="grid-2">
+        <div class="card"><h3>APF</h3><p>FlowSchemas classify requests into PriorityLevelConfigurations. Limited levels use queues and concurrency seats so noisy clients cannot consume the whole API server.</p></div>
+        <div class="card"><h3>Watch economics</h3><p>Informers share list/watch caches. Poor clients that repeatedly list, reconnect, or request huge objects amplify API server and etcd load.</p></div>
+        <div class="card"><h3>Signals</h3><p>Request latency/rejections, APF seats/queues, etcd fsync/commit latency, controller queue depth, scheduler attempts, kubelet/runtime latency, and DNS/data-plane metrics isolate layers.</p></div>
+        <div class="card"><h3>Evidence lifetimes</h3><p>Events are lossy hints, logs are component-local unless shipped, metrics aggregate, audit records API activity, and traces connect a request path. None alone is ground truth.</p></div>
+      </div>
+      <h3>Final diagnostic spine</h3><pre><code>desired object → admission/storage → watch/cache → controller queue
+→ scheduler queue/binding → kubelet/CRI/CNI/CSI → EndpointSlice
+→ Service/DNS/data plane → application → status, metrics, logs, audit</code></pre>
+      <aside class="references" aria-label="Module 12 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/cluster-administration/flow-control/" target="_blank" rel="noopener">API Priority and Fairness</a><span>FlowSchemas, priority levels, queues, shuffle sharding, and seats.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/cluster-administration/observability/" target="_blank" rel="noopener">Kubernetes observability</a><span>How metrics, logs, and traces expose different system boundaries.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/" target="_blank" rel="noopener">Auditing</a><span>Request stages, policy levels, backends, and operational cost.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/instrumentation/metrics/" target="_blank" rel="noopener">Component metrics reference</a><span>Searchable stability and label reference for Kubernetes metrics.</span></li>
+        <li><a href="https://github.com/kubernetes/enhancements/blob/master/keps/sig-api-machinery/1040-priority-and-fairness/README.md" target="_blank" rel="noopener">API Priority and Fairness KEP</a><span>The full design: request width, queue assignment, shuffle sharding, fairness, borrowing, and watch handling.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/cluster-administration/system-traces/" target="_blank" rel="noopener">System component traces</a><span>OTLP traces across API-server requests, webhooks, etcd, kubelet, CRI, and runtime boundaries.</span></li>
+      </ul></aside>
+      <details><summary>A controller floods the API. How can APF help—and not help?</summary><div><p class="rubric">Strong answer:</p><p>APF can classify, queue, bound or reject its requests while preserving concurrency for critical flows. It cannot fix a hot loop, bad list behavior, huge objects, or overloaded etcd; fix the client too.</p></div></details>
+      <details><summary>Events, logs, metrics, audit: which is authoritative?</summary><div><p class="rubric">Strong answer:</p><p>Canonical object state is authoritative for current API truth. Events explain selected transitions, logs explain component decisions, metrics reveal aggregate pressure, and audit records API requests. Correlate them.</p></div></details>
+      <details><summary>Give a 90-second architecture answer.</summary><div><p class="rubric">Strong answer:</p><p>Clients declare intent through a policy-enforcing API persisted in etcd. Controllers reconcile objects; the scheduler binds Pods; kubelets coordinate runtime, networking and storage. Services and DNS expose ready endpoints. Every stage is asynchronous, observable, retryable, and protected by ownership, quorum, flow control and recovery mechanisms.</p></div></details>
+    </section>
+
+    <section class="module" id="m13">
+      <div class="module-head"><div><div class="eyebrow">Module 13 · CKA cluster architecture</div><h2>kubeadm writes durable inputs; kubelet runs the control plane</h2><p class="lede">Bootstrap, upgrades and HA become understandable once kubeadm is separated from the long-running static Pods, kubelet, runtime, etcd and load balancer.</p></div></div>
+      <div class="flow"><div>PKI + kubeconfigs</div><div>static Pod manifests</div><div>kubelet + CRI</div><div>API bootstrap</div><div>join + CNI</div></div>
+      <div class="grid-2"><div class="card"><h3>Bootstrap authority</h3><p>kubeadm creates configuration, credentials, manifests and API bootstrap objects, then exits. The kubelet owns control-plane process continuity.</p></div><div class="card"><h3>Upgrade authority</h3><p>Version skew, etcd health, drain, package changes and node verification are separate gates. Change one failure domain at a time.</p></div><div class="card"><h3>Helm</h3><p>Packages and renders parameterized releases; it is not itself a runtime controller.</p></div><div class="card"><h3>Kustomize</h3><p>Composes overlays by transforming Kubernetes objects; output still follows the ordinary API path.</p></div></div>
+      <aside class="references" aria-label="Module 13 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.35.pdf" target="_blank" rel="noopener">Official CKA v1.35 curriculum</a><span>The exact exam domains and competencies this extension completes.</span></li>
+        <li><a href="https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/" target="_blank" rel="noopener">Create a kubeadm cluster</a><span>Bootstrap phases, control plane and worker joins.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/" target="_blank" rel="noopener">Upgrade kubeadm clusters</a><span>Version sequence, drain and per-node workflow.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/" target="_blank" rel="noopener">Static Pods</a><span>Manifest ownership, mirror Pods and kubelet behavior.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/" target="_blank" rel="noopener">Kustomize</a><span>Bases, overlays, generators and transformations.</span></li>
+      </ul></aside>
+      <details><summary>Why can kubectl be useless during a control-plane outage?</summary><div><p class="rubric">Strong answer:</p><p>kubectl depends on the API server. Move below the API to the load balancer, kubelet service, static manifests, runtime containers, certificates, etcd and host resources.</p></div></details>
+      <details><summary>Helm versus Kustomize?</summary><div><p class="rubric">Strong answer:</p><p>Helm packages and templates a release with values and release state. Kustomize transforms declarative bases with overlays. Neither proves the rendered objects were admitted or reconciled.</p></div></details>
+      <details><summary>What makes an HA upgrade safe?</summary><div><p class="rubric">Strong answer:</p><p>Supported skew, verified etcd/API health, one failure domain at a time, preserved PKI/configuration, and a tested recovery path.</p></div></details>
+    </section>
+
+    <section class="module" id="m14">
+      <div class="module-head"><div><div class="eyebrow">Module 14 · CKA workloads</div><h2>Configuration delivery, QoS, eviction and OOM are separate contracts</h2><p class="lede">An object update does not imply process reload. A QoS label does not perform an eviction. Kubelet pressure handling and kernel OOM selection operate at different layers.</p></div></div>
+      <div class="grid-2"><div class="card"><h3>ConfigMap and Secret delivery</h3><p>Environment values are fixed at process start. Projected files refresh eventually; the process must reload them.</p></div><div class="card"><h3>QoS</h3><p>Guaranteed, Burstable and BestEffort are derived from CPU and memory requests and limits.</p></div><div class="card"><h3>Kubelet eviction</h3><p>Proactively fails Pods from pressure signals; hard eviction can bypass normal grace and PDBs.</p></div><div class="card"><h3>Kernel OOM</h3><p>Selects a process/container using memory behavior and oom_score adjustment when memory is exhausted.</p></div></div>
+      <aside class="references" aria-label="Module 14 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/configuration/configmap/" target="_blank" rel="noopener">ConfigMaps</a><span>Consumption modes and update behavior.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/configuration/secret/" target="_blank" rel="noopener">Secrets</a><span>API semantics, delivery and security caveats.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/" target="_blank" rel="noopener">Pod QoS classes</a><span>Classification, eviction relationship and MemoryQoS.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/" target="_blank" rel="noopener">Node-pressure eviction</a><span>Signals, thresholds, reclamation, ranking and OOM behavior.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/architecture/cgroups/" target="_blank" rel="noopener">cgroup v2</a><span>The kernel enforcement substrate behind resource control.</span></li>
+      </ul></aside>
+      <details><summary>Why did a ConfigMap update not change the process?</summary><div><p class="rubric">Strong answer:</p><p>Environment delivery requires restart. A mounted projection updates eventually, but the process may cache or never reread it. A Deployment rolls only if its Pod template changes.</p></div></details>
+      <details><summary>Guaranteed QoS means never evicted?</summary><div><p class="rubric">Strong answer:</p><p>No. It is least likely under common memory pressure, but node stability can still require eviction. Actual ranking uses usage above requests, Priority and relative excess.</p></div></details>
+      <details><summary>Eviction versus OOM kill?</summary><div><p class="rubric">Strong answer:</p><p>Kubelet eviction proactively fails a Pod from node signals. Kernel OOM kills a process after exhaustion; kubelet may restart that container.</p></div></details>
+    </section>
+
+    <section class="module" id="m15">
+      <div class="module-head"><div><div class="eyebrow">Module 15 · CKA networking</div><h2>Ingress and Gateway resources configure a controller-owned data plane</h2><p class="lede">API acceptance proves desired routing exists, not that a listener, route, Service, endpoint, policy or application path works.</p></div></div>
+      <div class="flow"><div>external address</div><div>listener</div><div>route</div><div>Service</div><div>EndpointSlice</div><div>ready Pod</div></div>
+      <aside class="references" aria-label="Module 15 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/services-networking/gateway/" target="_blank" rel="noopener">Gateway API</a><span>GatewayClass, Gateway, Routes, attachment and status.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/services-networking/ingress/" target="_blank" rel="noopener">Ingress</a><span>Ingress resources, classes and controller dependency.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/services-networking/network-policies/" target="_blank" rel="noopener">NetworkPolicy</a><span>Selection, isolation and additive policy semantics.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/" target="_blank" rel="noopener">Debug Services</a><span>Identity-to-endpoint-to-data-plane diagnostic sequence.</span></li>
+      </ul></aside>
+      <details><summary>HTTPRoute exists but traffic fails. What is unproven?</summary><div><p class="rubric">Strong answer:</p><p>Parent acceptance, listener programming, route resolution, Service ports, EndpointSlice readiness, data-plane translation, policy and the application listener.</p></div></details>
+      <details><summary>Gateway API versus Ingress?</summary><div><p class="rubric">Strong answer:</p><p>Gateway API separates infrastructure, listener and route ownership with extensible typed resources and explicit status. Both still require an implementation controller.</p></div></details>
+      <details><summary>Why can NetworkPolicy exist but do nothing?</summary><div><p class="rubric">Strong answer:</p><p>The API only stores intent. The network implementation must enforce it, and the policy selectors and direction must match the flow.</p></div></details>
+    </section>
+
+    <section class="module" id="m16">
+      <div class="module-head"><div><div class="eyebrow">Module 16 · Advanced nodes</div><h2>Topology Manager reconciles CPU, memory and device locality</h2><p class="lede">The scheduler sees cluster-level feasibility. Kubelet resource managers decide whether the selected node can produce a coherent NUMA-local allocation.</p></div></div>
+      <div class="flow"><div>bound Pod</div><div>CPU hint</div><div>memory hint</div><div>device hint</div><div>merge policy</div><div>admit or reject</div></div>
+      <aside class="references" aria-label="Module 16 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/workloads/resource-managers/" target="_blank" rel="noopener">Resource managers</a><span>Unified map of CPU, memory and topology management.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/" target="_blank" rel="noopener">CPU Manager</a><span>Shared pool, static policy and exclusive CPUs.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/administer-cluster/topology-manager/" target="_blank" rel="noopener">Topology Manager</a><span>Hint protocol, scopes and NUMA policies.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/administer-cluster/memory-manager/" target="_blank" rel="noopener">Memory Manager</a><span>Guaranteed memory, huge pages and NUMA allocation.</span></li>
+      </ul></aside>
+      <details><summary>Scheduled, then rejected for topology: contradiction?</summary><div><p class="rubric">Strong answer:</p><p>No. The scheduler can prove aggregate feasibility without node-local NUMA alignment. Strict Topology Manager policy can reject kubelet admission afterward.</p></div></details>
+      <details><summary>Who gets exclusive CPUs?</summary><div><p class="rubric">Strong answer:</p><p>Under static CPU Manager, eligible Guaranteed containers with a positive integer CPU request. Fractional requests remain shared.</p></div></details>
+      <details><summary>Guaranteed but jittery: what evidence?</summary><div><p class="rubric">Strong answer:</p><p>Actual cpuset, CFS throttling, NUMA locality, topology policy, reserved CPUs, IRQ placement and system-daemon interference.</p></div></details>
+    </section>
+
+    <section class="module" id="m17">
+      <div class="module-head"><div><div class="eyebrow">Module 17 · Advanced scheduling</div><h2>DRA turns devices into structured inventory and claims</h2><p class="lede">ResourceSlices advertise devices, DeviceClasses categorize them, ResourceClaims request them, the scheduler allocates them, and kubelet plus the driver prepare them.</p></div></div>
+      <div class="flow"><div>ResourceSlice</div><div>DeviceClass</div><div>ResourceClaim</div><div>scheduler allocation</div><div>driver prepare</div></div>
+      <aside class="references" aria-label="Module 17 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/" target="_blank" rel="noopener">Dynamic Resource Allocation</a><span>Current stable architecture and API model.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/" target="_blank" rel="noopener">Device Plugins</a><span>Registration, extended resources, health and allocation.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/configure-pod-container/assign-resources/allocate-devices-dra/" target="_blank" rel="noopener">Allocate devices with DRA</a><span>Claims, templates, selectors and workload wiring.</span></li>
+      </ul></aside>
+      <details><summary>Device plugin versus DRA?</summary><div><p class="rubric">Strong answer:</p><p>Device plugins advertise scalar extended resources through kubelet. DRA uses API-visible structured inventory and claims for filtering, sharing and lifecycle.</p></div></details>
+      <details><summary>DeviceClass versus ResourceClaim?</summary><div><p class="rubric">Strong answer:</p><p>Class describes a category and selection policy; claim expresses workload intent and records allocation.</p></div></details>
+      <details><summary>DRA Pod Pending: where do you look?</summary><div><p class="rubric">Strong answer:</p><p>Claim status/events, DeviceClass selectors, ResourceSlice inventory, reachable nodes, scheduler allocation and driver readiness.</p></div></details>
+    </section>
+
+    <section class="module" id="m18">
+      <div class="module-head"><div><div class="eyebrow">Module 18 · Esoteric APIs</div><h2>Aggregation, CEL and review APIs extend policy without hiding boundaries</h2><p class="lede">APIService delegates serving, ValidatingAdmissionPolicy executes CEL in-process, and TokenReview/SubjectAccessReview expose authentication and authorization as review endpoints.</p></div></div>
+      <aside class="references" aria-label="Module 18 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/apiserver-aggregation/" target="_blank" rel="noopener">API aggregation</a><span>APIService registration, proxying and latency requirements.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/using-api/api-concepts/" target="_blank" rel="noopener">Advanced API concepts</a><span>Subresources, watch bookmarks, consistency and 410 recovery.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/" target="_blank" rel="noopener">ValidatingAdmissionPolicy</a><span>CEL logic, bindings, parameters and enforcement actions.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/kubernetes-api/authorization-resources/subject-access-review-v1/" target="_blank" rel="noopener">SubjectAccessReview</a><span>Explicit authorization queries against configured authorizers.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/access-authn-authz/user-impersonation/" target="_blank" rel="noopener">Impersonation</a><span>Identity substitution, required privileges and audit implications.</span></li>
+      </ul></aside>
+      <details><summary>When should you pay for an aggregated API server?</summary><div><p class="rubric">Strong answer:</p><p>For custom storage, arbitrary server behavior or non-CRUD subresources that CRD generic serving cannot provide.</p></div></details>
+      <details><summary>VAP versus webhook?</summary><div><p class="rubric">Strong answer:</p><p>VAP runs validation-only CEL in-process, removing Service, DNS, TLS and timeout dependencies. Webhooks permit arbitrary code and mutation but expand the hot path.</p></div></details>
+      <details><summary>TokenReview versus SubjectAccessReview?</summary><div><p class="rubric">Strong answer:</p><p>TokenReview authenticates token evidence. SubjectAccessReview asks whether an identity may perform an attributed action.</p></div></details>
+    </section>
+
+    <section class="module" id="m19">
+      <div class="module-head"><div><div class="eyebrow">Module 19 · Coordination APIs</div><h2>Each gate delays one precise state transition</h2><p class="lede">Leases coordinate leadership and heartbeats; scheduling gates defer placement; readiness gates defer traffic; finalizers defer deletion.</p></div></div>
+      <div class="grid-2"><div class="card"><h3>Lease</h3><p>Expiring, optimistically updated ownership for heartbeats and leadership.</p></div><div class="card"><h3>schedulingGates</h3><p>Keep prerequisite-blocked Pods out of active scheduler queues.</p></div><div class="card"><h3>Readiness gates</h3><p>Keep running Pods out of Ready and endpoints until external conditions hold.</p></div><div class="card"><h3>Finalizers</h3><p>Keep deletion-pending objects in storage until cleanup completes.</p></div></div>
+      <aside class="references" aria-label="Module 19 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/architecture/leases/" target="_blank" rel="noopener">Leases</a><span>Node heartbeats and leader-election locks.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/cluster-administration/coordinated-leader-election/" target="_blank" rel="noopener">Coordinated leader election</a><span>LeaseCandidate and deterministic upgrade-aware selection.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/scheduling-eviction/pod-scheduling-readiness/" target="_blank" rel="noopener">Pod scheduling readiness</a><span>Scheduling gates and mutable scheduling directives.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers/" target="_blank" rel="noopener">Finalizers</a><span>Deletion timestamps, cleanup and removal.</span></li>
+      </ul></aside>
+      <details><summary>What prevents two Lease winners?</summary><div><p class="rubric">Strong answer:</p><p>Conditional API updates using resourceVersion. Only one candidate's write succeeds; others observe conflicts.</p></div></details>
+      <details><summary>What does leader election not guarantee?</summary><div><p class="rubric">Strong answer:</p><p>Exactly-once external side effects. A paused old leader may have issued work, so idempotency and sometimes fencing remain necessary.</p></div></details>
+      <details><summary>SchedulingGated means check node capacity?</summary><div><p class="rubric">Strong answer:</p><p>No. Identify the named gates, their owning controller/admission rule, and the prerequisite preventing removal.</p></div></details>
+    </section>
+
+    <section class="module" id="m20">
+      <div class="module-head"><div><div class="eyebrow">Module 20 · CKA troubleshooting 30%</div><h2>Diagnose the owner of the missing transition</h2><p class="lede">The exam rewards commands, but durable speed comes from a systems invariant: locate the expected transition, identify its owner, and inspect evidence at that boundary.</p></div></div>
+      <pre><code>observation → expected transition → owning component → status/events/logs
+→ adjacent healthy boundary → one change → verify convergence</code></pre>
+      <aside class="references" aria-label="Module 20 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/" target="_blank" rel="noopener">Troubleshoot clusters</a><span>Node, component and cluster-level entry points.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/debug/debug-application/" target="_blank" rel="noopener">Troubleshoot applications</a><span>Pods, Services and workload evidence.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/crictl/" target="_blank" rel="noopener">Debug nodes with crictl</a><span>Runtime evidence when the API is unavailable or stale.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/" target="_blank" rel="noopener">Debug Services</a><span>Service-to-endpoint-to-data-plane workflow.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/" target="_blank" rel="noopener">Debug running Pods</a><span>Logs, exec, ephemeral containers and node access.</span></li>
+      </ul></aside>
+      <details><summary>Node NotReady: give the short path.</summary><div><p class="rubric">Strong answer:</p><p>Conditions, taints and Lease; host/time reachability; kubelet service/config/certificates; CRI/runtime; CNI/routes. Preserve evidence before restart.</p></div></details>
+      <details><summary>Name resolves but Service fails.</summary><div><p class="rubric">Strong answer:</p><p>Service selector/ports, EndpointSlices/readiness, direct Pod target port, Service data plane, NetworkPolicy, then application listener.</p></div></details>
+      <details><summary>What is the compact troubleshooting algorithm?</summary><div><p class="rubric">Strong answer:</p><p>Name the missing transition and its owner, inspect that boundary's state and evidence, compare an adjacent healthy layer, change one thing, and verify convergence.</p></div></details>
+    </section>
+
+    <section class="module" id="sources">
+      <div class="module-head"><div><div class="eyebrow">Provenance</div><h2>Source posture and known caveats</h2></div></div>
+      <p>The course synthesizes 33 local transcripts. The eight advanced-track captions retrieved on 2026-08-10 are all auto-generated and may mishear technical names. Four additional advanced talks are linked as supplements, but transcript retrieval was request-blocked and they contribute no transcript-derived claims.</p>
+      <ul class="source-list">
+        <li>The repeated ID <code>lAUmdIGP_fE</code> is one Airbnb DNS talk, not three separate networking/internals talks.</li>
+        <li>The proposed NodeLocal DNS video does not substantively teach NodeLocal DNSCache or <code>ndots</code>; those sections rely on upstream Kubernetes documentation.</li>
+        <li>The Kubernetes 1.18 APF talk is historical. Current API and feature behavior comes from upstream documentation.</li>
+        <li>The iptables/IPVS talk predates nftables; backend slogans are not current recommendations.</li>
+        <li>The Cilium talk uses eBPF connection-tracking maps; it bypasses traditional netfilter paths, not connection state as a concept.</li>
+        <li>Two CNI maintainer talks were added later to close a gap: none of the original 23 videos covers CNI itself. They predate CNI 1.1, so the operation list is checked against the current specification rather than the talks.</li>
+        <li>The CKA completion track follows the official v1.35 curriculum. Quarterly exam updates are expected, so its version label and competencies must be rechecked before an exam booking.</li>
+        <li>DRA feature state, pod-level resources, MemoryQoS and coordinated leader election are release-sensitive; the lesson teaches their architecture, while current upstream documentation owns exact availability.</li>
+      </ul>
+      <p>Primary currency checks: <a href="https://kubernetes.io/docs/reference/access-authn-authz/">API access control</a>, <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/">scheduling framework</a>, <a href="https://kubernetes.io/docs/concepts/containers/cri/">CRI</a>, <a href="https://kubernetes.io/docs/concepts/storage/">storage</a>, <a href="https://kubernetes.io/docs/concepts/cluster-administration/flow-control/">API Priority and Fairness</a>, and <a href="https://kubernetes.io/docs/concepts/cluster-administration/observability/">observability</a>.</p>
+      <p class="callout">Verify target cluster version and configuration before repeating a feature state, proxy backend, autoscaler behavior, or recovery command in an interview.</p>
+    </section>
+
+    <footer class="footer">This guidebook is the full reference behind the lessons. <a href="index.html">Return to the lesson path</a> to practise it. Offline-first; print styles expand it into a study packet.</footer>
+  </main>
+</div>
+<script src="assets/course.js"></script>
+</body>
+</html>
