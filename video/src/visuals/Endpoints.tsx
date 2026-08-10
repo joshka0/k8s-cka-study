@@ -182,8 +182,12 @@ const ModuleEndpoints: React.FC = () => {
         >
           {PODS.map((p, i) => {
             const isThird = i === 2;
-            const nowReady = isThird ? flip > 0.5 : p.ready;
-            const readyNow = isThird ? flip > 0.3 : true;
+            // One readiness value, one threshold. Two thresholds (0.3 and 0.5)
+            // left a window where the Pod card claimed ready:true while the data
+            // plane below declined the same endpoint as ready:false — three
+            // renderings of one fact, disagreeing on screen.
+            const readyNow = isThird ? flip > 0.5 : p.ready;
+            const nowReady = readyNow;
             return (
               <div key={p.name} style={{ width: 300, textAlign: 'center' }}>
                 <div
@@ -270,7 +274,7 @@ const ModuleEndpoints: React.FC = () => {
           <div style={{ display: 'flex', gap: 14 }}>
             {PODS.map((p, i) => {
               const isThird = i === 2;
-              const readyNow = isThird ? flip > 0.3 : true;
+              const readyNow = isThird ? flip > 0.5 : p.ready; // same threshold as the Pod card
               return (
                 <div
                   key={p.name}
