@@ -8,8 +8,7 @@ official CKA v1.35 curriculum, and cross-checked against current upstream docs.
 > 1–12, and their corrections have been applied to the scripts, lesson path,
 > reference guide, and Anki source. The published `video/REVIEW-FINDINGS-*.md`
 > files preserve the audit trail and identify the superseded wording. Modules
-> 8–12 have reviewed, narrated compositions and validated stills, but do not
-> yet have full-module MP4 exports.
+> All twelve reviewed compositions now have full-module MP4 exports.
 
 ## Open the course
 

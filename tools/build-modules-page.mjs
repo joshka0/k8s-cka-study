@@ -64,8 +64,11 @@ const cards = entries.map((e) => {
     .filter((b) => b.lane !== null)          // drop the locate/close spine beats
     .map((b) => `<li>${esc(b.title)}</li>`)
     .join('\n          ');
+  // Link into the learn path's own module section rather than the bare file, so
+  // watching counts toward progress. The raw file stays available beside it.
   const status = e.video
-    ? `<a class="watch" href="${e.video}">Watch · ${mmss(e.seconds)}</a>`
+    ? `<a class="watch" href="index.html#m/${e.script.series.unit}">Watch · ${mmss(e.seconds)}</a>`
+      + ` <a class="file" href="${e.video}" download>file</a>`
     : `<span class="pending">Not yet rendered${e.dubbed ? '' : ' · estimate ' + mmss(e.seconds)}</span>`;
   return `
       <article class="module" id="module-${num}">
@@ -119,6 +122,8 @@ const html = `<!doctype html>
     .module .beats li { font-size: 14px; margin: 3px 0; break-inside: avoid; }
     .watch { margin-left: auto; white-space: nowrap; background: #1d4ed8; color: #fff;
              text-decoration: none; padding: 8px 14px; border-radius: 8px; font-size: 14px; }
+    .file { color: #64748b; text-decoration: none; font-size: 13px; margin-left: 10px; }
+    .file:hover { color: #94a3b8; text-decoration: underline; }
     .pending { margin-left: auto; white-space: nowrap; color: #64748b; font-size: 13px; }
     @media (max-width: 720px) {
       .module .beats { columns: 1; }

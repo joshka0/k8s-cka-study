@@ -315,3 +315,31 @@ button.stat:hover { border-color: var(--line-strong); }
   .unit-meta { width: 100%; margin: 10px 0 0; }
   .tiles { grid-template-columns: 1fr; }
 }
+
+/* ---------- module video: a step in the path, not a link off the site ---- */
+
+.node.video { border-color: var(--blue); background: color-mix(in srgb, var(--blue) 7%, var(--paper)); }
+.node.video .dot { background: var(--blue); color: #fff; }
+.node.video.done .dot { background: var(--good); }
+
+.module-view { max-width: 900px; margin: 0 auto; }
+.module-view .back { margin-bottom: 14px; }
+.module-view h1 { margin: 6px 0 4px; }
+.module-sub { color: var(--muted); margin: 0 0 16px; line-height: 1.5; }
+
+.module-player {
+  width: 100%; max-width: 100%; aspect-ratio: 16 / 9; height: auto;
+  display: block; border: 2px solid var(--line); border-radius: 14px;
+  background: #000;
+}
+
+.module-parts-head { margin: 22px 0 8px; font-size: 1rem; }
+.module-parts { margin: 0; padding-left: 22px; columns: 2; column-gap: 30px; }
+.module-parts li { margin: 4px 0; break-inside: avoid; line-height: 1.45; }
+
+.module-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+
+@media (max-width: 720px) {
+  .module-parts { columns: 1; }
+  .module-actions .btn { width: 100%; }
+}
