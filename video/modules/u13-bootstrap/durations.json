@@ -1,12 +1,12 @@
 {
-  "close": 17.710938,
-  "drain-is-not-upgrade": 11.075813,
-  "helm-vs-kustomize": 16.796625,
-  "locate": 15.568875,
-  "safe-not-successful": 21.159125,
-  "skew-boundaries": 17.371313,
-  "static-pod-first-check": 20.088063,
-  "the-handoff": 20.479938,
-  "what-kubeadm-is": 22.778688,
-  "worker-upgrade-order": 14.26275
+  "close": 18.964813,
+  "drain-is-not-upgrade": 10.893,
+  "helm-vs-kustomize": 19.252125,
+  "locate": 16.039125,
+  "safe-not-successful": 28.003188,
+  "skew-boundaries": 17.449688,
+  "static-pod-first-check": 26.879938,
+  "the-handoff": 20.584375,
+  "what-kubeadm-is": 20.375438,
+  "worker-upgrade-order": 14.837438
 }

@@ -1,12 +1,12 @@
 {
-  "close": 15.072563,
-  "four-gates": 22.25625,
-  "gated-diagnosis": 18.024375,
-  "leases-are-optimistic": 18.886438,
-  "locate": 11.546063,
-  "node-leases": 18.808063,
-  "pdb-is-not-a-gate": 15.333813,
-  "scheduling-gates-load": 18.4685,
-  "simultaneous-takeover": 17.580313,
-  "what-leases-cannot": 21.159125
+  "close": 14.184375,
+  "four-gates": 23.719125,
+  "gated-diagnosis": 17.554188,
+  "leases-are-optimistic": 17.815438,
+  "locate": 10.919125,
+  "node-leases": 19.27825,
+  "pdb-is-not-a-gate": 14.47175,
+  "scheduling-gates-load": 17.815438,
+  "simultaneous-takeover": 17.946063,
+  "what-leases-cannot": 22.282375
 }

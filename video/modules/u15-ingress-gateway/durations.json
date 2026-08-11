@@ -1,11 +1,11 @@
 {
-  "accepted-not-served": 17.005625,
-  "accepted-yet-inert": 18.938688,
-  "close": 15.725625,
-  "intent-not-dataplane": 20.061938,
-  "locate": 12.564813,
-  "ownership-split": 19.226063,
-  "policy-permits": 17.972125,
-  "request-boundaries": 18.4685,
-  "service-timeout-layers": 18.233375
+  "accepted-not-served": 17.371313,
+  "accepted-yet-inert": 18.285625,
+  "close": 16.457063,
+  "intent-not-dataplane": 20.66275,
+  "locate": 11.964,
+  "ownership-split": 19.853,
+  "policy-permits": 18.755813,
+  "request-boundaries": 19.147688,
+  "service-timeout-layers": 19.644
 }

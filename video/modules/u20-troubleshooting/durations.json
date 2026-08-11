@@ -1,12 +1,12 @@
 {
-  "close": 13.426875,
-  "control-plane-order": 19.043188,
-  "locate": 12.173,
-  "nearest-authority": 22.230125,
-  "ninety-second-notready": 18.703563,
-  "notready-evidence": 19.226063,
-  "phase-vs-events": 22.883188,
-  "previous-logs": 18.285625,
-  "resolves-but-fails": 18.599125,
-  "the-algorithm": 21.368063
+  "close": 12.9305,
+  "control-plane-order": 20.401563,
+  "locate": 12.98275,
+  "nearest-authority": 23.980313,
+  "ninety-second-notready": 18.729688,
+  "notready-evidence": 20.218688,
+  "phase-vs-events": 24.6595,
+  "previous-logs": 16.666063,
+  "resolves-but-fails": 17.293,
+  "the-algorithm": 20.97625
 }
