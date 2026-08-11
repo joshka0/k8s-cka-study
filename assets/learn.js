@@ -297,7 +297,7 @@ function showPath() {
   kids.push(el('div', { cls: 'hero' }, [
     el('div', { cls: 'eyebrow', text: 'Senior platform / SRE preparation' }),
     el('h1', { text: COURSE.subtitle }),
-    el('p', { text: '20 units built from 33 transcript-backed talks, 6 supplemental videos, and current upstream documentation. Short lessons, answered out loud, with the clip that teaches each idea one tap away.' }),
+    el('p', { text: '27 units built from 33 transcript-backed talks, supplemental video research, and current upstream documentation. Short lessons, answered out loud, with source links at every technical boundary.' }),
     el('p', { text: 'The first twelve architecture units have narrated module videos, and all twelve scripts were technically reviewed against Kubernetes v1.36 by two independent models. Ninety-seven corrections from that review are applied.' }),
     el('div', { cls: 'hero-actions' }, [
       next ? el('button', { cls: 'btn', on: { click: () => startLesson(next.id) } },

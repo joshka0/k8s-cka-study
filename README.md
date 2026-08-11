@@ -7,13 +7,13 @@ official CKA v1.35 curriculum, and cross-checked against current upstream docs.
 > **Accuracy status:** Kubernetes v1.36 adversarial reviews now cover Modules
 > 1–12, and their corrections have been applied to the scripts, lesson path,
 > reference guide, and Anki source. The published `video/REVIEW-FINDINGS-*.md`
-> files preserve the audit trail and identify the superseded wording. Modules
-> All twelve reviewed compositions now have full-module MP4 exports.
+> files preserve the audit trail and identify the superseded wording. All
+> twelve reviewed compositions now have full-module MP4 exports.
 
 ## Open the course
 
-Open `index.html` in a browser. It is an interactive lesson path: 20 units,
-44 short lessons, 214 steps. Nothing is installed and nothing is uploaded —
+Open `index.html` in a browser. It is an interactive lesson path: 27 units,
+58 short lessons, 270 steps. Nothing is installed and nothing is uploaded —
 progress lives in this browser's local storage.
 
 Each lesson opens with a concept card, then drills it with exercises that must
@@ -30,8 +30,8 @@ be answered, not merely read:
 
 A wrong answer is re-queued to the end of the lesson, so a lesson only finishes
 once everything has been answered correctly. Every graded item explains the
-*discriminator* rather than restating the answer, and links both the upstream
-document and a timestamped clip.
+*discriminator* rather than restating the answer, and links upstream documents
+and timestamped clips where the relevant source material is available.
 
 Keyboard: `1`–`9` select, `Enter` checks and continues, `Esc` leaves the lesson.
 
@@ -55,7 +55,7 @@ undo that — you were shown it, you did not recall it.
 ## The guidebook
 
 `reference.html` is the full prose course that the lessons are built from:
-twenty modules, sixty interview drills, nine original architecture
+twenty-seven modules, eighty-one interview drills, nine original architecture
 diagrams, a 39-item video path, and more than 90 primary-source references and print
 styles. Every unit on the path links to its guidebook section, and every lesson
 summary offers it. Use the lessons to practise and the guidebook to read.

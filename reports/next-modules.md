@@ -1,6 +1,10 @@
 # Next module research
 
-This backlog compares the 20-module course with the Kubernetes v1.35 CKA
+> Implementation status (2026-08-11): the seven proposals below are now
+> Modules 21–27 in the interactive lesson path and reference guide. Anki/deck
+> generation is intentionally deferred.
+
+This backlog compares the original 20-module course with the Kubernetes v1.35 CKA
 curriculum. It prioritizes gaps for an experienced engineer: authority,
 state transitions, failure boundaries, and evidence rather than command
 memorization.

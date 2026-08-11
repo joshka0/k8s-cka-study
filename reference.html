@@ -39,6 +39,13 @@
       <a href="#m18">18 · Advanced API machinery</a>
       <a href="#m19">19 · Coordination &amp; gates</a>
       <a href="#m20">20 · CKA troubleshooting</a>
+      <a href="#m21">21 · Identity, RBAC &amp; node trust</a>
+      <a href="#m22">22 · Metrics, logs &amp; debugging</a>
+      <a href="#m23">23 · Delivery &amp; field ownership</a>
+      <a href="#m24">24 · Governance &amp; resizing</a>
+      <a href="#m25">25 · Exposure &amp; locality</a>
+      <a href="#m26">26 · Sidecars, Jobs &amp; restarts</a>
+      <a href="#m27">27 · Pod security &amp; isolation</a>
       <a href="#sources">Sources &amp; caveats</a>
     </nav>
   </aside>
@@ -47,11 +54,11 @@
     <header class="hero">
       <div class="eyebrow">Reference companion to the lesson path</div>
       <h1>Follow intent all the way to a packet.</h1>
-      <p>A 20-stage systems course built from 33 video transcripts, the official CKA v1.35 curriculum, and current upstream documentation. Learn stable invariants, then diagnose the asynchronous boundaries where real clusters fail.</p>
-      <p class="callout"><strong>Accuracy note:</strong> Kubernetes v1.36 adversarial reviews cover Modules 1–12, and their corrections are applied here. The published <a href="video/REVIEW-FINDINGS-07-08.md">review findings</a> preserve the audit trail and superseded wording; Modules 8–12 have reviewed scripts but no narrated renders yet.</p>
+      <p>A 27-stage systems course built from 33 video transcripts, the official CKA v1.35 curriculum, and current upstream documentation. Learn stable invariants, then diagnose the asynchronous boundaries where real clusters fail.</p>
+      <p class="callout"><strong>Accuracy note:</strong> Kubernetes v1.36 adversarial reviews cover Modules 1–12, and their corrections are applied here. The published <a href="video/REVIEW-FINDINGS-07-08.md">review findings</a> preserve the audit trail and superseded wording; all twelve reviewed compositions have narrated renders.</p>
       <div class="hero-grid">
-        <div class="hero-stat"><strong>20</strong> architecture modules</div>
-        <div class="hero-stat"><strong>60</strong> interview drills</div>
+        <div class="hero-stat"><strong>27</strong> architecture modules</div>
+        <div class="hero-stat"><strong>81</strong> interview drills</div>
         <div class="hero-stat"><strong>33</strong> transcript sources</div>
       </div>
     </header>
@@ -539,9 +546,103 @@
       <details><summary>What is the compact troubleshooting algorithm?</summary><div><p class="rubric">Strong answer:</p><p>Name the missing transition and its owner, inspect that boundary's state and evidence, compare an adjacent healthy layer, change one thing, and verify convergence.</p></div></details>
     </section>
 
+    <section class="module" id="m21">
+      <div class="module-head"><div><div class="eyebrow">Module 21 · Identity and node trust</div><h2>Scope is part of permission; a node is a constrained principal</h2><p class="lede">RBAC permissions accumulate through bindings. Kubelet bootstrapping establishes a certificate identity that Node authorization and NodeRestriction deliberately constrain.</p></div></div>
+      <div class="flow"><div>authenticate</div><div>resolve bindings</div><div>authorize action</div><div>admit mutation</div><div>persist</div></div>
+      <div class="grid-2"><div class="card"><h3>Human and workload identity</h3><p>Users, groups and ServiceAccounts receive the union of applicable Role and ClusterRole rules. RBAC has no deny rule.</p></div><div class="card"><h3>Node identity</h3><p>A kubelet moves from bootstrap credentials through CSR approval to a <code>system:node:&lt;name&gt;</code> client certificate.</p></div></div>
+      <aside class="references" aria-label="Module 21 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/reference/access-authn-authz/rbac/" target="_blank" rel="noopener">RBAC authorization</a><span>Roles, bindings, aggregation and escalation boundaries.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/" target="_blank" rel="noopener">Kubelet TLS bootstrapping</a><span>Bootstrap tokens, CSRs and certificate handoff.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/access-authn-authz/node/" target="_blank" rel="noopener">Node authorization</a><span>Node identity convention and relationship-limited access.</span></li>
+      </ul></aside>
+      <details><summary>ClusterRole bound by RoleBinding: what is the scope?</summary><div><p class="rubric">Strong answer:</p><p>The ClusterRole contributes reusable rules, but the RoleBinding grants those rules only inside its namespace.</p></div></details>
+      <details><summary>Why audit binding and impersonation rights?</summary><div><p class="rubric">Strong answer:</p><p>They can indirectly grant stronger effective privilege. RBAC is additive, so inspect the reachable grant graph rather than one named Role.</p></div></details>
+      <details><summary>Joined but NotReady with certificate errors?</summary><div><p class="rubric">Strong answer:</p><p>Inspect pending/denied CSRs, certificate subject and validity, kubelet kubeconfig, API reachability, then Node authorization. Join success did not prove trust establishment.</p></div></details>
+    </section>
+
+    <section class="module" id="m22">
+      <div class="module-head"><div><div class="eyebrow">Module 22 · Observability and debugging</div><h2>Choose evidence from the component that owns the missing transition</h2><p class="lede"><code>kubectl top</code> is a narrow resource-metrics client. Status, events, logs, ephemeral containers, journals and CRI state expose different layers.</p></div></div>
+      <div class="flow"><div>status + events</div><div>current / previous logs</div><div>exec / ephemeral debug</div><div>node journal</div><div>crictl</div></div>
+      <aside class="references" aria-label="Module 22 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/" target="_blank" rel="noopener">Resource metrics pipeline</a><span>Kubelet, metrics-server, aggregated API and consumers.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/" target="_blank" rel="noopener">Debug running Pods</a><span>Logs, exec, copies and ephemeral containers.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/crictl/" target="_blank" rel="noopener">Debug nodes with crictl</a><span>Runtime evidence below the Kubernetes API.</span></li>
+      </ul></aside>
+      <details><summary><code>kubectl top</code> fails: trace what?</summary><div><p class="rubric">Strong answer:</p><p>Check the metrics.k8s.io APIService, metrics-server health/logs, its kubelet reachability and TLS, and kubelet summary data. Prometheus is a separate path.</p></div></details>
+      <details><summary>CrashLoopBackOff: preserve what first?</summary><div><p class="rubric">Strong answer:</p><p>Pod/container status, events, termination reason, exit code and <code>--previous</code> logs before restarting or replacing anything.</p></div></details>
+      <details><summary>Distroless image with no shell?</summary><div><p class="rubric">Strong answer:</p><p>Keep the original evidence, then use an ephemeral debug container or debug copy. Descend to node journals and CRI only when the API view is insufficient.</p></div></details>
+    </section>
+
+    <section class="module" id="m23">
+      <div class="module-head"><div><div class="eyebrow">Module 23 · Declarative delivery</div><h2>Rendered intent, field ownership and convergence are different states</h2><p class="lede">Helm and Kustomize shape API objects. Admission stores them, field managers own parts of them, and controllers turn them into runtime state.</p></div></div>
+      <div class="flow"><div>values / overlay</div><div>render + diff</div><div>apply manager</div><div>stored object</div><div>controller rollout</div></div>
+      <aside class="references" aria-label="Module 23 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/" target="_blank" rel="noopener">Kustomize</a><span>Base and overlay composition.</span></li>
+        <li><a href="https://helm.sh/docs/topics/charts/" target="_blank" rel="noopener">Helm charts</a><span>Packaging, templates and chart structure.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/" target="_blank" rel="noopener">Deployments</a><span>ReplicaSet rollout arithmetic and progress conditions.</span></li>
+        <li><a href="https://kubernetes.io/docs/reference/using-api/server-side-apply/" target="_blank" rel="noopener">Server-Side Apply</a><span>Field managers, managedFields and conflicts.</span></li>
+      </ul></aside>
+      <details><summary>Helm says success; Pods are broken. Contradiction?</summary><div><p class="rubric">Strong answer:</p><p>No. Rendering and release bookkeeping can succeed while admission, scheduling, readiness or application startup fails later.</p></div></details>
+      <details><summary>What does ProgressDeadlineExceeded do?</summary><div><p class="rubric">Strong answer:</p><p>It reports stalled Deployment progress. Kubernetes does not automatically roll back; an operator or higher-level controller must decide.</p></div></details>
+      <details><summary>How should you handle an SSA conflict?</summary><div><p class="rubric">Strong answer:</p><p>Inspect managedFields, identify the competing manager and resolve ownership intentionally. Force transfers ownership and is not a generic retry flag.</p></div></details>
+    </section>
+
+    <section class="module" id="m24">
+      <div class="module-head"><div><div class="eyebrow">Module 24 · Namespace governance</div><h2>Admission controls declared budgets; kubelet applies live resources</h2><p class="lede">LimitRange defaults and constrains individual objects. ResourceQuota accounts aggregate namespace intent. In-place resizing adds a later node-actuation boundary.</p></div></div>
+      <div class="flow"><div>Pod request</div><div>LimitRange defaults</div><div>quota accounting</div><div>scheduler accounting</div><div>kubelet cgroup</div></div>
+      <aside class="references" aria-label="Module 24 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/policy/limit-range/" target="_blank" rel="noopener">LimitRange</a><span>Defaults, minimums, maximums and ratios.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/policy/resource-quotas/" target="_blank" rel="noopener">ResourceQuota</a><span>Aggregate resources, object counts and admission rejection.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/configure-pod-container/resize-container-resources/" target="_blank" rel="noopener">In-place resource resize</a><span>Resize policy, desired/applied state and status.</span></li>
+      </ul></aside>
+      <details><summary>Quota Forbidden or scheduler Pending?</summary><div><p class="rubric">Strong answer:</p><p>Forbidden means admission rejected the object before scheduling. Pending means the object exists and scheduler status/events explain why it has not bound.</p></div></details>
+      <details><summary>Why can LimitRange make quota fail?</summary><div><p class="rubric">Strong answer:</p><p>It can inject default requests or limits; ResourceQuota accounts the resulting values, which can consume more budget than the submitted YAML showed.</p></div></details>
+      <details><summary>How do you prove an in-place resize happened?</summary><div><p class="rubric">Strong answer:</p><p>Compare desired spec with allocated/applied resource status and resize conditions, then inspect kubelet/cgroup evidence if needed. Patch acceptance alone is insufficient.</p></div></details>
+    </section>
+
+    <section class="module" id="m25">
+      <div class="module-head"><div><div class="eyebrow">Module 25 · Service exposure and locality</div><h2>Exposure, membership, readiness and locality are separate decisions</h2><p class="lede">Service types layer external reachability over ClusterIP semantics. EndpointSlice conditions and traffic policies decide which published endpoints are eligible.</p></div></div>
+      <div class="grid-2"><div class="card"><h3>Strict locality</h3><p><code>internalTrafficPolicy: Local</code> or external Local may yield no usable endpoint on a node.</p></div><div class="card"><h3>Preferred locality</h3><p>Topology hints and traffic-distribution preferences bias selection but can fall back when the implementation allows it.</p></div></div>
+      <aside class="references" aria-label="Module 25 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/services-networking/service/" target="_blank" rel="noopener">Services</a><span>ClusterIP, NodePort, LoadBalancer and traffic policies.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/" target="_blank" rel="noopener">EndpointSlices</a><span>Address types, ports and ready/serving/terminating conditions.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/services-networking/topology-aware-routing/" target="_blank" rel="noopener">Topology Aware Routing</a><span>Zone hints, safeguards and fallback behavior.</span></li>
+      </ul></aside>
+      <details><summary>What does externalTrafficPolicy Local trade?</summary><div><p class="rubric">Strong answer:</p><p>It preserves source IP and avoids cross-node forwarding, but a node without a local ready endpoint cannot serve that request.</p></div></details>
+      <details><summary>EndpointSlice exists, so traffic must work?</summary><div><p class="rubric">Strong answer:</p><p>No. Check endpoint conditions, address family, port, source-specific traffic policy, data-plane programming and the application listener.</p></div></details>
+      <details><summary>Strict versus preferred locality?</summary><div><p class="rubric">Strong answer:</p><p>A strict Local policy can produce no eligible backend. A preference tries local topology but may fall back to another eligible endpoint.</p></div></details>
+    </section>
+
+    <section class="module" id="m26">
+      <div class="module-head"><div><div class="eyebrow">Module 26 · Sidecars and Jobs</div><h2>Container restart, Pod replacement and result accounting have different owners</h2><p class="lede">Use Pod UID and restart state to locate recovery. Native sidecars solve ordering and Job completion; Job policies define an explicit result protocol.</p></div></div>
+      <div class="flow"><div>kubelet restarts container</div><div>workload controller replaces Pod</div><div>Job controller counts result</div></div>
+      <aside class="references" aria-label="Module 26 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/" target="_blank" rel="noopener">Native sidecar containers</a><span>Startup ordering, restart behavior and Job interaction.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/workloads/controllers/job/" target="_blank" rel="noopener">Jobs</a><span>Indexed work, backoff, failure and success policies.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/" target="_blank" rel="noopener">Pod lifecycle</a><span>Container states, restart policy and Pod lifetime.</span></li>
+      </ul></aside>
+      <details><summary>Same Pod UID, higher restart count: who acted?</summary><div><p class="rubric">Strong answer:</p><p>The kubelet restarted a container inside the existing Pod. A controller replacement would create a new Pod UID.</p></div></details>
+      <details><summary>Why does a native sidecar not hang a Job?</summary><div><p class="rubric">Strong answer:</p><p>It is an init container with <code>restartPolicy: Always</code>; after regular containers complete, it does not prevent Job completion and kubelet terminates it.</p></div></details>
+      <details><summary>How do you model partially successful indexed work?</summary><div><p class="rubric">Strong answer:</p><p>Use indexed completion, classify permanent failures with podFailurePolicy, bound retries per index, define acceptable success and cap total active time.</p></div></details>
+    </section>
+
+    <section class="module" id="m27">
+      <div class="module-head"><div><div class="eyebrow">Module 27 · Runtime security</div><h2>Policy, process configuration and isolation compose defense in depth</h2><p class="lede">Pod Security Admission validates API intent. SecurityContext configures the process boundary. RuntimeClass and user namespaces select stronger runtime and kernel isolation.</p></div></div>
+      <div class="flow"><div>PSA labels</div><div>admission decision</div><div>securityContext</div><div>RuntimeClass handler</div><div>kernel isolation</div></div>
+      <aside class="references" aria-label="Module 27 reference shelf"><h3>Reference shelf</h3><ul>
+        <li><a href="https://kubernetes.io/docs/concepts/security/pod-security-admission/" target="_blank" rel="noopener">Pod Security Admission</a><span>Namespace labels and enforce/audit/warn modes.</span></li>
+        <li><a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/" target="_blank" rel="noopener">Security context</a><span>UID/GID, capabilities, seccomp and filesystem controls.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/containers/runtime-class/" target="_blank" rel="noopener">RuntimeClass</a><span>Handlers, scheduling constraints and overhead.</span></li>
+        <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/" target="_blank" rel="noopener">User namespaces</a><span>Container-to-host UID/GID remapping.</span></li>
+      </ul></aside>
+      <details><summary>Restricted admission means secure?</summary><div><p class="rubric">Strong answer:</p><p>It proves the spec met a versioned baseline at that gate. It does not attest the image, identity, network, secrets, node or runtime implementation.</p></div></details>
+      <details><summary>What does RuntimeClass actually select?</summary><div><p class="rubric">Strong answer:</p><p>A cluster-defined CRI runtime handler, with optional scheduling constraints and overhead. Eligible nodes must have matching runtime configuration.</p></div></details>
+      <details><summary>What do user namespaces add?</summary><div><p class="rubric">Strong answer:</p><p>They map container IDs to different host IDs, so container root is not host root. They complement, not replace, seccomp, capabilities and admission policy.</p></div></details>
+    </section>
+
     <section class="module" id="sources">
       <div class="module-head"><div><div class="eyebrow">Provenance</div><h2>Source posture and known caveats</h2></div></div>
-      <p>The course synthesizes 33 local transcripts. The eight advanced-track captions retrieved on 2026-08-10 are all auto-generated and may mishear technical names. Four additional advanced talks are linked as supplements, but transcript retrieval was request-blocked and they contribute no transcript-derived claims.</p>
+      <p>The course synthesizes 33 local transcripts. The eight advanced-track captions retrieved on 2026-08-10 are all auto-generated and may mishear technical names. Supplemental talks whose transcript retrieval was blocked contribute no transcript-derived claims; Modules 21–27 are grounded directly in the current upstream references linked in each module.</p>
       <ul class="source-list">
         <li>The repeated ID <code>lAUmdIGP_fE</code> is one Airbnb DNS talk, not three separate networking/internals talks.</li>
         <li>The proposed NodeLocal DNS video does not substantively teach NodeLocal DNSCache or <code>ndots</code>; those sections rely on upstream Kubernetes documentation.</li>
