@@ -1,0 +1,151 @@
+{
+  "title": "Feasible Is Not Local",
+  "subtitle": "Module 16 — topology hints, node admission, and why a CPU limit is not isolation",
+  "series": {
+    "module": 16,
+    "unit": "u16",
+    "spineSegment": "kubelet",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/advanced-content.js unit u16. Advanced arc: deepens a segment already introduced rather than advancing the spine.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "The kubelet again, at the hardware. The scheduler has already decided this node can fit your Pod. This module is why that decision can still be refused locally, and what actually produces predictable latency.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the kubelet segment lit, and the scheduler segment shown already passed, to set up the tension between the two."
+      }
+    },
+    {
+      "id": "cluster-vs-local",
+      "n": 1,
+      "stage": null,
+      "title": "Aggregate capacity is not locality",
+      "lane": "node",
+      "estSeconds": 42,
+      "narration": "Cluster feasibility and hardware locality are different questions. The scheduler can find enough CPU, memory and devices on a node in aggregate. It never proves they can be placed coherently on the same NUMA node. It is summing capacity. It is not laying out silicon.",
+      "visual": {
+        "type": "clusterVsLocal",
+        "spec": "NEW. One node drawn twice: as the scheduler sees it — a single pool of CPU, memory and devices, comfortably sufficient — and as the hardware actually is, split across NUMA nodes with the same totals unevenly distributed. Same numbers, different feasibility. Put both on screen at once."
+      }
+    },
+    {
+      "id": "hint-protocol",
+      "n": 2,
+      "stage": null,
+      "title": "Three managers, one protocol",
+      "lane": "node",
+      "estSeconds": 44,
+      "narration": "On the chosen node there is a small protocol. CPU Manager, Memory Manager and Device Manager each know their own resource and emit topology hints. Topology Manager merges those hints under a configured policy. Under restricted or single-numa-node, a missing coherent placement fails admission on that node. Under best-effort, the Pod still admits without the preferred alignment. Under none, there is no alignment step at all.",
+      "visual": {
+        "type": "hintProtocol",
+        "spec": "NEW. Three managers each emitting a hint about their own resource, feeding one merge step, which either produces an agreed affinity or a rejection. Show one round where the hints intersect and one where they do not. The merge is the beat — draw it as a real intersection, not a queue."
+      }
+    },
+    {
+      "id": "exclusive-cpus",
+      "n": 3,
+      "stage": null,
+      "title": "Who gets exclusive CPUs",
+      "lane": "node",
+      "estSeconds": 38,
+      "narration": "Under the static CPU Manager policy, exclusive CPUs are not for everyone. A container qualifies only if the Pod is Guaranteed and the CPU request is a whole number. Ask for a fraction and you stay in the shared pool, however important the workload is. It is an exact rule, not a priority.",
+      "visual": {
+        "type": "exclusiveCpus",
+        "spec": "NEW. Two Guaranteed Pods side by side: one requesting whole CPUs, given a dedicated cpuset; one requesting a fraction, left in the shared pool with everything else. Both are Guaranteed. Make that explicit, because the class is not what decides it."
+      }
+    },
+    {
+      "id": "admission-rejection",
+      "n": 4,
+      "stage": null,
+      "title": "Scheduled, then refused",
+      "lane": "node",
+      "estSeconds": 40,
+      "narration": "So a Pod can be scheduled and then rejected by the very node it was sent to. The Pod fails admission with a topology error and stays Failed. The scheduler will not move that object. A Deployment or other controller has to create a replacement if you want another try. That is not a contradiction. Topology Manager is node-local, and a strict policy can refuse an allocation that looked perfectly feasible in aggregate. Two components answered two different questions, and both answered correctly.",
+      "visual": {
+        "type": "admissionRejection",
+        "spec": "NEW. The scheduler binding a Pod to a node, then that node's admission refusing it on topology grounds. Show both verdicts as correct, side by side, with the different question each was answering written underneath. Do not draw either as a bug."
+      }
+    },
+    {
+      "id": "limit-is-not-isolation",
+      "n": 5,
+      "stage": null,
+      "title": "A limit is not isolation",
+      "lane": "node",
+      "estSeconds": 40,
+      "narration": "A CPU limit is not CPU isolation. A CFS quota caps how much time you get; a cpuset controls where you run. They are different mechanisms with different effects. Predictable latency usually needs more than either. Reserved system CPUs, NUMA-local memory and devices, IRQ placement, huge pages, and a runtime and kernel that preserve the cgroup layout you intended.",
+      "visual": {
+        "type": "limitIsNotIsolation",
+        "spec": "NEW. Two mechanisms drawn distinctly: a quota throttling a container over time, and a cpuset pinning it in space. Then the additional requirements for real latency work listed as further conditions, each contributing separately. Do not present the limit as a weaker version of isolation; they act on different axes."
+      }
+    },
+    {
+      "id": "latency-sources",
+      "n": 6,
+      "stage": null,
+      "title": "Latency without high usage",
+      "lane": "node",
+      "estSeconds": 40,
+      "narration": "Which is why average CPU utilisation can look low while latency is poor. Throttling shows up as time you were not allowed to run. Scheduling delay shows up as time you waited for a core. Poor locality shows up as memory access that crosses a NUMA boundary. Averages hide all three, and each leaves different evidence on the node.",
+      "visual": {
+        "type": "latencySources",
+        "spec": "NEW. A low, flat average utilisation line at the top, and beneath it three distinct sources of latency that the average conceals — throttling, run-queue delay, remote memory access — each with the node-level metric that would reveal it. The contrast between the calm average and the specific evidence is the beat."
+      }
+    },
+    {
+      "id": "single-numa-node",
+      "n": 7,
+      "stage": null,
+      "title": "What the strictest policy promises",
+      "lane": "node",
+      "estSeconds": 36,
+      "narration": "And single-numa-node is a promise about admission, not about placement. It tells the kubelet to refuse any Pod whose resources cannot be satisfied from one NUMA node. The Pod fails on that node. It does not return to Pending, and it does not get placed somewhere better. Strictness here produces rejections, not smarter scheduling.",
+      "visual": {
+        "type": "singleNumaNode",
+        "spec": "NEW. The policy drawn as a gate at node admission, refusing what it cannot satisfy locally, with the scheduler upstream visibly unaware of the constraint. Show a rejected Pod going back to Pending rather than being placed somewhere better. The absence of feedback to the scheduler is the point. CORRECTION: admission rejection terminates the Pod with a TopologyAffinity admission failure. Do not draw it returning to Pending or being rescheduled elsewhere — that is the opposite of the real lifecycle."
+      }
+    },
+    {
+      "id": "jitter-checklist",
+      "n": 8,
+      "stage": null,
+      "title": "A Guaranteed Pod that still jitters",
+      "lane": "node",
+      "estSeconds": 42,
+      "narration": "So when a Guaranteed Pod is still jittery, there is a list. The CPU Manager policy and the cpuset it actually got. CFS throttling metrics. The Topology Manager scope and policy. Whether admission had to compromise. NUMA locality of memory and devices. Then reserved CPUs, interrupt placement, and whatever system daemons share the machine.",
+      "visual": {
+        "type": "jitterChecklist",
+        "spec": "NEW. An ordered inspection list, each item with the specific artefact you read to check it, laid out as a diagnostic card rather than a bullet list. Guaranteed is shown at the top as already true, so the list reads as what remains after the obvious answer is exhausted."
+      }
+    },
+    {
+      "id": "close",
+      "n": 9,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 34,
+      "narration": "The node, at the hardware. A failure here has a signature. The Pod was placed and then refused — that refusal is on the Pod object. Or it runs and misses its latency target while every average looks fine — that one lives on the node. Know which evidence lives where. The next module is how devices are asked for in the first place.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the kubelet segment shrinks back into the spine, holding the whole spine visible for the advanced arc's continuation."
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "close": 13.426875,
+  "control-plane-order": 19.043188,
+  "locate": 12.173,
+  "nearest-authority": 22.230125,
+  "ninety-second-notready": 18.703563,
+  "notready-evidence": 19.226063,
+  "phase-vs-events": 22.883188,
+  "previous-logs": 18.285625,
+  "resolves-but-fails": 18.599125,
+  "the-algorithm": 21.368063
+}

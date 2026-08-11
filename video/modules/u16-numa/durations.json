@@ -1,0 +1,12 @@
+{
+  "admission-rejection": 17.084,
+  "close": 15.4905,
+  "cluster-vs-local": 15.255438,
+  "exclusive-cpus": 15.43825,
+  "hint-protocol": 15.882375,
+  "jitter-checklist": 21.237438,
+  "latency-sources": 18.834188,
+  "limit-is-not-isolation": 22.230125,
+  "locate": 11.075813,
+  "single-numa-node": 15.64725
+}

@@ -41,7 +41,11 @@ function longSentences(text) {
     // `maxSurge sets how many…`, `spec.nodeName is empty`. Requiring an
     // uppercase start merged those into the previous sentence and reported
     // a false over-length finding.
-    .split(/(?<=[.!?])\s+(?=[A-Z(]|[a-z]+[A-Z]|[a-z]+\.[a-z])/)
+    // Sentences here legitimately begin lowercase: a camelCase API field
+    // (`maxSurge sets…`), a dotted path (`spec.nodeName is empty`), or a
+    // tool name (`kubectl cannot diagnose…`). Requiring an uppercase start
+    // merged them into the previous sentence and reported phantom run-ons.
+    .split(/(?<=[.!?])\s+(?=[A-Z(]|[a-z]+[A-Z]|[a-z]+\.[a-z]|(?:kubectl|kubeadm|etcdctl|etcd|kube-proxy|kubelet|containerd|runc|nftables|iptables|dig|crictl|journalctl|systemctl|resourceVersion|podSelector)\b)/)
     .map(x => x.trim())
     .filter(x => x.split(/\s+/).filter(Boolean).length > MAX_SPOKEN_WORDS);
 }

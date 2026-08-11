@@ -1,0 +1,12 @@
+{
+  "close": 17.710938,
+  "drain-is-not-upgrade": 11.075813,
+  "helm-vs-kustomize": 16.796625,
+  "locate": 15.568875,
+  "safe-not-successful": 21.159125,
+  "skew-boundaries": 17.371313,
+  "static-pod-first-check": 20.088063,
+  "the-handoff": 20.479938,
+  "what-kubeadm-is": 22.778688,
+  "worker-upgrade-order": 14.26275
+}

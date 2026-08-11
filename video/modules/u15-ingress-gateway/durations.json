@@ -1,0 +1,11 @@
+{
+  "accepted-not-served": 17.005625,
+  "accepted-yet-inert": 18.938688,
+  "close": 15.725625,
+  "intent-not-dataplane": 20.061938,
+  "locate": 12.564813,
+  "ownership-split": 19.226063,
+  "policy-permits": 17.972125,
+  "request-boundaries": 18.4685,
+  "service-timeout-layers": 18.233375
+}

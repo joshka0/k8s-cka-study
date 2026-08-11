@@ -1,0 +1,138 @@
+{
+  "title": "An Update Is Not A Reload",
+  "subtitle": "Module 14 — config delivery semantics, how QoS is derived, and eviction versus OOM",
+  "series": {
+    "module": 14,
+    "unit": "u14",
+    "spineSegment": "kubelet",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/advanced-content.js unit u14. Advanced arc: this module deepens a segment already introduced rather than advancing along the spine, so the locate beat names the layer, not a new stage.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "Segment six again, the kubelet, from a different angle. This module is what actually happens when configuration changes. Why a Secret update can leave your application on the old credential, and how kubelet eviction differs from a kernel kill.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the kubelet segment lit, marked as a second visit rather than a new stage."
+      }
+    },
+    {
+      "id": "delivery-semantics",
+      "n": 1,
+      "stage": null,
+      "title": "Delivery has semantics",
+      "lane": "node",
+      "estSeconds": 44,
+      "narration": "A ConfigMap or Secret can reach a container two ways, and they behave differently. As environment values, they are fixed when the process starts and never change again. As projected files, they update eventually — but only the file changes. The application still has to watch the file or reload it. Delivery and consumption are separate problems, and Kubernetes only owns the first one.",
+      "visual": {
+        "type": "deliverySemantics",
+        "spec": "NEW. One ConfigMap feeding two containers: one by environment, one by projected volume. Update the source. The environment path stays visibly frozen. The file path updates after a delay, and the application beside it keeps using the old value because nothing told it to re-read. Two different failures, drawn side by side."
+      }
+    },
+    {
+      "id": "rollout-trigger",
+      "n": 2,
+      "stage": null,
+      "title": "What actually triggers a rollout",
+      "lane": "control",
+      "estSeconds": 36,
+      "narration": "And a Deployment rolls only when its Pod template changes. Editing a ConfigMap the Deployment references is not a template change, so nothing rolls. That is why teams hash their config into an annotation. It turns a data change into a template change, and the template is the only thing the controller reacts to.",
+      "visual": {
+        "type": "rolloutTrigger",
+        "spec": "NEW. A Deployment watching its own Pod template. Change a referenced ConfigMap: the template is untouched and nothing happens. Then change an annotation carrying a hash of that config: the template differs, and the rollout starts. The template — not the data — is the trigger."
+      }
+    },
+    {
+      "id": "secret-is-not-encryption",
+      "n": 3,
+      "stage": null,
+      "title": "What a Secret gives you",
+      "lane": "control",
+      "estSeconds": 36,
+      "narration": "It is worth being blunt about Secrets. Base64 is a representation, not encryption. A Secret is a distinct resource type you control with RBAC. It can be encrypted at rest if you configure that. RBAC is already in the request path. Encryption at rest is optional. The name Secret protects nothing by itself.",
+      "visual": {
+        "type": "secretIsNotEncryption",
+        "spec": "NEW. A Secret's stored value shown as base64 and then trivially decoded beside it. Around it, the protections that are actually separate and optional: RBAC on the resource, encryption at rest, external secret lifecycle. Each drawn as a switch, defaulting off, rather than as a property of the object. CORRECTION: do not draw RBAC as a switch defaulting off — API authorization is already in the request path. Draw RBAC as present, with overly broad grants as the real risk. Only encryption at rest and external lifecycle are optional switches."
+      }
+    },
+    {
+      "id": "stale-credential",
+      "n": 4,
+      "stage": null,
+      "title": "Still using the old credential",
+      "lane": "node",
+      "estSeconds": 42,
+      "narration": "So when a Secret changed and the application is still presenting the old credential, there are four candidates and they are not the same fix. Environment delivery needs the Pod restarted. A normal volume mount updates eventually, so you may simply be early. A subPath mount never updates, and neither does an immutable object. The process may have read the value once and cached it. Or nothing rolled at all, because the Pod template never changed.",
+      "visual": {
+        "type": "staleCredential",
+        "spec": "NEW. Four candidate causes fanning out from one symptom, each with its distinguishing evidence and its distinct fix: environment (restart), projection (wait or check mount), application cache (reload path), no rollout (template unchanged). Give each cause equal weight; the point is that they are different problems."
+      }
+    },
+    {
+      "id": "qos-is-derived",
+      "n": 5,
+      "stage": null,
+      "title": "QoS is derived, not set",
+      "lane": "node",
+      "estSeconds": 42,
+      "narration": "Quality of service is a classification, and you do not set it. Guaranteed, Burstable and BestEffort are derived from the CPU and memory requests and limits across the containers in the Pod. Which means one under-specified sidecar changes the classification of the whole Pod. If you thought a workload was Guaranteed and it is not, look at every container, not the one you care about.",
+      "visual": {
+        "type": "qosDerived",
+        "spec": "NEW. One Pod with three containers, showing how the classification is computed from all of them together. Start Guaranteed with everything specified, then strip a limit from a small sidecar and show the whole Pod drop to Burstable. The class is an output, drawn as an output, never as a field."
+      }
+    },
+    {
+      "id": "eviction-vs-oom",
+      "n": 6,
+      "stage": null,
+      "title": "Kubelet eviction, kernel OOM",
+      "lane": "node",
+      "estSeconds": 44,
+      "narration": "Two mechanisms end containers under memory pressure, and the discriminator matters. Kubelet node-pressure eviction is a Kubernetes action. It ranks Pods by whether usage exceeds requests, then Priority, then relative excess. It sets the Pod Failed, so a controller can replace it. A kernel OOM kill is below Kubernetes entirely. The kernel picks a container and kills it, and the kubelet may simply restart it under the restart policy.",
+      "visual": {
+        "type": "evictionVsOom",
+        "spec": "NEW. Two paths from the same memory pressure, kept clearly apart. Kubernetes path: kubelet ranks candidates, evicts, Pod marked Failed, controller replaces. Kernel path: OOM killer selects a container, kills it, restart policy applies. Different actor, different resulting object state, different log. Do not merge them into one arrow."
+      }
+    },
+    {
+      "id": "besteffort-incomplete",
+      "n": 7,
+      "stage": null,
+      "title": "Why the slogan is incomplete",
+      "lane": "node",
+      "estSeconds": 40,
+      "narration": "Which is why saying BestEffort is evicted first is an incomplete answer. QoS is a useful approximation of the ranking, not the ranking itself. The actual ordering considers usage above requests, then Priority, then relative excess. And disk or PID pressure behave differently again from memory. Naming those axes is what shows you have watched this happen rather than read the summary.",
+      "visual": {
+        "type": "evictionRanking",
+        "spec": "NEW. The naive one-line ranking (BestEffort first) shown, then expanded into the real ordering: usage above requests, Priority, relative excess. Beside it, the other pressure signals — disk, inodes, PIDs — with their own behaviour. The expansion from slogan to mechanism is the beat."
+      }
+    },
+    {
+      "id": "close",
+      "n": 8,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 36,
+      "narration": "The kubelet again, then. A failure here has a signature. Nothing changed when you expected it to, or something died and you have to separate eviction from OOM. Evicted and OOMKilled often appear in object status. When they do not, the node still holds the rest. Do not stop at the Deployment. The next module goes the other way, out to the edge, and how traffic gets in.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the kubelet segment shrinks back into the spine and the service segment lights to preview the next module."
+      }
+    }
+  ]
+}

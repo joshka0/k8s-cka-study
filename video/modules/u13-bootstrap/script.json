@@ -1,0 +1,151 @@
+{
+  "title": "kubeadm Writes Files, Then Leaves",
+  "subtitle": "Module 13 — what kubeadm actually builds, skew boundaries, and what makes an upgrade safe",
+  "series": {
+    "module": 13,
+    "unit": "u13",
+    "spineSegment": "desired object",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/advanced-content.js unit u13. Advanced arc: this module deepens a segment already introduced rather than advancing along the spine, so the locate beat names the layer, not a new stage.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "Back to the front of the spine, before any of it exists. Something has to create the control plane in the first place. This module is what kubeadm actually builds. Why a control-plane container missing after a reboot is a file problem, and what separates a safe upgrade from a merely successful one.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the first segment lit and the whole spine drawn faint behind it, to say: this module is about how the spine itself gets built."
+      }
+    },
+    {
+      "id": "what-kubeadm-is",
+      "n": 1,
+      "stage": null,
+      "title": "It composes, it does not manage",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "kubeadm composes a cluster. It is not the cluster manager. It writes the PKI and the kubeconfigs, creates static Pod manifests for the control-plane components, and bootstraps discovery, tokens and essential configuration. Then it exits. The kubelet is what realises those manifests. There is no kubeadm daemon watching over your cluster afterwards.",
+      "visual": {
+        "type": "kubeadmComposes",
+        "spec": "NEW. kubeadm drawn as a short-lived process on the left, with the durable artefacts it writes listed as real files and objects: PKI, kubeconfigs, static Pod manifests, bootstrap tokens. Then kubeadm visibly exits and greys out, while the kubelet picks the manifests up and starts the components. The exit is the point — do not draw kubeadm persisting."
+      }
+    },
+    {
+      "id": "the-handoff",
+      "n": 2,
+      "stage": null,
+      "title": "Where the handoff happens",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "So the durable handoff has an order. kubeadm creates the configuration, the PKI and the manifests. The kubelet realises the static Pods from those manifests. API objects and bootstrap tokens then let other nodes join. And CNI is installed separately, afterwards, which is why a fresh cluster can have a running control plane and no Pod networking at all.",
+      "visual": {
+        "type": "bootstrapHandoff",
+        "spec": "NEW. Four ordered stages filling the stage width, with the owning actor named under each: kubeadm writes, kubelet realises, tokens admit nodes, CNI installed separately. Mark the boundary between kubeadm's work and the kubelet's as the handoff line. Show the CNI step visually detached, because it is not part of the same run."
+      }
+    },
+    {
+      "id": "static-pod-first-check",
+      "n": 3,
+      "stage": null,
+      "title": "The container is gone after a reboot",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "A control-plane container is absent after a reboot. The highest-value first check is not the API. A kubeadm control plane is represented by static Pod manifests on disk. If the kubelet cannot read or realise one, the API object you are looking at may only be a stale mirror Pod. Read `/etc/kubernetes/manifests` and the kubelet. If a manifest is missing or unreadable, the mirror Pod in the API is not the process. Treat the API view as a reflection rather than the truth.",
+      "visual": {
+        "type": "staticPodMirror",
+        "spec": "NEW. A manifest file on disk, the kubelet reading it, and the mirror Pod it publishes into the API. Break the disk side: the manifest is unreadable, the kubelet cannot realise it, and the API still shows the mirror Pod from before. Label that object clearly as a stale reflection, not a running process."
+      }
+    },
+    {
+      "id": "skew-boundaries",
+      "n": 4,
+      "stage": null,
+      "title": "Separate contracts, separate steps",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "Upgrades move one compatibility boundary at a time, because there is more than one. Control-plane components, kubelets and kube-proxy have version-skew rules. The container runtime, the network plugin and the APIs you still store have their own compatibility limits. Treating the cluster as a single version is what turns an upgrade into an outage.",
+      "visual": {
+        "type": "skewBoundaries",
+        "spec": "NEW. Six independently versioned boundaries stacked, each with its own skew contract shown as a permitted range rather than a single number. Advance one and show the others held still. The independence is the beat — do not draw one cluster version."
+      }
+    },
+    {
+      "id": "drain-is-not-upgrade",
+      "n": 5,
+      "stage": null,
+      "title": "Drain protects, it does not upgrade",
+      "lane": "node",
+      "estSeconds": 34,
+      "narration": "One correction worth making out loud: draining a node protects the workloads on it. It does not upgrade anything. Drain evacuates, and then you still have to change the node's configuration and binaries yourself.",
+      "visual": {
+        "type": "drainIsNotUpgrade",
+        "spec": "NEW. A node being drained — Pods leaving, node cordoned — with the node's own version label visibly unchanged throughout. Then the separate step that does change it. Two actions, drawn as two actions."
+      }
+    },
+    {
+      "id": "worker-upgrade-order",
+      "n": 6,
+      "stage": null,
+      "title": "The conservative order",
+      "lane": "node",
+      "estSeconds": 38,
+      "narration": "Which gives the conservative order for a worker. Evacuate first. Change the node's configuration and binaries. Verify the node that comes back, before trusting it. Then restore scheduling. Restoring scheduling first is how you hand traffic to a node nobody has checked.",
+      "visual": {
+        "type": "workerUpgradeOrder",
+        "spec": "NEW. Four ordered steps with the failure each one prevents beside it: evacuate (no disruption), change (the actual upgrade), verify (catch a broken node), uncordon (only now accept work). Show the wrong order once — uncordon before verify — and the workload landing on an unhealthy node."
+      }
+    },
+    {
+      "id": "helm-vs-kustomize",
+      "n": 7,
+      "stage": null,
+      "title": "Neither one reconciles",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "Helm and Kustomize solve different problems, and neither of them is a reconciler. Helm packages and templates a release. Kustomize overlays and patches plain manifests. Both produce output, and that output still enters the ordinary API request path and the ordinary controller loops. Nothing about using them changes what happens after the write.",
+      "visual": {
+        "type": "packagingNotReconciling",
+        "spec": "NEW. Two tools side by side producing manifests, and both funnelling into the same single API request path taught in module 02. Everything downstream of the API is drawn identically for both. The convergence is the point: packaging changes what you send, not what happens next."
+      }
+    },
+    {
+      "id": "safe-not-successful",
+      "n": 8,
+      "stage": null,
+      "title": "Safe, not merely successful",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "So what makes a control-plane upgrade safe rather than merely successful. A version-skew check before you start, and kubeadm upgrade plan is that check on a kubeadm cluster. etcd and API health between every step, not just at the end. One failure domain at a time, so a bad step cannot take the quorum. Drain where it applies. Then kubeadm upgrade apply, kubeadm upgrade node, and the kubelet packages. And rollback material you have actually verified, rather than assumed.",
+      "visual": {
+        "type": "safeUpgrade",
+        "spec": "NEW. A checklist that builds as each item is named, each paired with the failure it prevents: skew check, health between steps, one failure domain, drain, verified rollback. Emphasise 'between every step' — show a sequence that only checks at the end and discovers the breakage too late to unwind."
+      }
+    },
+    {
+      "id": "close",
+      "n": 9,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 38,
+      "narration": "That is the layer underneath everything else in this series. A failure here has a signature. The cluster does not answer at all, a node never joins, or an upgrade leaves two components disagreeing about a version. None of it appears in an application log. The next module is what happens to configuration and memory once the cluster is running.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the first segment shrinks back and the whole spine returns to its normal weight, closing the bootstrap detour."
+      }
+    }
+  ]
+}

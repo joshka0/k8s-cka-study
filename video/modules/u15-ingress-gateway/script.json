@@ -1,0 +1,138 @@
+{
+  "title": "Objects Describe, Controllers Forward",
+  "subtitle": "Module 15 — Ingress and Gateway API, ownership boundaries, and why an accepted route can serve nothing",
+  "series": {
+    "module": 15,
+    "unit": "u15",
+    "spineSegment": "service",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/advanced-content.js unit u15. Advanced arc: deepens a segment already introduced rather than advancing the spine.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "The service segment, from outside the cluster this time. Something has to accept a request at the edge and get it to a Pod. This module is what the routing objects actually do, which is less than people assume, and where the boundaries are.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the service segment lit and an external arrow arriving from outside the spine, marking north-south traffic."
+      }
+    },
+    {
+      "id": "intent-not-dataplane",
+      "n": 1,
+      "stage": null,
+      "title": "The object is not the proxy",
+      "lane": "pod",
+      "estSeconds": 42,
+      "narration": "Ingress and Gateway API describe intent. They do not forward packets. Ingress is a compact HTTP routing API. Gateway API splits the same job into GatewayClass, Gateway and Route resources. In both cases a controller has to observe those objects and configure a real proxy or load balancer. Without that controller, the objects are inert records.",
+      "visual": {
+        "type": "intentNotDataplane",
+        "spec": "NEW. Routing objects on one side, a proxy data plane on the other, and a controller as the only thing joining them. Remove the controller: the objects remain, perfectly valid, and no traffic moves. The gap where the controller was is the image to land."
+      }
+    },
+    {
+      "id": "accepted-not-served",
+      "n": 2,
+      "stage": null,
+      "title": "Valid, and serving nothing",
+      "lane": "pod",
+      "estSeconds": 42,
+      "narration": "So a valid HTTPRoute proves that the API accepted it. It does not prove a listener serves it. The status parents and conditions on the object are where acceptance and resolution are actually reported. Read those rather than the fact the object exists, because API acceptance and controller implementation are two different events.",
+      "visual": {
+        "type": "acceptedNotServed",
+        "spec": "NEW. An HTTPRoute object shown accepted by the API, then its status block expanded: parents, conditions, resolved or not. Show the same object in two states — accepted-and-attached versus accepted-and-unattached — identical in spec, different only in status. Status is where the answer lives."
+      }
+    },
+    {
+      "id": "ownership-split",
+      "n": 3,
+      "stage": null,
+      "title": "Who owns which object",
+      "lane": "pod",
+      "estSeconds": 40,
+      "narration": "The strongest thing Gateway API adds over Ingress is ownership. A platform team can own GatewayClass and Gateway, the infrastructure and its listeners. Application teams own their Routes and attach them explicitly. Attachment is a declared relationship with status on both sides, rather than a pile of annotations in one shared object.",
+      "visual": {
+        "type": "ownershipSplit",
+        "spec": "NEW. Two ownership zones drawn as distinct territories: platform owns GatewayClass and Gateway; application teams own Routes. Draw attachment as an explicit link between the zones, with status reported on both ends. Contrast with Ingress beside it as a single object both teams must edit."
+      }
+    },
+    {
+      "id": "request-boundaries",
+      "n": 4,
+      "stage": null,
+      "title": "Every programmable boundary",
+      "lane": "pod",
+      "estSeconds": 44,
+      "narration": "Trace an external request to a Pod and name what is programmable on the way. The external address and its listener. The controller's data plane. The route match. The Service translation. EndpointSlice readiness. Then the Pod's own listener, and any policy in between. Six boundaries, each configured by something different, each able to fail on its own.",
+      "visual": {
+        "type": "requestBoundaries",
+        "spec": "NEW. One request travelling from outside to a Pod, with each programmable boundary marked as a gate along the path and the thing that configures it named underneath. Fill the stage width. Each boundary carries its own failure symptom so the row reads as a diagnostic, not a diagram."
+      }
+    },
+    {
+      "id": "policy-permits",
+      "n": 5,
+      "stage": null,
+      "title": "Policy permits, it does not route",
+      "lane": "pod",
+      "estSeconds": 38,
+      "narration": "NetworkPolicy selects Pods and the peers and ports allowed for ingress and for egress. Enforcement belongs to the network implementation, not to the object. And permission is not a path. Diagnose routing, endpoint selection, policy and whether the application is listening as four independent layers, because a fix in one proves nothing about the others.",
+      "visual": {
+        "type": "policyPermitsEdge",
+        "spec": "REUSE the policyNotPath component from module 08 rather than rebuilding it. Extend only if needed to show the four independent layers of this beat as separate rows, each checkable on its own."
+      }
+    },
+    {
+      "id": "service-timeout-layers",
+      "n": 6,
+      "stage": null,
+      "title": "Diagnosing in order",
+      "lane": "pod",
+      "estSeconds": 42,
+      "narration": "So when a Service times out, move from identity outward. Confirm the Service and its selector. Confirm the EndpointSlices actually contain ready backends. Test a Pod address directly, which separates the Service from the Pod. Then look at translation and policy. That order changes one layer at a time, which is what makes the answer trustworthy.",
+      "visual": {
+        "type": "serviceDiagnosis",
+        "spec": "NEW. An ordered diagnosis, each step lighting as named, with what a failure at that step would prove. Emphasise the direct-to-Pod test as the split point between Service problems and Pod problems. Rows that wrap; do not clip the longer checks."
+      }
+    },
+    {
+      "id": "accepted-yet-inert",
+      "n": 7,
+      "stage": null,
+      "title": "Accepted, and doing nothing",
+      "lane": "pod",
+      "estSeconds": 38,
+      "narration": "One last trap that spans both halves of this module. A NetworkPolicy object can be accepted and still have no effect. API storage is not enforcement. The network implementation has to support NetworkPolicy at all. The selector may match no Pods. And ingress and egress isolation are separate concerns, so covering one leaves the other open.",
+      "visual": {
+        "type": "acceptedYetInert",
+        "spec": "NEW. Four independent reasons a stored policy does nothing, each drawn as its own break in the chain from object to enforcement: unsupported implementation, selector matches nothing, wrong direction covered, no enforcement status to reveal any of it. All four leave the API looking identical."
+      }
+    },
+    {
+      "id": "close",
+      "n": 8,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 36,
+      "narration": "The edge, then. A failure here has a signature. The object exists and nothing serves it, or something serves it and the backend was never ready. Those are different owners, and status on the object usually tells you which. The next module goes back to the node, and what the scheduler could not promise.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the service segment shrinks back into the spine, the kubelet segment lights to preview the next module."
+      }
+    }
+  ]
+}

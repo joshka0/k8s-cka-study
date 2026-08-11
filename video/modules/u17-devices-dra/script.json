@@ -1,0 +1,151 @@
+{
+  "title": "From Scalar Counts To Claims",
+  "subtitle": "Module 17 — device plugins versus DRA, the allocation handshake, and where a device Pod stalls",
+  "series": {
+    "module": 17,
+    "unit": "u17",
+    "spineSegment": "scheduler queue + binding",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/advanced-content.js unit u17. Advanced arc: deepens a segment already introduced rather than advancing the spine. ",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "The scheduler segment, for workloads that need hardware. A Pod asking for a GPU is not asking for CPU with a different name. This module is how devices became scheduling state, and where a device-backed Pod gets stuck.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the scheduler segment lit and a device symbol attached to the pending Pod."
+      }
+    },
+    {
+      "id": "scalar-vs-structured",
+      "n": 1,
+      "stage": null,
+      "title": "A count, or a description",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "Device plugins advertise vendor extended resources as scalar node capacity. Your node has eight of something, and you ask for two. DRA describes devices instead. Drivers publish ResourceSlices as inventory, DeviceClasses categorise what kinds exist, and ResourceClaims express what a workload actually needs. A number becomes a description you can filter on.",
+      "visual": {
+        "type": "scalarVsStructured",
+        "spec": "NEW. Left: a node advertising a bare integer count of an opaque resource, and a Pod asking for a number. Right: the same hardware published as structured inventory with attributes, and a claim expressing requirements against it. The difference between counting and describing is the image."
+      }
+    },
+    {
+      "id": "class-vs-claim",
+      "n": 2,
+      "stage": null,
+      "title": "Policy, and intent",
+      "lane": "control",
+      "estSeconds": 36,
+      "narration": "Two objects get confused immediately. A DeviceClass is categorisation and policy: what a kind of device is, and how it may be selected. A ResourceClaim is workload intent plus allocation state: what this workload needs, and what it was actually given. One is a category, the other is a request with an answer written back into it.",
+      "visual": {
+        "type": "classVsClaim",
+        "spec": "NEW. DeviceClass and ResourceClaim side by side with their fields grouped by purpose: the class holding categorisation and policy, the claim holding requirements and, once allocated, the result. Show the allocation being written back into the claim so it reads as request-plus-answer."
+      }
+    },
+    {
+      "id": "dra-handshake",
+      "n": 3,
+      "stage": null,
+      "title": "The order of the handshake",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "The handshake has an order and it matters. Drivers publish availability first, because nothing can be allocated from inventory that does not exist yet. Drivers publish availability first. The scheduler allocates a matching device into the claim and selects a node that can reach it. On that node the kubelet and driver prepare the device before the container uses it. Some drivers add binding conditions so preparation must finish before bind. Allocation still precedes use. Only after that node is chosen does preparation happen on it. Allocation precedes preparation, never the other way round.",
+      "visual": {
+        "type": "draHandshake",
+        "spec": "NEW. Four ordered stages: driver publishes inventory, scheduler allocates a device, scheduler selects a reachable node, kubelet and driver prepare the device there. Mark the boundary where the decision becomes node-local. Show an attempt to prepare before allocation being impossible, not merely wrong."
+      }
+    },
+    {
+      "id": "plugin-vs-dra",
+      "n": 4,
+      "stage": null,
+      "title": "The architectural discriminator",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "So the discriminator between the two, said cleanly. A device plugin advertises scalar extended resources through the kubelet. DRA publishes structured devices through API objects, which is what makes filtering, sharing and lifecycle possible. And both still need node-side preparation before a container can use anything.",
+      "visual": {
+        "type": "pluginVsDra",
+        "spec": "NEW. Two architectures compared on the axes that actually differ: what is advertised, through what path, what the scheduler can reason about, and what lifecycle is possible. Mark node-side preparation as shared by both, so it does not read as a DRA-only step."
+      }
+    },
+    {
+      "id": "three-owners",
+      "n": 5,
+      "stage": null,
+      "title": "A pending device Pod has three owners",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "When a device-backed Pod is Pending, three owners share the outcome. The scheduler allocates the claim and selects the node. The DRA driver publishes inventory and may coordinate readiness. The kubelet prepares the allocated device on the node. Status on the Pod, on the ResourceClaim and on the ResourceSlice separates those phases, which is what stops you guessing.",
+      "visual": {
+        "type": "threeOwnersDra",
+        "spec": "NEW. Three owners across the stage, each with the object whose status reports its phase: Pod, ResourceClaim, ResourceSlice. Show one failure landing in each, with the distinguishing status. Give the three objects equal weight — reading the right one is the skill."
+      }
+    },
+    {
+      "id": "template-vs-named",
+      "n": 6,
+      "stage": null,
+      "title": "Template, or a named claim",
+      "lane": "control",
+      "estSeconds": 36,
+      "narration": "A ResourceClaimTemplate is a factory tied to the workload's lifecycle: each Pod gets its own generated claim, created and cleaned up with it. A directly named claim is a separate object that can be shared between Pods or outlive any of them. Choose by lifetime and sharing, not by which is newer.",
+      "visual": {
+        "type": "templateVsNamed",
+        "spec": "NEW. Two lifecycles side by side. Template: Pod created, claim generated with it, both removed together. Named: a claim existing independently, used by one Pod, then another, outliving both. Draw the ownership arrows explicitly, because that is the whole difference."
+      }
+    },
+    {
+      "id": "pending-evidence-dra",
+      "n": 7,
+      "stage": null,
+      "title": "Which cause is it",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "And when it does not schedule, four causes look identical from the Pod alone. There may be no matching device anywhere. There may be a matching device on no reachable node. There may be an allocation conflict with something else holding it. Or the driver may simply not be ready yet. Service networking is downstream of all four and proves nothing here.",
+      "visual": {
+        "type": "draPendingCauses",
+        "spec": "NEW. Four candidate causes fanning from one Pending Pod, each with the object and status field that confirms it. Set Service and networking checks aside as downstream and struck through — reaching for them is the common wasted step."
+      }
+    },
+    {
+      "id": "claim-teardown",
+      "n": 8,
+      "stage": null,
+      "title": "What deletion actually does",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "Deletion runs the handshake backwards. The container stops. The kubelet and driver unprepare the device on the node. The reservation is released. A generated claim then completes its lifecycle. Only at that point does the inventory become allocatable again. That is why capacity can appear missing for a while after a Pod is gone.",
+      "visual": {
+        "type": "claimTeardown",
+        "spec": "NEW. The reverse sequence with the inventory count shown throughout, staying unavailable until the final step. The lag between the Pod disappearing and capacity returning is the beat — make that window visible rather than instantaneous."
+      }
+    },
+    {
+      "id": "close",
+      "n": 9,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 34,
+      "narration": "Devices, then. A failure here has a signature. The Pod is Pending and no node is at fault, or it is bound and the device was never prepared. Three objects hold those answers between them. The next module goes back to the API itself, and the machinery layered on top of it.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the scheduler segment shrinks back, the first segment lights to preview the API-machinery module."
+      }
+    }
+  ]
+}

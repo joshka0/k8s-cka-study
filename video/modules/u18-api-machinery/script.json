@@ -1,0 +1,138 @@
+{
+  "title": "Not Every API Is Stored Here",
+  "subtitle": "Module 18 — the aggregation layer, watch expiry, and policy without a network call",
+  "series": {
+    "module": 18,
+    "unit": "u18",
+    "spineSegment": "desired object",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/advanced-content.js unit u18. Advanced arc: deepens a segment already introduced rather than advancing the spine. ",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "The first segment again, and what can be layered onto it. Not every Kubernetes API is stored by the API server you are talking to. This module is aggregation, what a watch owes you, and how to evaluate policy without a network call.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the first segment lit and a second, external API server drawn beside it to foreshadow aggregation."
+      }
+    },
+    {
+      "id": "aggregation",
+      "n": 1,
+      "stage": null,
+      "title": "Claiming a path",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "An APIService claims a group and version path in the aggregation layer. Requests to that path are authenticated by kube-apiserver, then proxied to an extension API server. That server can implement its own storage and its own subresources. A CRD does something different: it uses the generic kube-apiserver storage and the generic behaviour that comes with it.",
+      "visual": {
+        "type": "aggregationLayer",
+        "spec": "NEW. One API surface, two implementations behind it. A CRD path resolving into kube-apiserver's own generic storage; an aggregated path being authenticated and then proxied out to a separate extension server with its own storage. Draw the proxy hop explicitly — it is what the rest of the module depends on."
+      }
+    },
+    {
+      "id": "when-aggregation",
+      "n": 2,
+      "stage": null,
+      "title": "When it earns its cost",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "So when does an aggregated API beat a CRD. Rarely, and only deliberately. CRDs already give you CRUD, watch and schema on the generic server. Status and scale are available when you enable them on the CRD. Aggregation earns its cost only for behaviour the generic server cannot supply. Custom storage, unusual subresources, or responses computed rather than stored.",
+      "visual": {
+        "type": "whenAggregation",
+        "spec": "NEW. A checklist of what a CRD already provides, ticked off, and beside it the short list of things only an extension server can do. Weight the visual so the CRD column is obviously larger. The point is that aggregation is the exception."
+      }
+    },
+    {
+      "id": "bookmark-and-410",
+      "n": 3,
+      "stage": null,
+      "title": "What a watch owes you",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "Two watch behaviours are worth knowing by name. A BOOKMARK event carries no object change; it tells you the resource version has advanced, so you can resume from a newer point. It is an optimisation, and it is optional. An HTTP 410 Gone means the history you asked to resume from has expired. There is no way to infer what you missed, so the only correct response is to rebuild current state.",
+      "visual": {
+        "type": "watchSemantics",
+        "spec": "NEW. A watch stream with ordinary events, a bookmark carrying only a resource version, and then a 410 where the requested history no longer exists. Show the wrong response — guessing at missed events — struck through, and the right one: relist and rebuild. Label the bookmark clearly as optional."
+      }
+    },
+    {
+      "id": "availability-cost",
+      "n": 4,
+      "stage": null,
+      "title": "What registering costs you",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "Registering an APIService has an availability cost that is easy to miss. Discovery and every matching request now depend on your extension server's latency. TLS and request-header trust join the request path. kube-apiserver proxies rather than stores, so it cannot answer on your behalf. And a failure there can degrade discovery for clients that never wanted your API at all.",
+      "visual": {
+        "type": "aggregationCost",
+        "spec": "NEW. The API request path with the extension server inserted into it, and the four new dependencies marked along that path: latency, TLS, request-header trust, proxy behaviour. Then show a failure degrading discovery for an unrelated client. The blast radius beyond your own API is the beat."
+      }
+    },
+    {
+      "id": "cel-admission",
+      "n": 5,
+      "stage": null,
+      "title": "Policy without a network call",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "There is a way to enforce policy without putting a service on the hot path. A ValidatingAdmissionPolicy holds CEL logic evaluated in process. A binding scopes it and chooses what enforcement actions apply, and an optional parameter resource supplies data to the expression. No webhook, no Service, no DNS, no TLS, no deadline.",
+      "visual": {
+        "type": "celAdmission",
+        "spec": "NEW. The webhook path from module 02 drawn beside the in-process path, with the four hot-path dependencies present on one and absent on the other. Show the policy, its binding and an optional parameter resource as three separate objects with distinct jobs."
+      }
+    },
+    {
+      "id": "cel-is-not-free",
+      "n": 6,
+      "stage": null,
+      "title": "Safer, not free",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "Which is operationally safer, but not free. It is validation only, so it cannot mutate an object. Matching still has to be scoped carefully, expression cost still matters, and failure policy is still a decision you have to make consciously. It removes the network dependency, not the design work.",
+      "visual": {
+        "type": "celTradeoffs",
+        "spec": "NEW. What the in-process policy removes (Service, DNS, TLS, deadline) on one side; what it does not remove (matching scope, expression cost, failure policy, validation-only) on the other. Two columns, equal weight, so the beat reads as a trade rather than an upgrade."
+      }
+    },
+    {
+      "id": "review-apis",
+      "n": 7,
+      "stage": null,
+      "title": "Ask, without becoming them",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "And when the question is whether some user can do something, there are APIs that answer without you borrowing their credentials. A SubjectAccessReview asks the authorizer about a named subject. A SelfSubjectAccessReview asks about the caller. A TokenReview asks the authenticators about a token, which is a different question entirely: identity evidence, not authorization. Impersonation needs the impersonate verb, and audit retains both the original and the impersonated identity.",
+      "visual": {
+        "type": "reviewApis",
+        "spec": "NEW. Three review APIs with the exact question each answers, drawn as distinct queries to distinct subsystems: authorizer versus authenticator. Beside them, impersonation with its required verb and the audit record showing both identities. Do not merge identity and authorization into one box."
+      }
+    },
+    {
+      "id": "close",
+      "n": 8,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 34,
+      "narration": "The API layer, then. A failure here has a signature. A whole API group stops answering while the rest of the cluster is fine, or a watch client quietly rebuilds because its history expired. Neither looks like an application problem. The next module is about things that deliberately do not happen yet.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the first segment shrinks back, the controller-queue segment lights to preview the next module."
+      }
+    }
+  ]
+}

@@ -144,6 +144,83 @@ import shuffle_sharding_u12_scale_evidence from '../../modules/u12-scale-evidenc
 import the_spine_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/the-spine.mp3';
 import two_objects_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/two-objects.mp3';
 import who_and_when_u12_scale_evidence from '../../modules/u12-scale-evidence/narration/who-and-when.mp3';
+import close_u13_bootstrap from '../../modules/u13-bootstrap/narration/close.mp3';
+import drain_is_not_upgrade_u13_bootstrap from '../../modules/u13-bootstrap/narration/drain-is-not-upgrade.mp3';
+import helm_vs_kustomize_u13_bootstrap from '../../modules/u13-bootstrap/narration/helm-vs-kustomize.mp3';
+import locate_u13_bootstrap from '../../modules/u13-bootstrap/narration/locate.mp3';
+import safe_not_successful_u13_bootstrap from '../../modules/u13-bootstrap/narration/safe-not-successful.mp3';
+import skew_boundaries_u13_bootstrap from '../../modules/u13-bootstrap/narration/skew-boundaries.mp3';
+import static_pod_first_check_u13_bootstrap from '../../modules/u13-bootstrap/narration/static-pod-first-check.mp3';
+import the_handoff_u13_bootstrap from '../../modules/u13-bootstrap/narration/the-handoff.mp3';
+import what_kubeadm_is_u13_bootstrap from '../../modules/u13-bootstrap/narration/what-kubeadm-is.mp3';
+import worker_upgrade_order_u13_bootstrap from '../../modules/u13-bootstrap/narration/worker-upgrade-order.mp3';
+import besteffort_incomplete_u14_config_qos from '../../modules/u14-config-qos/narration/besteffort-incomplete.mp3';
+import close_u14_config_qos from '../../modules/u14-config-qos/narration/close.mp3';
+import delivery_semantics_u14_config_qos from '../../modules/u14-config-qos/narration/delivery-semantics.mp3';
+import eviction_vs_oom_u14_config_qos from '../../modules/u14-config-qos/narration/eviction-vs-oom.mp3';
+import locate_u14_config_qos from '../../modules/u14-config-qos/narration/locate.mp3';
+import qos_is_derived_u14_config_qos from '../../modules/u14-config-qos/narration/qos-is-derived.mp3';
+import rollout_trigger_u14_config_qos from '../../modules/u14-config-qos/narration/rollout-trigger.mp3';
+import secret_is_not_encryption_u14_config_qos from '../../modules/u14-config-qos/narration/secret-is-not-encryption.mp3';
+import stale_credential_u14_config_qos from '../../modules/u14-config-qos/narration/stale-credential.mp3';
+import accepted_not_served_u15_ingress_gateway from '../../modules/u15-ingress-gateway/narration/accepted-not-served.mp3';
+import accepted_yet_inert_u15_ingress_gateway from '../../modules/u15-ingress-gateway/narration/accepted-yet-inert.mp3';
+import close_u15_ingress_gateway from '../../modules/u15-ingress-gateway/narration/close.mp3';
+import intent_not_dataplane_u15_ingress_gateway from '../../modules/u15-ingress-gateway/narration/intent-not-dataplane.mp3';
+import locate_u15_ingress_gateway from '../../modules/u15-ingress-gateway/narration/locate.mp3';
+import ownership_split_u15_ingress_gateway from '../../modules/u15-ingress-gateway/narration/ownership-split.mp3';
+import policy_permits_u15_ingress_gateway from '../../modules/u15-ingress-gateway/narration/policy-permits.mp3';
+import request_boundaries_u15_ingress_gateway from '../../modules/u15-ingress-gateway/narration/request-boundaries.mp3';
+import service_timeout_layers_u15_ingress_gateway from '../../modules/u15-ingress-gateway/narration/service-timeout-layers.mp3';
+import admission_rejection_u16_numa from '../../modules/u16-numa/narration/admission-rejection.mp3';
+import close_u16_numa from '../../modules/u16-numa/narration/close.mp3';
+import cluster_vs_local_u16_numa from '../../modules/u16-numa/narration/cluster-vs-local.mp3';
+import exclusive_cpus_u16_numa from '../../modules/u16-numa/narration/exclusive-cpus.mp3';
+import hint_protocol_u16_numa from '../../modules/u16-numa/narration/hint-protocol.mp3';
+import jitter_checklist_u16_numa from '../../modules/u16-numa/narration/jitter-checklist.mp3';
+import latency_sources_u16_numa from '../../modules/u16-numa/narration/latency-sources.mp3';
+import limit_is_not_isolation_u16_numa from '../../modules/u16-numa/narration/limit-is-not-isolation.mp3';
+import locate_u16_numa from '../../modules/u16-numa/narration/locate.mp3';
+import single_numa_node_u16_numa from '../../modules/u16-numa/narration/single-numa-node.mp3';
+import claim_teardown_u17_devices_dra from '../../modules/u17-devices-dra/narration/claim-teardown.mp3';
+import class_vs_claim_u17_devices_dra from '../../modules/u17-devices-dra/narration/class-vs-claim.mp3';
+import close_u17_devices_dra from '../../modules/u17-devices-dra/narration/close.mp3';
+import dra_handshake_u17_devices_dra from '../../modules/u17-devices-dra/narration/dra-handshake.mp3';
+import locate_u17_devices_dra from '../../modules/u17-devices-dra/narration/locate.mp3';
+import pending_evidence_dra_u17_devices_dra from '../../modules/u17-devices-dra/narration/pending-evidence-dra.mp3';
+import plugin_vs_dra_u17_devices_dra from '../../modules/u17-devices-dra/narration/plugin-vs-dra.mp3';
+import scalar_vs_structured_u17_devices_dra from '../../modules/u17-devices-dra/narration/scalar-vs-structured.mp3';
+import template_vs_named_u17_devices_dra from '../../modules/u17-devices-dra/narration/template-vs-named.mp3';
+import three_owners_u17_devices_dra from '../../modules/u17-devices-dra/narration/three-owners.mp3';
+import aggregation_u18_api_machinery from '../../modules/u18-api-machinery/narration/aggregation.mp3';
+import availability_cost_u18_api_machinery from '../../modules/u18-api-machinery/narration/availability-cost.mp3';
+import bookmark_and_410_u18_api_machinery from '../../modules/u18-api-machinery/narration/bookmark-and-410.mp3';
+import cel_admission_u18_api_machinery from '../../modules/u18-api-machinery/narration/cel-admission.mp3';
+import cel_is_not_free_u18_api_machinery from '../../modules/u18-api-machinery/narration/cel-is-not-free.mp3';
+import close_u18_api_machinery from '../../modules/u18-api-machinery/narration/close.mp3';
+import locate_u18_api_machinery from '../../modules/u18-api-machinery/narration/locate.mp3';
+import review_apis_u18_api_machinery from '../../modules/u18-api-machinery/narration/review-apis.mp3';
+import when_aggregation_u18_api_machinery from '../../modules/u18-api-machinery/narration/when-aggregation.mp3';
+import close_u19_coordination from '../../modules/u19-coordination/narration/close.mp3';
+import four_gates_u19_coordination from '../../modules/u19-coordination/narration/four-gates.mp3';
+import gated_diagnosis_u19_coordination from '../../modules/u19-coordination/narration/gated-diagnosis.mp3';
+import leases_are_optimistic_u19_coordination from '../../modules/u19-coordination/narration/leases-are-optimistic.mp3';
+import locate_u19_coordination from '../../modules/u19-coordination/narration/locate.mp3';
+import node_leases_u19_coordination from '../../modules/u19-coordination/narration/node-leases.mp3';
+import pdb_is_not_a_gate_u19_coordination from '../../modules/u19-coordination/narration/pdb-is-not-a-gate.mp3';
+import scheduling_gates_load_u19_coordination from '../../modules/u19-coordination/narration/scheduling-gates-load.mp3';
+import simultaneous_takeover_u19_coordination from '../../modules/u19-coordination/narration/simultaneous-takeover.mp3';
+import what_leases_cannot_u19_coordination from '../../modules/u19-coordination/narration/what-leases-cannot.mp3';
+import close_u20_troubleshooting from '../../modules/u20-troubleshooting/narration/close.mp3';
+import control_plane_order_u20_troubleshooting from '../../modules/u20-troubleshooting/narration/control-plane-order.mp3';
+import locate_u20_troubleshooting from '../../modules/u20-troubleshooting/narration/locate.mp3';
+import nearest_authority_u20_troubleshooting from '../../modules/u20-troubleshooting/narration/nearest-authority.mp3';
+import ninety_second_notready_u20_troubleshooting from '../../modules/u20-troubleshooting/narration/ninety-second-notready.mp3';
+import notready_evidence_u20_troubleshooting from '../../modules/u20-troubleshooting/narration/notready-evidence.mp3';
+import phase_vs_events_u20_troubleshooting from '../../modules/u20-troubleshooting/narration/phase-vs-events.mp3';
+import previous_logs_u20_troubleshooting from '../../modules/u20-troubleshooting/narration/previous-logs.mp3';
+import resolves_but_fails_u20_troubleshooting from '../../modules/u20-troubleshooting/narration/resolves-but-fails.mp3';
+import the_algorithm_u20_troubleshooting from '../../modules/u20-troubleshooting/narration/the-algorithm.mp3';
 
 export const moduleAudioSources: Record<string, Record<string, string>> = {
   "u01-control-plane": {
@@ -311,6 +388,99 @@ export const moduleAudioSources: Record<string, Record<string, string>> = {
     "the-spine": the_spine_u12_scale_evidence,
     "two-objects": two_objects_u12_scale_evidence,
     "who-and-when": who_and_when_u12_scale_evidence,
+  },
+  "u13-bootstrap": {
+    "close": close_u13_bootstrap,
+    "drain-is-not-upgrade": drain_is_not_upgrade_u13_bootstrap,
+    "helm-vs-kustomize": helm_vs_kustomize_u13_bootstrap,
+    "locate": locate_u13_bootstrap,
+    "safe-not-successful": safe_not_successful_u13_bootstrap,
+    "skew-boundaries": skew_boundaries_u13_bootstrap,
+    "static-pod-first-check": static_pod_first_check_u13_bootstrap,
+    "the-handoff": the_handoff_u13_bootstrap,
+    "what-kubeadm-is": what_kubeadm_is_u13_bootstrap,
+    "worker-upgrade-order": worker_upgrade_order_u13_bootstrap,
+  },
+  "u14-config-qos": {
+    "besteffort-incomplete": besteffort_incomplete_u14_config_qos,
+    "close": close_u14_config_qos,
+    "delivery-semantics": delivery_semantics_u14_config_qos,
+    "eviction-vs-oom": eviction_vs_oom_u14_config_qos,
+    "locate": locate_u14_config_qos,
+    "qos-is-derived": qos_is_derived_u14_config_qos,
+    "rollout-trigger": rollout_trigger_u14_config_qos,
+    "secret-is-not-encryption": secret_is_not_encryption_u14_config_qos,
+    "stale-credential": stale_credential_u14_config_qos,
+  },
+  "u15-ingress-gateway": {
+    "accepted-not-served": accepted_not_served_u15_ingress_gateway,
+    "accepted-yet-inert": accepted_yet_inert_u15_ingress_gateway,
+    "close": close_u15_ingress_gateway,
+    "intent-not-dataplane": intent_not_dataplane_u15_ingress_gateway,
+    "locate": locate_u15_ingress_gateway,
+    "ownership-split": ownership_split_u15_ingress_gateway,
+    "policy-permits": policy_permits_u15_ingress_gateway,
+    "request-boundaries": request_boundaries_u15_ingress_gateway,
+    "service-timeout-layers": service_timeout_layers_u15_ingress_gateway,
+  },
+  "u16-numa": {
+    "admission-rejection": admission_rejection_u16_numa,
+    "close": close_u16_numa,
+    "cluster-vs-local": cluster_vs_local_u16_numa,
+    "exclusive-cpus": exclusive_cpus_u16_numa,
+    "hint-protocol": hint_protocol_u16_numa,
+    "jitter-checklist": jitter_checklist_u16_numa,
+    "latency-sources": latency_sources_u16_numa,
+    "limit-is-not-isolation": limit_is_not_isolation_u16_numa,
+    "locate": locate_u16_numa,
+    "single-numa-node": single_numa_node_u16_numa,
+  },
+  "u17-devices-dra": {
+    "claim-teardown": claim_teardown_u17_devices_dra,
+    "class-vs-claim": class_vs_claim_u17_devices_dra,
+    "close": close_u17_devices_dra,
+    "dra-handshake": dra_handshake_u17_devices_dra,
+    "locate": locate_u17_devices_dra,
+    "pending-evidence-dra": pending_evidence_dra_u17_devices_dra,
+    "plugin-vs-dra": plugin_vs_dra_u17_devices_dra,
+    "scalar-vs-structured": scalar_vs_structured_u17_devices_dra,
+    "template-vs-named": template_vs_named_u17_devices_dra,
+    "three-owners": three_owners_u17_devices_dra,
+  },
+  "u18-api-machinery": {
+    "aggregation": aggregation_u18_api_machinery,
+    "availability-cost": availability_cost_u18_api_machinery,
+    "bookmark-and-410": bookmark_and_410_u18_api_machinery,
+    "cel-admission": cel_admission_u18_api_machinery,
+    "cel-is-not-free": cel_is_not_free_u18_api_machinery,
+    "close": close_u18_api_machinery,
+    "locate": locate_u18_api_machinery,
+    "review-apis": review_apis_u18_api_machinery,
+    "when-aggregation": when_aggregation_u18_api_machinery,
+  },
+  "u19-coordination": {
+    "close": close_u19_coordination,
+    "four-gates": four_gates_u19_coordination,
+    "gated-diagnosis": gated_diagnosis_u19_coordination,
+    "leases-are-optimistic": leases_are_optimistic_u19_coordination,
+    "locate": locate_u19_coordination,
+    "node-leases": node_leases_u19_coordination,
+    "pdb-is-not-a-gate": pdb_is_not_a_gate_u19_coordination,
+    "scheduling-gates-load": scheduling_gates_load_u19_coordination,
+    "simultaneous-takeover": simultaneous_takeover_u19_coordination,
+    "what-leases-cannot": what_leases_cannot_u19_coordination,
+  },
+  "u20-troubleshooting": {
+    "close": close_u20_troubleshooting,
+    "control-plane-order": control_plane_order_u20_troubleshooting,
+    "locate": locate_u20_troubleshooting,
+    "nearest-authority": nearest_authority_u20_troubleshooting,
+    "ninety-second-notready": ninety_second_notready_u20_troubleshooting,
+    "notready-evidence": notready_evidence_u20_troubleshooting,
+    "phase-vs-events": phase_vs_events_u20_troubleshooting,
+    "previous-logs": previous_logs_u20_troubleshooting,
+    "resolves-but-fails": resolves_but_fails_u20_troubleshooting,
+    "the-algorithm": the_algorithm_u20_troubleshooting,
   },
 };
 
@@ -480,5 +650,98 @@ export const moduleDurations: Record<string, Record<string, number>> = {
     "the-spine": 29.805625,
     "two-objects": 18.990938,
     "who-and-when": 19.905188,
+  },
+  "u13-bootstrap": {
+    "close": 17.710938,
+    "drain-is-not-upgrade": 11.075813,
+    "helm-vs-kustomize": 16.796625,
+    "locate": 15.568875,
+    "safe-not-successful": 21.159125,
+    "skew-boundaries": 17.371313,
+    "static-pod-first-check": 20.088063,
+    "the-handoff": 20.479938,
+    "what-kubeadm-is": 22.778688,
+    "worker-upgrade-order": 14.26275,
+  },
+  "u14-config-qos": {
+    "besteffort-incomplete": 18.651313,
+    "close": 18.390125,
+    "delivery-semantics": 20.375438,
+    "eviction-vs-oom": 22.334625,
+    "locate": 12.590938,
+    "qos-is-derived": 20.427688,
+    "rollout-trigger": 16.509313,
+    "secret-is-not-encryption": 16.901125,
+    "stale-credential": 18.599125,
+  },
+  "u15-ingress-gateway": {
+    "accepted-not-served": 17.005625,
+    "accepted-yet-inert": 18.938688,
+    "close": 15.725625,
+    "intent-not-dataplane": 20.061938,
+    "locate": 12.564813,
+    "ownership-split": 19.226063,
+    "policy-permits": 17.972125,
+    "request-boundaries": 18.4685,
+    "service-timeout-layers": 18.233375,
+  },
+  "u16-numa": {
+    "admission-rejection": 17.084,
+    "close": 15.4905,
+    "cluster-vs-local": 15.255438,
+    "exclusive-cpus": 15.43825,
+    "hint-protocol": 15.882375,
+    "jitter-checklist": 21.237438,
+    "latency-sources": 18.834188,
+    "limit-is-not-isolation": 22.230125,
+    "locate": 11.075813,
+    "single-numa-node": 15.64725,
+  },
+  "u17-devices-dra": {
+    "claim-teardown": 16.666063,
+    "class-vs-claim": 19.853,
+    "close": 15.072563,
+    "dra-handshake": 19.435,
+    "locate": 12.329688,
+    "pending-evidence-dra": 18.4685,
+    "plugin-vs-dra": 16.091313,
+    "scalar-vs-structured": 20.532125,
+    "template-vs-named": 15.568875,
+    "three-owners": 20.114188,
+  },
+  "u18-api-machinery": {
+    "aggregation": 19.173813,
+    "availability-cost": 18.677438,
+    "bookmark-and-410": 22.3085,
+    "cel-admission": 22.177875,
+    "cel-is-not-free": 14.837438,
+    "close": 16.169688,
+    "locate": 11.964,
+    "review-apis": 25.181938,
+    "when-aggregation": 19.853,
+  },
+  "u19-coordination": {
+    "close": 15.072563,
+    "four-gates": 22.25625,
+    "gated-diagnosis": 18.024375,
+    "leases-are-optimistic": 18.886438,
+    "locate": 11.546063,
+    "node-leases": 18.808063,
+    "pdb-is-not-a-gate": 15.333813,
+    "scheduling-gates-load": 18.4685,
+    "simultaneous-takeover": 17.580313,
+    "what-leases-cannot": 21.159125,
+  },
+  "u20-troubleshooting": {
+    "close": 13.426875,
+    "control-plane-order": 19.043188,
+    "locate": 12.173,
+    "nearest-authority": 22.230125,
+    "ninety-second-notready": 18.703563,
+    "notready-evidence": 19.226063,
+    "phase-vs-events": 22.883188,
+    "previous-logs": 18.285625,
+    "resolves-but-fails": 18.599125,
+    "the-algorithm": 21.368063,
   },
 };

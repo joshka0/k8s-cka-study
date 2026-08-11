@@ -1,0 +1,12 @@
+{
+  "close": 15.072563,
+  "four-gates": 22.25625,
+  "gated-diagnosis": 18.024375,
+  "leases-are-optimistic": 18.886438,
+  "locate": 11.546063,
+  "node-leases": 18.808063,
+  "pdb-is-not-a-gate": 15.333813,
+  "scheduling-gates-load": 18.4685,
+  "simultaneous-takeover": 17.580313,
+  "what-leases-cannot": 21.159125
+}

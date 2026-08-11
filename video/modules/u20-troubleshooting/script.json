@@ -1,0 +1,151 @@
+{
+  "title": "Start At The Nearest Authority",
+  "subtitle": "Module 20 — the CKA troubleshooting spine, from control plane to Service",
+  "series": {
+    "module": 20,
+    "unit": "u20",
+    "spineSegment": "desired object",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/advanced-content.js unit u20. Series finale for the advanced arc; the close recaps the whole course rather than previewing a next module.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 32,
+      "narration": "The last module, and it is not a new segment. It is the method for using every segment you have learned. This module is where to start when something is broken, how to descend when the API cannot answer, and the algorithm underneath all of it.",
+      "visual": {
+        "type": "spineRecap",
+        "spec": "REUSE the pilot's SpineRecap, showing the whole spine at once — this module belongs to all of it rather than to one segment."
+      }
+    },
+    {
+      "id": "nearest-authority",
+      "n": 1,
+      "stage": null,
+      "title": "Start where something still answers",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "Start at the nearest authority that is still answering. If the API responds, use it: object status, events, and component health endpoints. If it does not respond, move below Kubernetes. The load balancer, the static Pod manifests, the kubelet service, the runtime, certificates, sockets and host resources. kubectl cannot diagnose the API server that makes kubectl work.",
+      "visual": {
+        "type": "nearestAuthority",
+        "spec": "NEW. Two zones with a hard line between them: above it, everything answerable through the API; below it, host-level evidence. Show the diagnostic entry point moving below the line when the API stops answering, and kubectl greyed out there. The line is the beat."
+      }
+    },
+    {
+      "id": "control-plane-order",
+      "n": 2,
+      "stage": null,
+      "title": "Descending in order",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "For one unhealthy control-plane node, work from outside in. If an API load balancer exists, confirm what it thinks. Locate which boundary is actually failing. Then descend into the node: static Pod manifests, the kubelet, the runtime, certificates. And preserve evidence before restarting anything, because a restart destroys the state that would have told you why.",
+      "visual": {
+        "type": "controlPlaneOrder",
+        "spec": "NEW. An outside-in sequence, each step with what it rules out. End with a prominent 'preserve evidence before restart' marker, and show the alternative — restarting first — erasing the logs and state that held the answer."
+      }
+    },
+    {
+      "id": "notready-evidence",
+      "n": 3,
+      "stage": null,
+      "title": "What separates a NotReady node",
+      "lane": "node",
+      "estSeconds": 44,
+      "narration": "A NotReady node has layers, and specific evidence separates them. The node's Lease shows whether heartbeats are still arriving at all. Its conditions name pressure and network symptoms. Then kubelet, runtime and network-plugin evidence locate the actual owner. Those are three different questions, and answering them in that order stops you restarting the wrong thing.",
+      "visual": {
+        "type": "notReadyEvidence",
+        "spec": "NEW. Three evidence layers stacked with what each proves: Lease (is it reporting), conditions (what it reports), component logs (why). Show a failure at each layer producing a different combination, so the reader can invert from symptom to layer."
+      }
+    },
+    {
+      "id": "ninety-second-notready",
+      "n": 4,
+      "stage": null,
+      "title": "Ninety seconds on a NotReady node",
+      "lane": "node",
+      "estSeconds": 40,
+      "narration": "So the compact version. Inspect conditions, taints and the Lease. Check host reachability and, genuinely, the clock. Check the kubelet, including certificate and configuration errors. Check the runtime and the network plugin. Preserve evidence before you restart. That sequence fits in ninety seconds and it is almost always enough to name the owner.",
+      "visual": {
+        "type": "ninetySecondNotReady",
+        "spec": "NEW. Five ordered checks building as a card, each with the command or artefact beside it. Include the clock explicitly — it is the one people skip and it produces certificate failures that look like something else."
+      }
+    },
+    {
+      "id": "phase-vs-events",
+      "n": 5,
+      "stage": null,
+      "title": "Phase names the state, events name the attempt",
+      "lane": "node",
+      "estSeconds": 44,
+      "narration": "For workloads, the status names the phase and the events name what was attempted. Phase names the Pod. Waiting reasons name the attempt. Pending points at admission, quota, scheduling or claims. A Running or Pending Pod with ContainerCreating points at image, sandbox, network or mounts. CrashLoopBackOff is a waiting reason for a container that keeps failing under the restart policy. Running but not Ready points at readiness, a dependency, or endpoint selection. Four different places to look — do not call them four phases.",
+      "visual": {
+        "type": "phaseVsEvents",
+        "spec": "NEW. Four phases as rows, each with the small set of causes it implies and the evidence that discriminates them. Keep the phases visually parallel so the mapping reads as a lookup table — this is the frame a viewer will screenshot."
+      }
+    },
+    {
+      "id": "previous-logs",
+      "n": 6,
+      "stage": null,
+      "title": "The log you actually need",
+      "lane": "node",
+      "estSeconds": 38,
+      "narration": "When a container restarts too fast to inspect, use the same Pod identity. Try the previous container's logs while they still exist. Read lastState for exit code, signal and OOMKilled. Read events for probe failures. Those separate a process exit, a signal, an out-of-memory kill, and a probe-driven restart.",
+      "visual": {
+        "type": "previousLogs",
+        "spec": "NEW. A container restarting repeatedly, with the previous instance's log and the lastState field shown as retained evidence. Map the four terminal causes to what each leaves behind — exit code, signal, OOM flag, probe failure event. CORRECTION: the previous container's log survives only until the runtime garbage-collects it. Do not draw it as always available. Probe-driven restarts often look like a signal in lastState, so show events as the thing that separates them."
+      }
+    },
+    {
+      "id": "resolves-but-fails",
+      "n": 7,
+      "stage": null,
+      "title": "It resolves, it still fails",
+      "lane": "pod",
+      "estSeconds": 42,
+      "narration": "And when a Service name resolves but connections fail, DNS has already proved exactly one thing: name resolution. Move on. Check selection, then raw backend reachability, then translation, then policy, then whether the process is listening at all. Each step rules out one layer, and none of them is proved by the step before it.",
+      "visual": {
+        "type": "resolvesButFails",
+        "spec": "NEW. REUSE the traceTimeout component from module 08 if it fits; otherwise a matching ordered trace. Mark the DNS step as already passed and greyed, so the sequence starts where the evidence actually starts."
+      }
+    },
+    {
+      "id": "the-algorithm",
+      "n": 8,
+      "stage": null,
+      "title": "The algorithm underneath",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "Underneath all of it is one algorithm, and it is short. State the transition you expected and what you actually observe. Identify which component owns that transition. Read status, events and logs at that boundary and nowhere else. Compare against one adjacent layer that is healthy. Then change one thing, and verify it. Everything in these twenty units is a way of answering step two quickly.",
+      "visual": {
+        "type": "theAlgorithm",
+        "spec": "NEW. Five steps as the closing frame of the whole course, each numbered and legible as a still. Under step two, the spine drawn small as the lookup that answers 'who owns this transition'. This is the frame the series has been building toward — give it room and hold it."
+      }
+    },
+    {
+      "id": "close",
+      "n": 9,
+      "stage": null,
+      "title": "The end of the spine",
+      "lane": null,
+      "estSeconds": 34,
+      "narration": "Twenty units. One method. If you can state the transition you expected, and name the component that owns it, you already have your next question. That is the whole difference between recalling Kubernetes commands and understanding the system underneath them.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, final state: the whole spine lit end to end with every module number marked against its segment, including the advanced arc. No preview — this is the last frame of the course."
+      }
+    }
+  ]
+}

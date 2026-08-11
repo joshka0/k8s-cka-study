@@ -1,0 +1,151 @@
+{
+  "title": "Four Gates, Four Transitions",
+  "subtitle": "Module 19 — leader election as optimistic concurrency, and what each gate actually delays",
+  "series": {
+    "module": 19,
+    "unit": "u19",
+    "spineSegment": "controller queue",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/advanced-content.js unit u19. ",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "The controller segment, and the things that deliberately do not happen yet. Kubernetes has several mechanisms for holding a transition back. They look similar and they are not interchangeable. This module is which one blocks what.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the controller-queue segment lit."
+      }
+    },
+    {
+      "id": "leases-are-optimistic",
+      "n": 1,
+      "stage": null,
+      "title": "Leadership is a conditional write",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "Leader election is optimistic concurrency over expiring state. Candidates all observe one Lease. It records who holds it, when they last renewed, and how long the claim is good for. Competing updates are conditional on the resource version, so exactly one wins. And when renewal stops, expiry is what permits somebody else to take over.",
+      "visual": {
+        "type": "leaseElection",
+        "spec": "NEW. One Lease object at the centre with its three meaningful fields, and several candidates watching it. Show the holder renewing, then stopping. The duration elapses, candidates attempt conditional updates, one succeeds and the rest observe a conflict. Draw the conflict as a normal outcome, not an error."
+      }
+    },
+    {
+      "id": "node-leases",
+      "n": 2,
+      "stage": null,
+      "title": "The same API, two jobs",
+      "lane": "control",
+      "estSeconds": 36,
+      "narration": "The same Lease API does two unrelated jobs, which surprises people. Node liveness uses Leases in their own namespace, as a cheap heartbeat the node controller reads. Component leader election uses Leases to decide who is active. Same object type, two coordination problems, and confusing them makes node diagnosis harder than it needs to be.",
+      "visual": {
+        "type": "twoLeaseJobs",
+        "spec": "NEW. Two panels using the same object shape: node heartbeat leases on one side, component leadership on the other. Same fields, entirely different readers and consequences. Label the namespace difference explicitly."
+      }
+    },
+    {
+      "id": "simultaneous-takeover",
+      "n": 3,
+      "stage": null,
+      "title": "Two candidates, one winner",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "So what happens when two replicas both decide the Lease has expired and update it at the same moment. Exactly one conditional update succeeds. The other receives a conflict, sees the Lease is now held by somebody else, and goes back to following. No coordination protocol beyond the API's own consistency is required.",
+      "visual": {
+        "type": "simultaneousTakeover",
+        "spec": "NEW. Two candidates issuing the same conditional update against one Lease. One write lands, one is rejected with a conflict. Show the loser reverting cleanly to a follower state. The API's consistency doing the arbitration is the beat."
+      }
+    },
+    {
+      "id": "what-leases-cannot",
+      "n": 4,
+      "stage": null,
+      "title": "What it cannot promise",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "Be precise about what leader election guarantees. Under API consistency there is one current holder, and failover happens after renewal stops and the duration expires. What it cannot give you is exactly-once external side effects. A former leader can still be mid-operation against something outside the cluster. If that matters, you need fencing or idempotency, and the Lease alone will not provide either.",
+      "visual": {
+        "type": "leaseLimits",
+        "spec": "NEW. Two columns: what the Lease guarantees, and what it does not. On the right, a deposed leader still completing an external call while the new leader begins its own — the exact scenario a Lease cannot prevent. Fencing and idempotency named as the separate mechanisms required."
+      }
+    },
+    {
+      "id": "four-gates",
+      "n": 5,
+      "stage": null,
+      "title": "Each gate blocks its own transition",
+      "lane": "control",
+      "estSeconds": 46,
+      "narration": "Then the gates, and each one blocks exactly one transition. Scheduling gates keep a Pod out of active scheduling, so it is never considered. Readiness gates keep a running Pod out of Ready, and therefore out of Service endpoints. Finalizers hold deletion after a deletion timestamp is set. A Lease holds logical leadership. Four mechanisms, four different transitions, and none of them substitutes for another.",
+      "visual": {
+        "type": "fourGates",
+        "spec": "NEW. A Pod's lifecycle drawn as transitions, with each gate placed exactly where it blocks: scheduling gate before scheduling, readiness gate before Ready and endpoint membership, finalizer after deletion timestamp, Lease beside them governing leadership rather than a Pod. Four distinct positions — the placement is the teaching."
+      }
+    },
+    {
+      "id": "pdb-is-not-a-gate",
+      "n": 6,
+      "stage": null,
+      "title": "And what a budget is not",
+      "lane": "control",
+      "estSeconds": 34,
+      "narration": "One thing that belongs beside them but is not a gate. A PodDisruptionBudget constrains voluntary requests through the Eviction API. It cannot govern the kernel, a power cut or a direct delete. It restricts a request path, not a transition, which is why it sits in a different category entirely.",
+      "visual": {
+        "type": "pdbNotAGate",
+        "spec": "NEW. The four gates from the previous beat, with a PDB drawn deliberately outside that set, attached to the Eviction API request path instead. Show the things it cannot govern passing straight by it."
+      }
+    },
+    {
+      "id": "scheduling-gates-load",
+      "n": 7,
+      "stage": null,
+      "title": "Why gating reduces load",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "Scheduling gates also do something useful for a busy cluster. A gated Pod is not repeatedly retried by the scheduler, so work that cannot succeed yet stops consuming attempts. A controller removes the gates once the external prerequisite exists. Note the asymmetry: gates can be removed after creation, but new ones cannot be added later.",
+      "visual": {
+        "type": "schedulingGatesLoad",
+        "spec": "NEW. Left: an ungated Pod that cannot be placed, cycling through repeated scheduling attempts. Right: the same Pod gated, sitting quietly out of the queue until a controller removes the gate. Show the attempt counters. Mark the remove-only asymmetry explicitly."
+      }
+    },
+    {
+      "id": "gated-diagnosis",
+      "n": 8,
+      "stage": null,
+      "title": "Pending, reason SchedulingGated",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "So a Pod Pending with reason SchedulingGated is not a scheduling failure at all. Read the named gates in the spec. Work out which controller or admission rule added them. Identify the external prerequisite that controller is waiting on. Then ask why it has not removed each gate. The scheduler is not involved in any of those answers.",
+      "visual": {
+        "type": "gatedDiagnosis",
+        "spec": "NEW. The four investigation steps in order, each with the artefact you read, and the scheduler shown greyed out and uninvolved throughout. The absence of the scheduler from its own Pending reason is the point."
+      }
+    },
+    {
+      "id": "close",
+      "n": 9,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 34,
+      "narration": "Deliberate delay, then. A failure here has a signature. Something is waiting and the thing that should release it is gone, or never existed. That is the same shape as an orphaned finalizer, in a different place. The last module puts every segment together as a method.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the controller-queue segment shrinks back and the whole spine brightens, preparing for the final module."
+      }
+    }
+  ]
+}
