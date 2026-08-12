@@ -39,6 +39,10 @@ def _content_paths() -> list[Path]:
 
 CONTENT_PATHS = _content_paths()
 OUTPUT_PATH = DECK_DIR / "kubernetes-beyond-yaml-lessons.apkg"
+# Per-unit files live beside the combined one. Same note GUIDs and same deck
+# ids, so importing a single unit and the full deck updates in place instead
+# of duplicating every card.
+SPLIT_DIR = DECK_DIR / "by-module"
 PARENT_DECK_NAME = "Kubernetes Beyond YAML — Lessons"
 
 # Disjoint from build_deck.py's 2_057_08[01]_* block.
@@ -371,7 +375,19 @@ def build(cards: list[dict[str, Any]], units: dict[str, str], genanki: Any) -> N
     package = genanki.Package([parent, *(decks[name] for name in ordered_units)])
     package.write_to_file(str(OUTPUT_PATH))
 
+    # One file per unit, for anyone who wants a single module rather than all
+    # 27. The deck keeps its "Parent::Unit" name, so Anki files it under the
+    # same parent and a later full import merges rather than duplicates.
+    SPLIT_DIR.mkdir(exist_ok=True)
+    for n, name in enumerate(ordered_units, start=1):
+        # The unit name already opens with its number ("01 The control-plane
+        # map"), so strip it rather than print it twice in the filename.
+        slug = re.sub(r"[^a-z0-9]+", "-", re.sub(r"^\d+\s*", "", name).lower()).strip("-")
+        out = SPLIT_DIR / f"u{n:02d}-{slug}.apkg"
+        genanki.Package([decks[name]]).write_to_file(str(out))
+
     print(f"Wrote {OUTPUT_PATH}")
+    print(f"Wrote {len(ordered_units)} per-unit decks to {SPLIT_DIR}/")
     print(f"Total notes: {len(cards)}")
     print("Per model:")
     for name in ("Basic", "Cloze"):

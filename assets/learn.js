@@ -358,6 +358,24 @@ function showPath() {
           ])
         ])
       ]));
+
+      // The classroom track is a separate way through the same unit, not a
+      // step after the video, so it sits beside it and is never gated.
+      if (vid.audio) {
+        const heard = !!S.done['@audio' + u.id];
+        body.push(el('div', { cls: 'lessons' }, [
+          el('button', {
+            cls: 'node listen' + (heard ? ' done' : ''),
+            on: { click: () => showModule(u.id, 'listen') }
+          }, [
+            el('span', { cls: 'dot', text: heard ? '✓' : '♪' }),
+            el('span', {}, [
+              el('span', { text: 'Listen in class · ' + vid.title }),
+              el('small', { text: mmss(vid.audioSeconds || 0) + ' · lecture audio' + (heard ? ' · heard' : '') })
+            ])
+          ])
+        ]));
+      }
     }
 
     if (open) {
@@ -398,7 +416,7 @@ function mmss(sec) {
 
 /* The module video as a first-class step in the path, not a link off the site.
    Watching counts once: it awards XP like a lesson and the node keeps its tick. */
-function showModule(unitId) {
+function showModule(unitId, mode) {
   const u = COURSE.units.find(x => x.id === unitId);
   const vid = MODULE_VIDEOS[unitId];
   if (!u || !vid) { showPath(); return; }
@@ -423,9 +441,30 @@ function showModule(unitId) {
       S.xp += 20;
       touchStreak();
       save();
-      showModule(unitId);
+      showModule(unitId, mode);
     }
   });
+
+  // Same award shape as the video: once per unit, on completion.
+  const audio = vid.audio ? el('audio', {
+    cls: 'module-audio',
+    controls: true,
+    preload: 'none',
+    src: vid.audio
+  }, []) : null;
+  if (audio) {
+    audio.addEventListener('ended', () => {
+      if (!S.done['@audio' + unitId]) {
+        S.done['@audio' + unitId] = 1;
+        S.xp += 20;
+        touchStreak();
+        save();
+        showModule(unitId, mode);
+      }
+    });
+  }
+
+  const listening = mode === 'listen' && !!audio;
 
   render([
     el('div', { cls: 'module-view' }, [
@@ -434,14 +473,28 @@ function showModule(unitId) {
       el('div', { cls: 'eyebrow', text: 'Unit ' + u.n + ' \u00b7 module ' + String(vid.n).padStart(2, '0') + ' \u00b7 ' + mmss(vid.seconds) }),
       el('h1', { text: vid.title }),
       el('p', { cls: 'module-sub', text: vid.subtitle }),
-      video,
+      listening ? audio : video,
+      audio ? el('div', { cls: 'module-switch' }, [
+        el('button', {
+          cls: 'btn ghost' + (listening ? '' : ' on'),
+          on: { click: () => showModule(unitId) }
+        }, [document.createTextNode('▶ Watch · ' + mmss(vid.seconds))]),
+        el('button', {
+          cls: 'btn ghost' + (listening ? ' on' : ''),
+          on: { click: () => showModule(unitId, 'listen') }
+        }, [document.createTextNode('♪ Listen in class · ' + mmss(vid.audioSeconds || 0))])
+      ]) : null,
       el('h3', { cls: 'module-parts-head', text: 'What it covers' }),
       el('ol', { cls: 'module-parts' }, vid.beats.map(b => el('li', { text: b }))),
       el('div', { cls: 'module-actions' }, [
         el('button', { cls: 'btn', on: { click: () => { const n = u.lessons.find(l => !S.done[l.id]); if (n) { startLesson(n.id); } else { showPath(); } } } },
           [document.createTextNode('Practise this unit')]),
         el('a', { cls: 'btn ghost', href: 'reference.html#' + u.ref },
-          [document.createTextNode('Guidebook \u2192')])
+          [document.createTextNode('Guidebook \u2192')]),
+        // Just this unit's cards. Note GUIDs match the full deck, so importing
+        // one unit now and everything later merges instead of duplicating.
+        vid.deck ? el('a', { cls: 'btn ghost', href: vid.deck, download: true },
+          [document.createTextNode('\u2b07 Anki cards for this unit')]) : null
       ])
     ])
   ]);

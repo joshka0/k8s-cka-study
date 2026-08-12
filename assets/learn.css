@@ -343,3 +343,24 @@ button.stat:hover { border-color: var(--line-strong); }
   .module-parts { columns: 1; }
   .module-actions .btn { width: 100%; }
 }
+
+/* Classroom audio — a second way through a unit, not a step after the video.
+ * Given its own hue so the path reads as two parallel options rather than a
+ * sequence, and the same done-state treatment as every other node. */
+.node.listen { border-color: var(--violet, #a78bfa); background: color-mix(in srgb, var(--violet, #a78bfa) 7%, var(--paper)); }
+.node.listen .dot { background: var(--violet, #a78bfa); color: #fff; }
+.node.listen.done .dot { background: var(--good); }
+
+.module-audio {
+  width: 100%; display: block; margin: 0 0 4px;
+  border: 2px solid var(--line); border-radius: 14px;
+}
+
+/* Watch/listen toggle. The players have very different heights, so the
+ * switch sits under whichever is showing rather than between them. */
+.module-switch { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; }
+.module-switch .btn.on {
+  border-color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 12%, var(--paper));
+  color: var(--ink);
+}

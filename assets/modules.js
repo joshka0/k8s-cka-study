@@ -9,6 +9,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 01 — the control-plane map, and what an outage actually costs",
     "src": "https://videos.katig.dev/Module01.mp4?v=f3b7b333",
     "seconds": 360,
+    "audio": "https://videos.katig.dev/audio/u01-listen-in-class.mp3?v=b020246d",
+    "audioSeconds": 665,
+    "deck": "deck/by-module/u01-the-control-plane-map.apkg",
     "beats": [
       "Five actors",
       "One contract",
@@ -25,6 +28,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 02 — the API request path, admission webhooks, and who owns a field",
     "src": "https://videos.katig.dev/Module02.mp4?v=1a6e02fd",
     "seconds": 325,
+    "audio": "https://videos.katig.dev/audio/u02-listen-in-class.mp3?v=3d8842e3",
+    "audioSeconds": 731,
+    "deck": "deck/by-module/u02-the-api-request-path.apkg",
     "beats": [
       "Who, then may they",
       "Mutate, then validate",
@@ -42,6 +48,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 03 — informers, level-based reconciliation, and loops that eat themselves",
     "src": "https://videos.katig.dev/Module03.mp4?v=5d7f9544",
     "seconds": 294,
+    "audio": "https://videos.katig.dev/audio/u03-listen-in-class.mp3?v=997d53f9",
+    "audioSeconds": 711,
+    "deck": "deck/by-module/u03-reconciliation-watches.apkg",
     "beats": [
       "Observe, compare, act",
       "Nobody polls",
@@ -61,6 +70,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 04 — workload controllers, autoscaler conflict, and what a PDB really covers",
     "src": "https://videos.katig.dev/Module04.mp4?v=9d41adab",
     "seconds": 350,
+    "audio": "https://videos.katig.dev/audio/u04-listen-in-class.mp3?v=12cb01e2",
+    "audioSeconds": 765,
+    "deck": "deck/by-module/u04-workloads-disruption.apkg",
     "beats": [
       "Pick by invariant",
       "What a StatefulSet does not do",
@@ -80,6 +92,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 05 — CRDs, operators, versioning, and finalizers",
     "src": "https://videos.katig.dev/Module05.mp4?v=21ef55ad",
     "seconds": 337,
+    "audio": "https://videos.katig.dev/audio/u05-listen-in-class.mp3?v=4825641f",
+    "audioSeconds": 715,
+    "deck": "deck/by-module/u05-crds-operators.apkg",
     "beats": [
       "Four words people blur",
       "A CRD on its own does nothing",
@@ -100,6 +115,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 06 — the scheduling framework, why a Pod stays Pending, and what preemption costs",
     "src": "https://videos.katig.dev/Module06.mp4?v=08f027c8",
     "seconds": 280,
+    "audio": "https://videos.katig.dev/audio/u06-listen-in-class.mp3?v=1d83ed8f",
+    "audioSeconds": 671,
+    "deck": "deck/by-module/u06-scheduling-under-pressure.apkg",
     "beats": [
       "Two cycles, not one",
       "Eliminate, then rank",
@@ -118,6 +136,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 07 — the kubelet's loop, the four boundaries, and what a Pod's status is really telling you",
     "src": "https://videos.katig.dev/Module07.mp4?v=c10102df",
     "seconds": 273,
+    "audio": "https://videos.katig.dev/audio/u07-listen-in-class.mp3?v=90c0bca2",
+    "audioSeconds": 716,
+    "deck": "deck/by-module/u07-kubelet-cri-pods.apkg",
     "beats": [
       "A loop, not an inbox",
       "The order on the node",
@@ -137,6 +158,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 08 — Service identity, the two data planes, and how a Pod actually gets its address",
     "src": "https://videos.katig.dev/Module08.mp4?v=11e0085f",
     "seconds": 267,
+    "audio": "https://videos.katig.dev/audio/u08-listen-in-class.mp3?v=f5987fe2",
+    "audioSeconds": 845,
+    "deck": "deck/by-module/u08-networking-the-data-plane.apkg",
     "beats": [
       "Three owners, not one network",
       "Labels select, readiness conditions",
@@ -157,6 +181,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 09 — resolver policy, the compiled plugin chain, and what Ready has not proven",
     "src": "https://videos.katig.dev/Module09.mp4?v=5953cd4c",
     "seconds": 249,
+    "audio": "https://videos.katig.dev/audio/u09-listen-in-class.mp3?v=c4380698",
+    "audioSeconds": 667,
+    "deck": "deck/by-module/u09-dns-coredns.apkg",
     "beats": [
       "The query that actually leaves",
       "What expansion costs",
@@ -176,6 +203,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 10 — claim, class and volume, the CSI split, and why storage decides where a Pod can run",
     "src": "https://videos.katig.dev/Module10.mp4?v=49d2e89f",
     "seconds": 223,
+    "audio": "https://videos.katig.dev/audio/u10-listen-in-class.mp3?v=fdc3e0b8",
+    "audioSeconds": 679,
+    "deck": "deck/by-module/u10-storage-csi.apkg",
     "beats": [
       "Claim, class, volume",
       "Pending on purpose",
@@ -194,6 +224,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 11 — two availability models, quorum arithmetic, and what a snapshot leaves out",
     "src": "https://videos.katig.dev/Module11.mp4?v=527ef707",
     "seconds": 235,
+    "audio": "https://videos.katig.dev/audio/u11-listen-in-class.mp3?v=ba20e2cf",
+    "audioSeconds": 658,
+    "deck": "deck/by-module/u11-ha-etcd-recovery.apkg",
     "beats": [
       "Two different availability models",
       "Majority, exactly",
@@ -213,6 +246,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 12 — API Priority and Fairness, the evidence hierarchy, and the spine as a diagnostic tool",
     "src": "https://videos.katig.dev/Module12.mp4?v=aba43fa1",
     "seconds": 263,
+    "audio": "https://videos.katig.dev/audio/u12-listen-in-class.mp3?v=89f0a98b",
+    "audioSeconds": 596,
+    "deck": "deck/by-module/u12-scale-apf-evidence.apkg",
     "beats": [
       "Concurrency has to be allocated",
       "Classify here, serve there",
@@ -231,6 +267,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 13 — what kubeadm actually builds, skew boundaries, and what makes an upgrade safe",
     "src": "https://videos.katig.dev/Module13.mp4?v=a2d3346e",
     "seconds": 199,
+    "audio": "https://videos.katig.dev/audio/u13-listen-in-class.mp3?v=ceadcc9c",
+    "audioSeconds": 472,
+    "deck": "deck/by-module/u13-cluster-bootstrap-lifecycle.apkg",
     "beats": [
       "It composes, it does not manage",
       "Where the handoff happens",
@@ -248,6 +287,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 14 — config delivery semantics, how QoS is derived, and eviction versus OOM",
     "src": "https://videos.katig.dev/Module14.mp4?v=fabeb50d",
     "seconds": 184,
+    "audio": "https://videos.katig.dev/audio/u14-listen-in-class.mp3?v=95399790",
+    "audioSeconds": 648,
+    "deck": "deck/by-module/u14-configuration-qos-eviction.apkg",
     "beats": [
       "Delivery has semantics",
       "What actually triggers a rollout",
@@ -264,6 +306,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 15 — Ingress and Gateway API, ownership boundaries, and why an accepted route can serve nothing",
     "src": "https://videos.katig.dev/Module15.mp4?v=04c46124",
     "seconds": 178,
+    "audio": "https://videos.katig.dev/audio/u15-listen-in-class.mp3?v=a79bb675",
+    "audioSeconds": 546,
+    "deck": "deck/by-module/u15-ingress-gateway-api-policy.apkg",
     "beats": [
       "The object is not the proxy",
       "Valid, and serving nothing",
@@ -280,6 +325,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 16 — topology hints, node admission, and why a CPU limit is not isolation",
     "src": "https://videos.katig.dev/Module16.mp4?v=aa088f9b",
     "seconds": 200,
+    "audio": "https://videos.katig.dev/audio/u16-listen-in-class.mp3?v=bb5b0f4d",
+    "audioSeconds": 554,
+    "deck": "deck/by-module/u16-numa-aware-node-resources.apkg",
     "beats": [
       "Aggregate capacity is not locality",
       "Three managers, one protocol",
@@ -297,6 +345,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 17 — device plugins versus DRA, the allocation handshake, and where a device Pod stalls",
     "src": "https://videos.katig.dev/Module17.mp4?v=66b9b651",
     "seconds": 195,
+    "audio": "https://videos.katig.dev/audio/u17-listen-in-class.mp3?v=69b27032",
+    "audioSeconds": 527,
+    "deck": "deck/by-module/u17-devices-dynamic-resource-allocation.apkg",
     "beats": [
       "A count, or a description",
       "Policy, and intent",
@@ -314,6 +365,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 18 — the aggregation layer, watch expiry, and policy without a network call",
     "src": "https://videos.katig.dev/Module18.mp4?v=9c69edd1",
     "seconds": 187,
+    "audio": "https://videos.katig.dev/audio/u18-listen-in-class.mp3?v=3278bfc0",
+    "audioSeconds": 514,
+    "deck": "deck/by-module/u18-advanced-api-machinery-policy.apkg",
     "beats": [
       "Claiming a path",
       "When it earns its cost",
@@ -330,6 +384,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 19 — leader election as optimistic concurrency, and what each gate actually delays",
     "src": "https://videos.katig.dev/Module19.mp4?v=de8de440",
     "seconds": 186,
+    "audio": "https://videos.katig.dev/audio/u19-listen-in-class.mp3?v=18cc0215",
+    "audioSeconds": 542,
+    "deck": "deck/by-module/u19-coordination-deferred-commitment.apkg",
     "beats": [
       "Leadership is a conditional write",
       "The same API, two jobs",
@@ -347,6 +404,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 20 — the CKA troubleshooting spine, from control plane to Service",
     "src": "https://videos.katig.dev/Module20.mp4?v=59fbfa40",
     "seconds": 195,
+    "audio": "https://videos.katig.dev/audio/u20-listen-in-class.mp3?v=70c11402",
+    "audioSeconds": 605,
+    "deck": "deck/by-module/u20-cka-troubleshooting-spine.apkg",
     "beats": [
       "Start where something still answers",
       "Descending in order",
@@ -364,6 +424,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 21 — how RBAC actually composes, and how a node earns its identity",
     "src": "https://videos.katig.dev/Module21.mp4?v=150a1906",
     "seconds": 159,
+    "audio": "https://videos.katig.dev/audio/u21-listen-in-class.mp3?v=c8cf09b6",
+    "audioSeconds": 757,
+    "deck": "deck/by-module/u21-identity-rbac-node-trust.apkg",
     "beats": [
       "Scope is half the grant",
       "The union, not the worst case",
@@ -379,6 +442,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 22 — what kubectl top actually reads, and preserving evidence before restart",
     "src": "https://videos.katig.dev/Module22.mp4?v=41afb466",
     "seconds": 150,
+    "audio": "https://videos.katig.dev/audio/u22-listen-in-class.mp3?v=93ac7bf9",
+    "audioSeconds": 467,
+    "deck": "deck/by-module/u22-metrics-logs-interactive-debugging.apkg",
     "beats": [
       "One narrow pipeline",
       "When top fails",
@@ -394,6 +460,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 23 — what a successful Helm release proves, and who owns each field",
     "src": "https://videos.katig.dev/Module23.mp4?v=6775b8cd",
     "seconds": 175,
+    "audio": "https://videos.katig.dev/audio/u23-listen-in-class.mp3?v=252c2910",
+    "audioSeconds": 489,
+    "deck": "deck/by-module/u23-declarative-delivery-field-ownership.apkg",
     "beats": [
       "Two state machines",
       "What a green release proves",
@@ -410,6 +479,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 24 — LimitRange and quota at admission, and proving a live resize took effect",
     "src": "https://videos.katig.dev/Module24.mp4?v=9dc77fa8",
     "seconds": 173,
+    "audio": "https://videos.katig.dev/audio/u24-listen-in-class.mp3?v=17260cce",
+    "audioSeconds": 495,
+    "deck": "deck/by-module/u24-namespace-governance-live-resizing.apkg",
     "beats": [
       "One object, or the whole namespace",
       "Forbidden is not Pending",
@@ -426,6 +498,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 25 — Service types as layers, and what EndpointSlice conditions actually encode",
     "src": "https://videos.katig.dev/Module25.mp4?v=bf6cbbd9",
     "seconds": 161,
+    "audio": "https://videos.katig.dev/audio/u25-listen-in-class.mp3?v=83cdf370",
+    "audioSeconds": 446,
+    "deck": "deck/by-module/u25-service-exposure-endpoint-locality.apkg",
     "beats": [
       "Each type adds a layer",
       "Local is not a hint",
@@ -441,6 +516,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 26 — three restart owners, native sidecars, and the Job result protocol",
     "src": "https://videos.katig.dev/Module26.mp4?v=72985cb7",
     "seconds": 167,
+    "audio": "https://videos.katig.dev/audio/u26-listen-in-class.mp3?v=7dd08e8c",
+    "audioSeconds": 424,
+    "deck": "deck/by-module/u26-sidecars-jobs-restart-ownership.apkg",
     "beats": [
       "Three owners, three objects",
       "UID and restart count",
@@ -456,6 +534,9 @@ window.MODULE_VIDEOS = {
     "subtitle": "Module 27 — Pod Security Admission versus runtime enforcement, and choosing an isolation boundary",
     "src": "https://videos.katig.dev/Module27.mp4?v=33bd289c",
     "seconds": 174,
+    "audio": "https://videos.katig.dev/audio/u27-listen-in-class.mp3?v=a44eb7c5",
+    "audioSeconds": 500,
+    "deck": "deck/by-module/u27-pod-security-runtime-isolation.apkg",
     "beats": [
       "Three modes, one blocks",
       "It evaluates the spec",

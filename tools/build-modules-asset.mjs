@@ -15,6 +15,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const MODULES = path.join(ROOT, 'video/modules');
 const OUT_DIR = path.join(ROOT, 'video/out');
+const AUDIO_DIR = path.join(ROOT, 'experiments');
+const DECK_DIR = path.join(ROOT, 'deck/by-module');
 
 /* Where the player fetches video from.
  *
@@ -33,6 +35,53 @@ const VIDEO_BASE_URL = (process.env.VIDEO_BASE_URL || '').replace(/\/+$/, '');
 /** First 8 hex of the file's MD5 — matches the etag R2 reports. */
 function contentHash(file) {
   return createHash('md5').update(readFileSync(file)).digest('hex').slice(0, 8);
+}
+
+/* The "listen in class" track for a unit, when one has been produced.
+ *
+ * These live beside a cache/ of per-segment synthesis that must never be
+ * published, so the combined file is addressed by name rather than by
+ * scanning the directory. Served from the same bucket as video, under audio/,
+ * and hashed for the same reason: the filename does not change between runs. */
+function audioFor(pad) {
+  const rel = path.join(`u${pad}-listen-in-class-audio`, `u${pad}-listen-in-class.mp3`);
+  const full = path.join(AUDIO_DIR, rel);
+  if (!existsSync(full)) return null;
+  const name = path.basename(rel);
+  return {
+    audio: VIDEO_BASE_URL
+      ? `${VIDEO_BASE_URL}/audio/${name}?v=${contentHash(full)}`
+      : `experiments/${rel}`,
+    audioSeconds: Math.round(mp3Seconds(full)),
+  };
+}
+
+/* The single-unit Anki deck, when one has been built.
+ *
+ * Matched on the uNN prefix rather than by rebuilding the deck builder's slug
+ * rule: the slug comes from the course unit title, and two copies of that rule
+ * would drift the first time a title is edited. */
+function deckFor(pad) {
+  if (!existsSync(DECK_DIR)) return null;
+  const file = readdirSync(DECK_DIR).find((f) => f.startsWith(`u${pad}-`) && f.endsWith('.apkg'));
+  return file ? { deck: `deck/by-module/${file}` } : null;
+}
+
+/* Duration straight from the MP3 frame headers.
+ *
+ * ffprobe would be a dependency for one number in a build that otherwise needs
+ * nothing but node. These are constant-bitrate files from one encoder, so the
+ * first frame's bitrate describes the whole file. */
+function mp3Seconds(file) {
+  const buf = readFileSync(file);
+  const RATES = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320];
+  for (let i = 0; i + 1 < buf.length; i++) {
+    if (buf[i] !== 0xff || (buf[i + 1] & 0xe0) !== 0xe0) continue;
+    const kbps = RATES[(buf[i + 2] & 0xf0) >> 4];
+    if (!kbps) continue;
+    return (buf.length - i) * 8 / (kbps * 1000);
+  }
+  return 0;
 }
 
 /** Measured narration wins, exactly as the composition resolves it. */
@@ -73,6 +122,10 @@ for (const d of readdirSync(MODULES)) {
       ? `${VIDEO_BASE_URL}/${file}?v=${contentHash(path.join(OUT_DIR, file))}`
       : `video/out/${file}`,
     seconds: Math.round(seconds(dir, script)),
+    // The classroom track is optional: a unit without one simply has no
+    // listen option, exactly as a unit without a video has no player.
+    ...(audioFor(pad) || {}),
+    ...(deckFor(pad) || {}),
     // Spine beats bracket every module; the teaching beats are the contents.
     beats: script.beats.filter((b) => b.lane !== null).map((b) => b.title),
   };
