@@ -29,7 +29,14 @@ let S;
 try { S = Object.assign({}, blank, JSON.parse(localStorage.getItem(KEY) || '{}')); }
 catch (e) { S = Object.assign({}, blank); }
 
+// Bumped on every local mutation. A sync response computed before a mutation
+// must not be adopted over it: the older response would replace S.done and
+// S.xp with state that predates the change, and the pending PUT would then
+// persist that loss. A finished video was the case that exposed this.
+let localRev = 0;
+
 function save() {
+  localRev++;
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* private mode */ }
   syncPush();
 }
@@ -98,6 +105,7 @@ function syncPush() {
 function flush() {
   if (!syncable()) return;
   sync.inflight = true;
+  const sentRev = localRev;
   setSync('saving');
   fetch(SYNC_URL, {
     method: 'PUT',
@@ -114,6 +122,13 @@ function flush() {
       return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status));
     })
     .then(function (remote) {
+      // The local state moved while this request was in flight, so this
+      // response cannot describe it. Keep local state and push again.
+      if (localRev !== sentRev) {
+        setSync('ok');
+        sync.pending = true;
+        return;
+      }
       const changed = adopt(remote);
       setSync('ok');
       if (changed && !session && !viewingModule) showPath();
@@ -298,7 +313,7 @@ function showPath() {
     el('div', { cls: 'eyebrow', text: 'Senior platform / SRE preparation' }),
     el('h1', { text: COURSE.subtitle }),
     el('p', { text: '27 units built from 33 transcript-backed talks, supplemental video research, and current upstream documentation. Short lessons, answered out loud, with source links at every technical boundary.' }),
-    el('p', { text: 'The first twelve architecture units have narrated module videos, and all twelve scripts were technically reviewed against Kubernetes v1.36 by two independent models. Ninety-seven corrections from that review are applied.' }),
+    el('p', { text: Object.keys(MODULE_VIDEOS).length + ' units have a narrated module video. Every script was technically reviewed against Kubernetes v1.36 by a different model family than the one that wrote it, and the corrections from those reviews are applied.' }),
     el('div', { cls: 'hero-actions' }, [
       next ? el('button', { cls: 'btn', on: { click: () => startLesson(next.id) } },
         [document.createTextNode(doneLessons ? 'Continue · ' + next.title : 'Start unit 1')]) : null,

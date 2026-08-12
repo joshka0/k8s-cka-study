@@ -224,5 +224,246 @@ window.MODULE_VIDEOS = {
       "Who deleted it",
       "Which layer is slow"
     ]
+  },
+  "u13": {
+    "n": 13,
+    "title": "kubeadm Writes Files, Then Leaves",
+    "subtitle": "Module 13 — what kubeadm actually builds, skew boundaries, and what makes an upgrade safe",
+    "src": "video/out/Module13.mp4",
+    "seconds": 193,
+    "beats": [
+      "It composes, it does not manage",
+      "Where the handoff happens",
+      "The container is gone after a reboot",
+      "Separate contracts, separate steps",
+      "Drain protects, it does not upgrade",
+      "The conservative order",
+      "Neither one reconciles",
+      "Safe, not merely successful"
+    ]
+  },
+  "u14": {
+    "n": 14,
+    "title": "An Update Is Not A Reload",
+    "subtitle": "Module 14 — config delivery semantics, how QoS is derived, and eviction versus OOM",
+    "src": "video/out/Module14.mp4",
+    "seconds": 175,
+    "beats": [
+      "Delivery has semantics",
+      "What actually triggers a rollout",
+      "What a Secret gives you",
+      "Still using the old credential",
+      "QoS is derived, not set",
+      "Kubelet eviction, kernel OOM",
+      "Why the slogan is incomplete"
+    ]
+  },
+  "u15": {
+    "n": 15,
+    "title": "Objects Describe, Controllers Forward",
+    "subtitle": "Module 15 — Ingress and Gateway API, ownership boundaries, and why an accepted route can serve nothing",
+    "src": "video/out/Module15.mp4",
+    "seconds": 162,
+    "beats": [
+      "The object is not the proxy",
+      "Valid, and serving nothing",
+      "Who owns which object",
+      "Every programmable boundary",
+      "Policy permits, it does not route",
+      "Diagnosing in order",
+      "Accepted, and doing nothing"
+    ]
+  },
+  "u16": {
+    "n": 16,
+    "title": "Feasible Is Not Local",
+    "subtitle": "Module 16 — topology hints, node admission, and why a CPU limit is not isolation",
+    "src": "video/out/Module16.mp4",
+    "seconds": 185,
+    "beats": [
+      "Aggregate capacity is not locality",
+      "Three managers, one protocol",
+      "Who gets exclusive CPUs",
+      "Scheduled, then refused",
+      "A limit is not isolation",
+      "Latency without high usage",
+      "What the strictest policy promises",
+      "A Guaranteed Pod that still jitters"
+    ]
+  },
+  "u17": {
+    "n": 17,
+    "title": "From Scalar Counts To Claims",
+    "subtitle": "Module 17 — device plugins versus DRA, the allocation handshake, and where a device Pod stalls",
+    "src": "video/out/Module17.mp4",
+    "seconds": 187,
+    "beats": [
+      "A count, or a description",
+      "Policy, and intent",
+      "The order of the handshake",
+      "The architectural discriminator",
+      "A pending device Pod has three owners",
+      "Template, or a named claim",
+      "Which cause is it",
+      "What deletion actually does"
+    ]
+  },
+  "u18": {
+    "n": 18,
+    "title": "Not Every API Is Stored Here",
+    "subtitle": "Module 18 — the aggregation layer, watch expiry, and policy without a network call",
+    "src": "video/out/Module18.mp4",
+    "seconds": 174,
+    "beats": [
+      "Claiming a path",
+      "When it earns its cost",
+      "What a watch owes you",
+      "What registering costs you",
+      "Policy without a network call",
+      "Safer, not free",
+      "Ask, without becoming them"
+    ]
+  },
+  "u19": {
+    "n": 19,
+    "title": "Four Gates, Four Transitions",
+    "subtitle": "Module 19 — leader election as optimistic concurrency, and what each gate actually delays",
+    "src": "video/out/Module19.mp4",
+    "seconds": 176,
+    "beats": [
+      "Leadership is a conditional write",
+      "The same API, two jobs",
+      "Two candidates, one winner",
+      "What it cannot promise",
+      "Each gate blocks its own transition",
+      "And what a budget is not",
+      "Why gating reduces load",
+      "Pending, reason SchedulingGated"
+    ]
+  },
+  "u20": {
+    "n": 20,
+    "title": "Start At The Nearest Authority",
+    "subtitle": "Module 20 — the CKA troubleshooting spine, from control plane to Service",
+    "src": "video/out/Module20.mp4",
+    "seconds": 189,
+    "beats": [
+      "Start where something still answers",
+      "Descending in order",
+      "What separates a NotReady node",
+      "Ninety seconds on a NotReady node",
+      "Phase names the state, events name the attempt",
+      "The log you actually need",
+      "It resolves, it still fails",
+      "The algorithm underneath"
+    ]
+  },
+  "u21": {
+    "n": 21,
+    "title": "Scope Is Part Of The Permission",
+    "subtitle": "Module 21 — how RBAC actually composes, and how a node earns its identity",
+    "src": "video/out/Module21.mp4",
+    "seconds": 147,
+    "beats": [
+      "Scope is half the grant",
+      "The union, not the worst case",
+      "What actually escalates",
+      "A node is an authenticated principal",
+      "Two constraints, not one",
+      "Joined, and still NotReady"
+    ]
+  },
+  "u22": {
+    "n": 22,
+    "title": "The Metrics API Is Not Monitoring",
+    "subtitle": "Module 22 — what kubectl top actually reads, and preserving evidence before restart",
+    "src": "video/out/Module22.mp4",
+    "seconds": 138,
+    "beats": [
+      "One narrow pipeline",
+      "When top fails",
+      "Three kinds of metric",
+      "Preserve the perishable first",
+      "No shell in the image",
+      "When crictl earns its place"
+    ]
+  },
+  "u23": {
+    "n": 23,
+    "title": "Render First, Then Reconcile",
+    "subtitle": "Module 23 — what a successful Helm release proves, and who owns each field",
+    "src": "video/out/Module23.mp4",
+    "seconds": 166,
+    "beats": [
+      "Two state machines",
+      "What a green release proves",
+      "Review what the API will see",
+      "A rollout is arithmetic",
+      "The deadline reports, it does not act",
+      "A conflict names an owner",
+      "The minimum discriminating evidence"
+    ]
+  },
+  "u24": {
+    "n": 24,
+    "title": "Rejected, Not Pending",
+    "subtitle": "Module 24 — LimitRange and quota at admission, and proving a live resize took effect",
+    "src": "video/out/Module24.mp4",
+    "seconds": 156,
+    "beats": [
+      "One object, or the whole namespace",
+      "Forbidden is not Pending",
+      "What quota can actually count",
+      "How a default breaks a quota",
+      "Accepted is not applied",
+      "QoS does not move",
+      "Proving it took effect"
+    ]
+  },
+  "u25": {
+    "n": 25,
+    "title": "Membership Is Not Eligibility",
+    "subtitle": "Module 25 — Service types as layers, and what EndpointSlice conditions actually encode",
+    "src": "video/out/Module25.mp4",
+    "seconds": 152,
+    "beats": [
+      "Each type adds a layer",
+      "Local is not a hint",
+      "An address is not reachability",
+      "Ready, serving, terminating",
+      "A requirement, or a preference",
+      "The shortest diagnosis"
+    ]
+  },
+  "u26": {
+    "n": 26,
+    "title": "Ask Which Object Restarted",
+    "subtitle": "Module 26 — three restart owners, native sidecars, and the Job result protocol",
+    "src": "video/out/Module26.mp4",
+    "seconds": 157,
+    "beats": [
+      "Three owners, three objects",
+      "UID and restart count",
+      "OOMKilled, and still the same Pod",
+      "Why a Job with a sidecar can finish",
+      "Independent knobs",
+      "Why a global limit is awkward"
+    ]
+  },
+  "u27": {
+    "n": 27,
+    "title": "Admission Checks The Spec",
+    "subtitle": "Module 27 — Pod Security Admission versus runtime enforcement, and choosing an isolation boundary",
+    "src": "video/out/Module27.mp4",
+    "seconds": 167,
+    "beats": [
+      "Three modes, one blocks",
+      "It evaluates the spec",
+      "Passing Restricted is not a claim",
+      "What actually reduces privilege",
+      "A selector, not an implementation",
+      "Remapping the identity",
+      "Choosing between them"
+    ]
   }
 };

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Twelve narrated video modules on Kubernetes architecture, one per course unit — each going deeper on one segment of the request path.">
+  <meta name="description" content="27 narrated video modules on Kubernetes architecture, one per course unit — each going deeper on one segment of the request path.">
   <title>Video Modules — Kubernetes Beyond YAML</title>
   <script>
     // Same path-agnostic guard as index.html: assets are referenced relatively,
@@ -50,7 +50,7 @@
 <main class="wrap">
   <h1>Video modules</h1>
   <p class="lede">
-    Twelve narrated modules, one per course unit. The pilot walks the whole
+    27 narrated modules, one per course unit. The pilot walks the whole
     request path end to end; each module then goes deeper on a single segment
     of it. They assume you have watched the pilot, and they teach only what
     their unit teaches.
@@ -334,6 +334,322 @@
           <li>The object is the contract</li>
           <li>Who deleted it</li>
           <li>Which layer is slow</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-13">
+        <header>
+          <span class="num">13</span>
+          <div>
+            <h3>kubeadm Writes Files, Then Leaves</h3>
+            <p class="sub">Module 13 — what kubeadm actually builds, skew boundaries, and what makes an upgrade safe</p>
+          </div>
+          <a class="watch" href="index.html#m/u13">Watch · 3:13</a> <a class="file" href="video/out/Module13.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>desired object</code> · unit u13</p>
+        <ul class="beats">
+          <li>It composes, it does not manage</li>
+          <li>Where the handoff happens</li>
+          <li>The container is gone after a reboot</li>
+          <li>Separate contracts, separate steps</li>
+          <li>Drain protects, it does not upgrade</li>
+          <li>The conservative order</li>
+          <li>Neither one reconciles</li>
+          <li>Safe, not merely successful</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-14">
+        <header>
+          <span class="num">14</span>
+          <div>
+            <h3>An Update Is Not A Reload</h3>
+            <p class="sub">Module 14 — config delivery semantics, how QoS is derived, and eviction versus OOM</p>
+          </div>
+          <a class="watch" href="index.html#m/u14">Watch · 2:55</a> <a class="file" href="video/out/Module14.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>kubelet</code> · unit u14</p>
+        <ul class="beats">
+          <li>Delivery has semantics</li>
+          <li>What actually triggers a rollout</li>
+          <li>What a Secret gives you</li>
+          <li>Still using the old credential</li>
+          <li>QoS is derived, not set</li>
+          <li>Kubelet eviction, kernel OOM</li>
+          <li>Why the slogan is incomplete</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-15">
+        <header>
+          <span class="num">15</span>
+          <div>
+            <h3>Objects Describe, Controllers Forward</h3>
+            <p class="sub">Module 15 — Ingress and Gateway API, ownership boundaries, and why an accepted route can serve nothing</p>
+          </div>
+          <a class="watch" href="index.html#m/u15">Watch · 2:42</a> <a class="file" href="video/out/Module15.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>service</code> · unit u15</p>
+        <ul class="beats">
+          <li>The object is not the proxy</li>
+          <li>Valid, and serving nothing</li>
+          <li>Who owns which object</li>
+          <li>Every programmable boundary</li>
+          <li>Policy permits, it does not route</li>
+          <li>Diagnosing in order</li>
+          <li>Accepted, and doing nothing</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-16">
+        <header>
+          <span class="num">16</span>
+          <div>
+            <h3>Feasible Is Not Local</h3>
+            <p class="sub">Module 16 — topology hints, node admission, and why a CPU limit is not isolation</p>
+          </div>
+          <a class="watch" href="index.html#m/u16">Watch · 3:05</a> <a class="file" href="video/out/Module16.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>kubelet</code> · unit u16</p>
+        <ul class="beats">
+          <li>Aggregate capacity is not locality</li>
+          <li>Three managers, one protocol</li>
+          <li>Who gets exclusive CPUs</li>
+          <li>Scheduled, then refused</li>
+          <li>A limit is not isolation</li>
+          <li>Latency without high usage</li>
+          <li>What the strictest policy promises</li>
+          <li>A Guaranteed Pod that still jitters</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-17">
+        <header>
+          <span class="num">17</span>
+          <div>
+            <h3>From Scalar Counts To Claims</h3>
+            <p class="sub">Module 17 — device plugins versus DRA, the allocation handshake, and where a device Pod stalls</p>
+          </div>
+          <a class="watch" href="index.html#m/u17">Watch · 3:07</a> <a class="file" href="video/out/Module17.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>scheduler queue + binding</code> · unit u17</p>
+        <ul class="beats">
+          <li>A count, or a description</li>
+          <li>Policy, and intent</li>
+          <li>The order of the handshake</li>
+          <li>The architectural discriminator</li>
+          <li>A pending device Pod has three owners</li>
+          <li>Template, or a named claim</li>
+          <li>Which cause is it</li>
+          <li>What deletion actually does</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-18">
+        <header>
+          <span class="num">18</span>
+          <div>
+            <h3>Not Every API Is Stored Here</h3>
+            <p class="sub">Module 18 — the aggregation layer, watch expiry, and policy without a network call</p>
+          </div>
+          <a class="watch" href="index.html#m/u18">Watch · 2:54</a> <a class="file" href="video/out/Module18.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>desired object</code> · unit u18</p>
+        <ul class="beats">
+          <li>Claiming a path</li>
+          <li>When it earns its cost</li>
+          <li>What a watch owes you</li>
+          <li>What registering costs you</li>
+          <li>Policy without a network call</li>
+          <li>Safer, not free</li>
+          <li>Ask, without becoming them</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-19">
+        <header>
+          <span class="num">19</span>
+          <div>
+            <h3>Four Gates, Four Transitions</h3>
+            <p class="sub">Module 19 — leader election as optimistic concurrency, and what each gate actually delays</p>
+          </div>
+          <a class="watch" href="index.html#m/u19">Watch · 2:56</a> <a class="file" href="video/out/Module19.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>controller queue</code> · unit u19</p>
+        <ul class="beats">
+          <li>Leadership is a conditional write</li>
+          <li>The same API, two jobs</li>
+          <li>Two candidates, one winner</li>
+          <li>What it cannot promise</li>
+          <li>Each gate blocks its own transition</li>
+          <li>And what a budget is not</li>
+          <li>Why gating reduces load</li>
+          <li>Pending, reason SchedulingGated</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-20">
+        <header>
+          <span class="num">20</span>
+          <div>
+            <h3>Start At The Nearest Authority</h3>
+            <p class="sub">Module 20 — the CKA troubleshooting spine, from control plane to Service</p>
+          </div>
+          <a class="watch" href="index.html#m/u20">Watch · 3:09</a> <a class="file" href="video/out/Module20.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>desired object</code> · unit u20</p>
+        <ul class="beats">
+          <li>Start where something still answers</li>
+          <li>Descending in order</li>
+          <li>What separates a NotReady node</li>
+          <li>Ninety seconds on a NotReady node</li>
+          <li>Phase names the state, events name the attempt</li>
+          <li>The log you actually need</li>
+          <li>It resolves, it still fails</li>
+          <li>The algorithm underneath</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-21">
+        <header>
+          <span class="num">21</span>
+          <div>
+            <h3>Scope Is Part Of The Permission</h3>
+            <p class="sub">Module 21 — how RBAC actually composes, and how a node earns its identity</p>
+          </div>
+          <a class="watch" href="index.html#m/u21">Watch · 2:27</a> <a class="file" href="video/out/Module21.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>admission / storage</code> · unit u21</p>
+        <ul class="beats">
+          <li>Scope is half the grant</li>
+          <li>The union, not the worst case</li>
+          <li>What actually escalates</li>
+          <li>A node is an authenticated principal</li>
+          <li>Two constraints, not one</li>
+          <li>Joined, and still NotReady</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-22">
+        <header>
+          <span class="num">22</span>
+          <div>
+            <h3>The Metrics API Is Not Monitoring</h3>
+            <p class="sub">Module 22 — what kubectl top actually reads, and preserving evidence before restart</p>
+          </div>
+          <a class="watch" href="index.html#m/u22">Watch · 2:18</a> <a class="file" href="video/out/Module22.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>kubelet</code> · unit u22</p>
+        <ul class="beats">
+          <li>One narrow pipeline</li>
+          <li>When top fails</li>
+          <li>Three kinds of metric</li>
+          <li>Preserve the perishable first</li>
+          <li>No shell in the image</li>
+          <li>When crictl earns its place</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-23">
+        <header>
+          <span class="num">23</span>
+          <div>
+            <h3>Render First, Then Reconcile</h3>
+            <p class="sub">Module 23 — what a successful Helm release proves, and who owns each field</p>
+          </div>
+          <a class="watch" href="index.html#m/u23">Watch · 2:46</a> <a class="file" href="video/out/Module23.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>desired object</code> · unit u23</p>
+        <ul class="beats">
+          <li>Two state machines</li>
+          <li>What a green release proves</li>
+          <li>Review what the API will see</li>
+          <li>A rollout is arithmetic</li>
+          <li>The deadline reports, it does not act</li>
+          <li>A conflict names an owner</li>
+          <li>The minimum discriminating evidence</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-24">
+        <header>
+          <span class="num">24</span>
+          <div>
+            <h3>Rejected, Not Pending</h3>
+            <p class="sub">Module 24 — LimitRange and quota at admission, and proving a live resize took effect</p>
+          </div>
+          <a class="watch" href="index.html#m/u24">Watch · 2:36</a> <a class="file" href="video/out/Module24.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>admission / storage</code> · unit u24</p>
+        <ul class="beats">
+          <li>One object, or the whole namespace</li>
+          <li>Forbidden is not Pending</li>
+          <li>What quota can actually count</li>
+          <li>How a default breaks a quota</li>
+          <li>Accepted is not applied</li>
+          <li>QoS does not move</li>
+          <li>Proving it took effect</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-25">
+        <header>
+          <span class="num">25</span>
+          <div>
+            <h3>Membership Is Not Eligibility</h3>
+            <p class="sub">Module 25 — Service types as layers, and what EndpointSlice conditions actually encode</p>
+          </div>
+          <a class="watch" href="index.html#m/u25">Watch · 2:32</a> <a class="file" href="video/out/Module25.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>service</code> · unit u25</p>
+        <ul class="beats">
+          <li>Each type adds a layer</li>
+          <li>Local is not a hint</li>
+          <li>An address is not reachability</li>
+          <li>Ready, serving, terminating</li>
+          <li>A requirement, or a preference</li>
+          <li>The shortest diagnosis</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-26">
+        <header>
+          <span class="num">26</span>
+          <div>
+            <h3>Ask Which Object Restarted</h3>
+            <p class="sub">Module 26 — three restart owners, native sidecars, and the Job result protocol</p>
+          </div>
+          <a class="watch" href="index.html#m/u26">Watch · 2:37</a> <a class="file" href="video/out/Module26.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>kubelet</code> · unit u26</p>
+        <ul class="beats">
+          <li>Three owners, three objects</li>
+          <li>UID and restart count</li>
+          <li>OOMKilled, and still the same Pod</li>
+          <li>Why a Job with a sidecar can finish</li>
+          <li>Independent knobs</li>
+          <li>Why a global limit is awkward</li>
+        </ul>
+      </article>
+
+      <article class="module" id="module-27">
+        <header>
+          <span class="num">27</span>
+          <div>
+            <h3>Admission Checks The Spec</h3>
+            <p class="sub">Module 27 — Pod Security Admission versus runtime enforcement, and choosing an isolation boundary</p>
+          </div>
+          <a class="watch" href="index.html#m/u27">Watch · 2:47</a> <a class="file" href="video/out/Module27.mp4" download>file</a>
+        </header>
+        <p class="spine">Spine segment: <code>admission / storage</code> · unit u27</p>
+        <ul class="beats">
+          <li>Three modes, one blocks</li>
+          <li>It evaluates the spec</li>
+          <li>Passing Restricted is not a claim</li>
+          <li>What actually reduces privilege</li>
+          <li>A selector, not an implementation</li>
+          <li>Remapping the identity</li>
+          <li>Choosing between them</li>
         </ul>
       </article>
 </main>
