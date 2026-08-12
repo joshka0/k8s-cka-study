@@ -7,7 +7,7 @@ window.MODULE_VIDEOS = {
     "n": 1,
     "title": "Who Owns What",
     "subtitle": "Module 01 — the control-plane map, and what an outage actually costs",
-    "src": "video/out/Module01.mp4",
+    "src": "https://videos.katig.dev/Module01.mp4?v=f3b7b333",
     "seconds": 360,
     "beats": [
       "Five actors",
@@ -23,7 +23,7 @@ window.MODULE_VIDEOS = {
     "n": 2,
     "title": "Five Gates",
     "subtitle": "Module 02 — the API request path, admission webhooks, and who owns a field",
-    "src": "video/out/Module02.mp4",
+    "src": "https://videos.katig.dev/Module02.mp4?v=1a6e02fd",
     "seconds": 325,
     "beats": [
       "Who, then may they",
@@ -40,7 +40,7 @@ window.MODULE_VIDEOS = {
     "n": 3,
     "title": "Events Are Hints",
     "subtitle": "Module 03 — informers, level-based reconciliation, and loops that eat themselves",
-    "src": "video/out/Module03.mp4",
+    "src": "https://videos.katig.dev/Module03.mp4?v=5d7f9544",
     "seconds": 294,
     "beats": [
       "Observe, compare, act",
@@ -59,7 +59,7 @@ window.MODULE_VIDEOS = {
     "n": 4,
     "title": "Four Different Promises",
     "subtitle": "Module 04 — workload controllers, autoscaler conflict, and what a PDB really covers",
-    "src": "video/out/Module04.mp4",
+    "src": "https://videos.katig.dev/Module04.mp4?v=9d41adab",
     "seconds": 350,
     "beats": [
       "Pick by invariant",
@@ -78,7 +78,7 @@ window.MODULE_VIDEOS = {
     "n": 5,
     "title": "An API You Cannot Take Back",
     "subtitle": "Module 05 — CRDs, operators, versioning, and finalizers",
-    "src": "video/out/Module05.mp4",
+    "src": "https://videos.katig.dev/Module05.mp4?v=21ef55ad",
     "seconds": 337,
     "beats": [
       "Four words people blur",
@@ -98,7 +98,7 @@ window.MODULE_VIDEOS = {
     "n": 6,
     "title": "Choose, Then Commit",
     "subtitle": "Module 06 — the scheduling framework, why a Pod stays Pending, and what preemption costs",
-    "src": "video/out/Module06.mp4",
+    "src": "https://videos.katig.dev/Module06.mp4?v=08f027c8",
     "seconds": 280,
     "beats": [
       "Two cycles, not one",
@@ -116,7 +116,7 @@ window.MODULE_VIDEOS = {
     "n": 7,
     "title": "Running Is Not Ready",
     "subtitle": "Module 07 — the kubelet's loop, the four boundaries, and what a Pod's status is really telling you",
-    "src": "video/out/Module07.mp4",
+    "src": "https://videos.katig.dev/Module07.mp4?v=c10102df",
     "seconds": 273,
     "beats": [
       "A loop, not an inbox",
@@ -135,7 +135,7 @@ window.MODULE_VIDEOS = {
     "n": 8,
     "title": "A Permission Is Not A Path",
     "subtitle": "Module 08 — Service identity, the two data planes, and how a Pod actually gets its address",
-    "src": "video/out/Module08.mp4",
+    "src": "https://videos.katig.dev/Module08.mp4?v=11e0085f",
     "seconds": 267,
     "beats": [
       "Three owners, not one network",
@@ -155,7 +155,7 @@ window.MODULE_VIDEOS = {
     "n": 9,
     "title": "Not The Name You Typed",
     "subtitle": "Module 09 — resolver policy, the compiled plugin chain, and what Ready has not proven",
-    "src": "video/out/Module09.mp4",
+    "src": "https://videos.katig.dev/Module09.mp4?v=5953cd4c",
     "seconds": 249,
     "beats": [
       "The query that actually leaves",
@@ -174,7 +174,7 @@ window.MODULE_VIDEOS = {
     "n": 10,
     "title": "Two Halves, One Volume",
     "subtitle": "Module 10 — claim, class and volume, the CSI split, and why storage decides where a Pod can run",
-    "src": "video/out/Module10.mp4",
+    "src": "https://videos.katig.dev/Module10.mp4?v=49d2e89f",
     "seconds": 223,
     "beats": [
       "Claim, class, volume",
@@ -192,7 +192,7 @@ window.MODULE_VIDEOS = {
     "n": 11,
     "title": "A Backup You Have Restored",
     "subtitle": "Module 11 — two availability models, quorum arithmetic, and what a snapshot leaves out",
-    "src": "video/out/Module11.mp4",
+    "src": "https://videos.katig.dev/Module11.mp4?v=527ef707",
     "seconds": 235,
     "beats": [
       "Two different availability models",
@@ -211,7 +211,7 @@ window.MODULE_VIDEOS = {
     "n": 12,
     "title": "Which Signal Proves What",
     "subtitle": "Module 12 — API Priority and Fairness, the evidence hierarchy, and the spine as a diagnostic tool",
-    "src": "video/out/Module12.mp4",
+    "src": "https://videos.katig.dev/Module12.mp4?v=aba43fa1",
     "seconds": 263,
     "beats": [
       "Concurrency has to be allocated",
@@ -229,7 +229,7 @@ window.MODULE_VIDEOS = {
     "n": 13,
     "title": "kubeadm Writes Files, Then Leaves",
     "subtitle": "Module 13 — what kubeadm actually builds, skew boundaries, and what makes an upgrade safe",
-    "src": "video/out/Module13.mp4",
+    "src": "https://videos.katig.dev/Module13.mp4?v=a2d3346e",
     "seconds": 199,
     "beats": [
       "It composes, it does not manage",
@@ -246,7 +246,7 @@ window.MODULE_VIDEOS = {
     "n": 14,
     "title": "An Update Is Not A Reload",
     "subtitle": "Module 14 — config delivery semantics, how QoS is derived, and eviction versus OOM",
-    "src": "video/out/Module14.mp4",
+    "src": "https://videos.katig.dev/Module14.mp4?v=fabeb50d",
     "seconds": 184,
     "beats": [
       "Delivery has semantics",
@@ -262,7 +262,7 @@ window.MODULE_VIDEOS = {
     "n": 15,
     "title": "Objects Describe, Controllers Forward",
     "subtitle": "Module 15 — Ingress and Gateway API, ownership boundaries, and why an accepted route can serve nothing",
-    "src": "video/out/Module15.mp4",
+    "src": "https://videos.katig.dev/Module15.mp4?v=04c46124",
     "seconds": 178,
     "beats": [
       "The object is not the proxy",
@@ -278,7 +278,7 @@ window.MODULE_VIDEOS = {
     "n": 16,
     "title": "Feasible Is Not Local",
     "subtitle": "Module 16 — topology hints, node admission, and why a CPU limit is not isolation",
-    "src": "video/out/Module16.mp4",
+    "src": "https://videos.katig.dev/Module16.mp4?v=aa088f9b",
     "seconds": 200,
     "beats": [
       "Aggregate capacity is not locality",
@@ -295,7 +295,7 @@ window.MODULE_VIDEOS = {
     "n": 17,
     "title": "From Scalar Counts To Claims",
     "subtitle": "Module 17 — device plugins versus DRA, the allocation handshake, and where a device Pod stalls",
-    "src": "video/out/Module17.mp4",
+    "src": "https://videos.katig.dev/Module17.mp4?v=66b9b651",
     "seconds": 195,
     "beats": [
       "A count, or a description",
@@ -312,7 +312,7 @@ window.MODULE_VIDEOS = {
     "n": 18,
     "title": "Not Every API Is Stored Here",
     "subtitle": "Module 18 — the aggregation layer, watch expiry, and policy without a network call",
-    "src": "video/out/Module18.mp4",
+    "src": "https://videos.katig.dev/Module18.mp4?v=9c69edd1",
     "seconds": 187,
     "beats": [
       "Claiming a path",
@@ -328,7 +328,7 @@ window.MODULE_VIDEOS = {
     "n": 19,
     "title": "Four Gates, Four Transitions",
     "subtitle": "Module 19 — leader election as optimistic concurrency, and what each gate actually delays",
-    "src": "video/out/Module19.mp4",
+    "src": "https://videos.katig.dev/Module19.mp4?v=de8de440",
     "seconds": 186,
     "beats": [
       "Leadership is a conditional write",
@@ -345,7 +345,7 @@ window.MODULE_VIDEOS = {
     "n": 20,
     "title": "Start At The Nearest Authority",
     "subtitle": "Module 20 — the CKA troubleshooting spine, from control plane to Service",
-    "src": "video/out/Module20.mp4",
+    "src": "https://videos.katig.dev/Module20.mp4?v=59fbfa40",
     "seconds": 195,
     "beats": [
       "Start where something still answers",
@@ -362,7 +362,7 @@ window.MODULE_VIDEOS = {
     "n": 21,
     "title": "Scope Is Part Of The Permission",
     "subtitle": "Module 21 — how RBAC actually composes, and how a node earns its identity",
-    "src": "video/out/Module21.mp4",
+    "src": "https://videos.katig.dev/Module21.mp4?v=150a1906",
     "seconds": 159,
     "beats": [
       "Scope is half the grant",
@@ -377,7 +377,7 @@ window.MODULE_VIDEOS = {
     "n": 22,
     "title": "The Metrics API Is Not Monitoring",
     "subtitle": "Module 22 — what kubectl top actually reads, and preserving evidence before restart",
-    "src": "video/out/Module22.mp4",
+    "src": "https://videos.katig.dev/Module22.mp4?v=41afb466",
     "seconds": 150,
     "beats": [
       "One narrow pipeline",
@@ -392,7 +392,7 @@ window.MODULE_VIDEOS = {
     "n": 23,
     "title": "Render First, Then Reconcile",
     "subtitle": "Module 23 — what a successful Helm release proves, and who owns each field",
-    "src": "video/out/Module23.mp4",
+    "src": "https://videos.katig.dev/Module23.mp4?v=6775b8cd",
     "seconds": 175,
     "beats": [
       "Two state machines",
@@ -408,7 +408,7 @@ window.MODULE_VIDEOS = {
     "n": 24,
     "title": "Rejected, Not Pending",
     "subtitle": "Module 24 — LimitRange and quota at admission, and proving a live resize took effect",
-    "src": "video/out/Module24.mp4",
+    "src": "https://videos.katig.dev/Module24.mp4?v=9dc77fa8",
     "seconds": 173,
     "beats": [
       "One object, or the whole namespace",
@@ -424,7 +424,7 @@ window.MODULE_VIDEOS = {
     "n": 25,
     "title": "Membership Is Not Eligibility",
     "subtitle": "Module 25 — Service types as layers, and what EndpointSlice conditions actually encode",
-    "src": "video/out/Module25.mp4",
+    "src": "https://videos.katig.dev/Module25.mp4?v=bf6cbbd9",
     "seconds": 161,
     "beats": [
       "Each type adds a layer",
@@ -439,7 +439,7 @@ window.MODULE_VIDEOS = {
     "n": 26,
     "title": "Ask Which Object Restarted",
     "subtitle": "Module 26 — three restart owners, native sidecars, and the Job result protocol",
-    "src": "video/out/Module26.mp4",
+    "src": "https://videos.katig.dev/Module26.mp4?v=72985cb7",
     "seconds": 167,
     "beats": [
       "Three owners, three objects",
@@ -454,7 +454,7 @@ window.MODULE_VIDEOS = {
     "n": 27,
     "title": "Admission Checks The Spec",
     "subtitle": "Module 27 — Pod Security Admission versus runtime enforcement, and choosing an isolation boundary",
-    "src": "video/out/Module27.mp4",
+    "src": "https://videos.katig.dev/Module27.mp4?v=33bd289c",
     "seconds": 174,
     "beats": [
       "Three modes, one blocks",
