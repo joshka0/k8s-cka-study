@@ -1,0 +1,9 @@
+# The manifest and lesson engine change on every content deploy. The zone
+# default of four hours meant a visitor could sit on a pre-deploy learn.js
+# long after new features shipped — which read as "the site is broken".
+# Media does not need this: video and audio live on the bucket under
+# immutable content-hashed URLs.
+/assets/*
+  Cache-Control: public, max-age=300, must-revalidate
+/*.html
+  Cache-Control: public, max-age=300, must-revalidate

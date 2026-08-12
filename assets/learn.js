@@ -446,10 +446,12 @@ function showModule(unitId, mode) {
   });
 
   // Same award shape as the video: once per unit, on completion.
+  // metadata, not none: with no preload the bar shows no duration and looks
+  // broken until the first tap. Metadata is a few KB for an 11-minute file.
   const audio = vid.audio ? el('audio', {
     cls: 'module-audio',
     controls: true,
-    preload: 'none',
+    preload: 'metadata',
     src: vid.audio
   }, []) : null;
   if (audio) {
