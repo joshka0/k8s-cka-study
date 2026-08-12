@@ -24,7 +24,7 @@ window.MODULE_VIDEOS = {
     "title": "Five Gates",
     "subtitle": "Module 02 — the API request path, admission webhooks, and who owns a field",
     "src": "video/out/Module02.mp4",
-    "seconds": 306,
+    "seconds": 325,
     "beats": [
       "Who, then may they",
       "Mutate, then validate",
@@ -41,7 +41,7 @@ window.MODULE_VIDEOS = {
     "title": "Events Are Hints",
     "subtitle": "Module 03 — informers, level-based reconciliation, and loops that eat themselves",
     "src": "video/out/Module03.mp4",
-    "seconds": 282,
+    "seconds": 294,
     "beats": [
       "Observe, compare, act",
       "Nobody polls",
@@ -60,7 +60,7 @@ window.MODULE_VIDEOS = {
     "title": "Four Different Promises",
     "subtitle": "Module 04 — workload controllers, autoscaler conflict, and what a PDB really covers",
     "src": "video/out/Module04.mp4",
-    "seconds": 344,
+    "seconds": 350,
     "beats": [
       "Pick by invariant",
       "What a StatefulSet does not do",
@@ -79,7 +79,7 @@ window.MODULE_VIDEOS = {
     "title": "An API You Cannot Take Back",
     "subtitle": "Module 05 — CRDs, operators, versioning, and finalizers",
     "src": "video/out/Module05.mp4",
-    "seconds": 326,
+    "seconds": 337,
     "beats": [
       "Four words people blur",
       "A CRD on its own does nothing",
@@ -99,7 +99,7 @@ window.MODULE_VIDEOS = {
     "title": "Choose, Then Commit",
     "subtitle": "Module 06 — the scheduling framework, why a Pod stays Pending, and what preemption costs",
     "src": "video/out/Module06.mp4",
-    "seconds": 267,
+    "seconds": 280,
     "beats": [
       "Two cycles, not one",
       "Eliminate, then rank",
@@ -117,7 +117,7 @@ window.MODULE_VIDEOS = {
     "title": "Running Is Not Ready",
     "subtitle": "Module 07 — the kubelet's loop, the four boundaries, and what a Pod's status is really telling you",
     "src": "video/out/Module07.mp4",
-    "seconds": 269,
+    "seconds": 273,
     "beats": [
       "A loop, not an inbox",
       "The order on the node",
@@ -136,7 +136,7 @@ window.MODULE_VIDEOS = {
     "title": "A Permission Is Not A Path",
     "subtitle": "Module 08 — Service identity, the two data planes, and how a Pod actually gets its address",
     "src": "video/out/Module08.mp4",
-    "seconds": 261,
+    "seconds": 267,
     "beats": [
       "Three owners, not one network",
       "Labels select, readiness conditions",
@@ -156,7 +156,7 @@ window.MODULE_VIDEOS = {
     "title": "Not The Name You Typed",
     "subtitle": "Module 09 — resolver policy, the compiled plugin chain, and what Ready has not proven",
     "src": "video/out/Module09.mp4",
-    "seconds": 241,
+    "seconds": 249,
     "beats": [
       "The query that actually leaves",
       "What expansion costs",
@@ -175,7 +175,7 @@ window.MODULE_VIDEOS = {
     "title": "Two Halves, One Volume",
     "subtitle": "Module 10 — claim, class and volume, the CSI split, and why storage decides where a Pod can run",
     "src": "video/out/Module10.mp4",
-    "seconds": 220,
+    "seconds": 223,
     "beats": [
       "Claim, class, volume",
       "Pending on purpose",
@@ -193,7 +193,7 @@ window.MODULE_VIDEOS = {
     "title": "A Backup You Have Restored",
     "subtitle": "Module 11 — two availability models, quorum arithmetic, and what a snapshot leaves out",
     "src": "video/out/Module11.mp4",
-    "seconds": 228,
+    "seconds": 235,
     "beats": [
       "Two different availability models",
       "Majority, exactly",
@@ -212,7 +212,7 @@ window.MODULE_VIDEOS = {
     "title": "Which Signal Proves What",
     "subtitle": "Module 12 — API Priority and Fairness, the evidence hierarchy, and the spine as a diagnostic tool",
     "src": "video/out/Module12.mp4",
-    "seconds": 256,
+    "seconds": 263,
     "beats": [
       "Concurrency has to be allocated",
       "Classify here, serve there",
@@ -230,7 +230,7 @@ window.MODULE_VIDEOS = {
     "title": "kubeadm Writes Files, Then Leaves",
     "subtitle": "Module 13 — what kubeadm actually builds, skew boundaries, and what makes an upgrade safe",
     "src": "video/out/Module13.mp4",
-    "seconds": 193,
+    "seconds": 199,
     "beats": [
       "It composes, it does not manage",
       "Where the handoff happens",
@@ -247,7 +247,7 @@ window.MODULE_VIDEOS = {
     "title": "An Update Is Not A Reload",
     "subtitle": "Module 14 — config delivery semantics, how QoS is derived, and eviction versus OOM",
     "src": "video/out/Module14.mp4",
-    "seconds": 175,
+    "seconds": 184,
     "beats": [
       "Delivery has semantics",
       "What actually triggers a rollout",
@@ -263,7 +263,7 @@ window.MODULE_VIDEOS = {
     "title": "Objects Describe, Controllers Forward",
     "subtitle": "Module 15 — Ingress and Gateway API, ownership boundaries, and why an accepted route can serve nothing",
     "src": "video/out/Module15.mp4",
-    "seconds": 162,
+    "seconds": 178,
     "beats": [
       "The object is not the proxy",
       "Valid, and serving nothing",
@@ -279,7 +279,7 @@ window.MODULE_VIDEOS = {
     "title": "Feasible Is Not Local",
     "subtitle": "Module 16 — topology hints, node admission, and why a CPU limit is not isolation",
     "src": "video/out/Module16.mp4",
-    "seconds": 185,
+    "seconds": 200,
     "beats": [
       "Aggregate capacity is not locality",
       "Three managers, one protocol",
@@ -296,7 +296,7 @@ window.MODULE_VIDEOS = {
     "title": "From Scalar Counts To Claims",
     "subtitle": "Module 17 — device plugins versus DRA, the allocation handshake, and where a device Pod stalls",
     "src": "video/out/Module17.mp4",
-    "seconds": 187,
+    "seconds": 195,
     "beats": [
       "A count, or a description",
       "Policy, and intent",
@@ -313,7 +313,7 @@ window.MODULE_VIDEOS = {
     "title": "Not Every API Is Stored Here",
     "subtitle": "Module 18 — the aggregation layer, watch expiry, and policy without a network call",
     "src": "video/out/Module18.mp4",
-    "seconds": 174,
+    "seconds": 187,
     "beats": [
       "Claiming a path",
       "When it earns its cost",
@@ -329,7 +329,7 @@ window.MODULE_VIDEOS = {
     "title": "Four Gates, Four Transitions",
     "subtitle": "Module 19 — leader election as optimistic concurrency, and what each gate actually delays",
     "src": "video/out/Module19.mp4",
-    "seconds": 176,
+    "seconds": 186,
     "beats": [
       "Leadership is a conditional write",
       "The same API, two jobs",
@@ -346,7 +346,7 @@ window.MODULE_VIDEOS = {
     "title": "Start At The Nearest Authority",
     "subtitle": "Module 20 — the CKA troubleshooting spine, from control plane to Service",
     "src": "video/out/Module20.mp4",
-    "seconds": 189,
+    "seconds": 195,
     "beats": [
       "Start where something still answers",
       "Descending in order",
@@ -363,7 +363,7 @@ window.MODULE_VIDEOS = {
     "title": "Scope Is Part Of The Permission",
     "subtitle": "Module 21 — how RBAC actually composes, and how a node earns its identity",
     "src": "video/out/Module21.mp4",
-    "seconds": 147,
+    "seconds": 159,
     "beats": [
       "Scope is half the grant",
       "The union, not the worst case",
@@ -378,7 +378,7 @@ window.MODULE_VIDEOS = {
     "title": "The Metrics API Is Not Monitoring",
     "subtitle": "Module 22 — what kubectl top actually reads, and preserving evidence before restart",
     "src": "video/out/Module22.mp4",
-    "seconds": 138,
+    "seconds": 150,
     "beats": [
       "One narrow pipeline",
       "When top fails",
@@ -393,7 +393,7 @@ window.MODULE_VIDEOS = {
     "title": "Render First, Then Reconcile",
     "subtitle": "Module 23 — what a successful Helm release proves, and who owns each field",
     "src": "video/out/Module23.mp4",
-    "seconds": 166,
+    "seconds": 175,
     "beats": [
       "Two state machines",
       "What a green release proves",
@@ -409,7 +409,7 @@ window.MODULE_VIDEOS = {
     "title": "Rejected, Not Pending",
     "subtitle": "Module 24 — LimitRange and quota at admission, and proving a live resize took effect",
     "src": "video/out/Module24.mp4",
-    "seconds": 156,
+    "seconds": 173,
     "beats": [
       "One object, or the whole namespace",
       "Forbidden is not Pending",
@@ -425,7 +425,7 @@ window.MODULE_VIDEOS = {
     "title": "Membership Is Not Eligibility",
     "subtitle": "Module 25 — Service types as layers, and what EndpointSlice conditions actually encode",
     "src": "video/out/Module25.mp4",
-    "seconds": 152,
+    "seconds": 161,
     "beats": [
       "Each type adds a layer",
       "Local is not a hint",
@@ -440,7 +440,7 @@ window.MODULE_VIDEOS = {
     "title": "Ask Which Object Restarted",
     "subtitle": "Module 26 — three restart owners, native sidecars, and the Job result protocol",
     "src": "video/out/Module26.mp4",
-    "seconds": 157,
+    "seconds": 167,
     "beats": [
       "Three owners, three objects",
       "UID and restart count",
@@ -455,7 +455,7 @@ window.MODULE_VIDEOS = {
     "title": "Admission Checks The Spec",
     "subtitle": "Module 27 — Pod Security Admission versus runtime enforcement, and choosing an isolation boundary",
     "src": "video/out/Module27.mp4",
-    "seconds": 167,
+    "seconds": 174,
     "beats": [
       "Three modes, one blocks",
       "It evaluates the spec",

@@ -56,19 +56,23 @@ const account = need('CLOUDFLARE_ACCOUNT_ID', 'account');
 const bucket = String(arg('bucket') || '').trim();
 if (!bucket) { console.error('--bucket is required'); process.exit(1); }
 
+const publicBase = String(arg('public-base', process.env.VIDEO_BASE_URL || '')).replace(/\/+$/, '');
 const dryRun = !!arg('dry-run');
 const force = !!arg('force');
 const only = arg('only');
 
 const api = `https://api.cloudflare.com/client/v4/accounts/${account}/r2/buckets/${bucket}/objects`;
 
+/* Existence is checked through the public hostname, not the REST API.
+ *
+ * The API's object HEAD is served from Cloudflare's own edge cache — a probe
+ * for an object that exists came back 404 with `cf-cache-status: HIT` and a
+ * four-hour TTL, so every re-run would have re-uploaded all 400 MB. The public
+ * hostname answers from the bucket and returns the content MD5 as its etag. */
 async function head(key) {
-  const res = await fetch(`${api}/${encodeURIComponent(key)}`, {
-    method: 'HEAD',
-    headers: { authorization: `Bearer ${token}` },
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) return null;                    // treat unknown as "upload it"
+  if (!publicBase) return null;                // no hostname: always upload
+  const res = await fetch(`${publicBase}/${key}`, { method: 'HEAD' });
+  if (!res.ok) return null;
   return { etag: (res.headers.get('etag') || '').replace(/"/g, '') };
 }
 
@@ -78,9 +82,10 @@ async function put(key, body) {
     headers: {
       authorization: `Bearer ${token}`,
       'content-type': 'video/mp4',
-      // A rendered module is immutable: a change produces a new render, and
-      // the player asks for it by the same name. Cache hard at the edge and
-      // invalidate by re-uploading.
+      // Cached hard, and busted by content hash rather than by name: the
+      // manifest appends ?v=<hash> to each src, so a re-rendered module gets a
+      // new URL. Without that, `immutable` would pin viewers to a stale video
+      // for a year after every re-render.
       'cache-control': 'public, max-age=31536000, immutable',
     },
     body,

@@ -8,6 +8,7 @@
  * A unit only gets a section once its video actually exists on disk.
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,6 +29,11 @@ const OUT_DIR = path.join(ROOT, 'video/out');
  * modules adds about 400 MB to history that cannot be reclaimed.
  */
 const VIDEO_BASE_URL = (process.env.VIDEO_BASE_URL || '').replace(/\/+$/, '');
+
+/** First 8 hex of the file's MD5 — matches the etag R2 reports. */
+function contentHash(file) {
+  return createHash('md5').update(readFileSync(file)).digest('hex').slice(0, 8);
+}
 
 /** Measured narration wins, exactly as the composition resolves it. */
 function seconds(dir, script) {
@@ -60,7 +66,12 @@ for (const d of readdirSync(MODULES)) {
     n,
     title: script.title,
     subtitle: script.subtitle,
-    src: VIDEO_BASE_URL ? `${VIDEO_BASE_URL}/${file}` : `video/out/${file}`,
+    // Object storage serves these with a one-year immutable cache, so the URL
+    // has to change when the video does. A re-render keeps the same filename,
+    // and without this a viewer would be pinned to the old cut for a year.
+    src: VIDEO_BASE_URL
+      ? `${VIDEO_BASE_URL}/${file}?v=${contentHash(path.join(OUT_DIR, file))}`
+      : `video/out/${file}`,
     seconds: Math.round(seconds(dir, script)),
     // Spine beats bracket every module; the teaching beats are the contents.
     beats: script.beats.filter((b) => b.lane !== null).map((b) => b.title),
