@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "Segment nine of the spine: CSI. A Pod needs a volume, and something has to create it, attach it and mount it. This module is the three objects that describe storage, the two halves of CSI that deliver it, and why storage can make a Pod unschedulable.",
+      "narration": "A Pod is scheduled and stuck, and the events point at four different components. This is the CSI segment of the request path. It covers the three objects that describe storage, and the two halves of a driver that deliver it. It covers the handshake that decides where a Pod can run. By the end you can say which half of the driver failed, and where its evidence lives.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with the CSI segment lit."
@@ -154,7 +154,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 40,
-      "narration": "Segment nine, then. A failure here has a signature: the Pod exists, it has a node, and it never starts. The events say mounting. Which half is failing is a question you can answer in one command. Answering it first saves the twenty minutes people spend in the wrong logs. The next module is high availability and etcd.",
+      "narration": "The CSI segment, then. A storage failure can block scheduling before a Pod has a node, or block setup after binding. First check whether the claim is bound and whether the Pod has a node name. Then decide whether the failed step is an object update, an RPC, or a mount. Read the events and the log that owns that step.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: the CSI segment shrinks back into the spine. Module order follows the course rather than the packet path, so do not light an adjacent segment — hold the spine whole and let the module counter advance to eleven."

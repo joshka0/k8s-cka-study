@@ -1,0 +1,138 @@
+{
+  "title": "Render First, Then Reconcile",
+  "subtitle": "Module 23 — what a successful Helm release proves, and who owns each field",
+  "series": {
+    "module": 23,
+    "unit": "u23",
+    "spineSegment": "desired object",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/cka-deep-content.js unit u23. CKA-deep arc: deepens a segment already introduced rather than advancing the spine.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 28,
+      "narration": "The release succeeded and the workload is unhealthy. Both statements are accurate. This covers the boundary between the tools that produce objects and the controllers that converge them. It covers what a successful Helm release proves, how rollout arithmetic works, and who owns each field. By the end you can tell a delivery failure from a convergence failure.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the first segment lit and packaging tools drawn outside the spine, feeding into it."
+      }
+    },
+    {
+      "id": "render-then-reconcile",
+      "n": 1,
+      "stage": null,
+      "title": "Two state machines",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "Kustomize composes overlays. Helm renders a chart and tracks release metadata. Both produce API objects that enter ordinary admission, storage and reconciliation. Helm may wait or run hooks at install time. Neither tool becomes the continuous controller for your application. After acceptance, ordinary admission, storage and reconciliation own the result. Release orchestration and runtime convergence are two separate state machines, and only one of them knows whether your application works.",
+      "visual": {
+        "type": "twoStateMachines",
+        "spec": "NEW. Two clearly separated machines: the packaging tool moving through render and release states, and the cluster moving through admission, storage and reconciliation. Draw the handoff as a one-way boundary — nothing after it reports back into the release record."
+      }
+    },
+    {
+      "id": "helm-success",
+      "n": 2,
+      "stage": null,
+      "title": "What a green release proves",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "So when Helm reports a successful release and the Pods are unhealthy, nothing is contradictory. Without wait flags, success means the objects were rendered and accepted. Even with wait, success is a one-shot readiness check at install time, not continuous reconciliation. Object status and events still own what the workload is doing now.",
+      "visual": {
+        "type": "helmSuccess",
+        "spec": "NEW. A green release record beside unhealthy Pods, with an explicit list of what the green state actually covers and what it does not. Keep both true on screen at once; the point is that they measure different things."
+      }
+    },
+    {
+      "id": "review-the-payload",
+      "n": 3,
+      "stage": null,
+      "title": "Review what the API will see",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "Which gives the order for reviewing a declarative change. Render the objects first and read them, because that is the payload the API will actually receive. Then apply. Then verify reconciliation separately, through status and events. Reviewing a values file is not reviewing a change; the template between them can do anything.",
+      "visual": {
+        "type": "reviewPayload",
+        "spec": "NEW. Three stages with the artefact reviewed at each: values or overlay, rendered objects, runtime status. Mark the rendered objects as the only stage that shows what the API sees, and show a values diff that produces a surprising rendered diff."
+      }
+    },
+    {
+      "id": "rollout-arithmetic",
+      "n": 4,
+      "stage": null,
+      "title": "A rollout is arithmetic",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "A Pod-template change creates a ReplicaSet, and the transition is bounded by arithmetic. maxSurge is how far above desired you may go. maxUnavailable is how far below. Readiness, plus any minimum ready seconds, decides what counts as available, and availability is what allows further scale-down. The rollout moves as fast as those numbers allow and no faster.",
+      "visual": {
+        "type": "rolloutArithmetic",
+        "spec": "NEW. Two ReplicaSets with live counters for desired, current, ready and available, and the surge and unavailable bounds drawn as limits the counters cannot cross. Step the rollout and show which number gates the next step at each moment."
+      }
+    },
+    {
+      "id": "progress-deadline",
+      "n": 5,
+      "stage": null,
+      "title": "The deadline reports, it does not act",
+      "lane": "control",
+      "estSeconds": 34,
+      "narration": "progressDeadlineSeconds is often misread. When it elapses, the Deployment reports a stalled condition. It does not roll back, it does not stop trying, and it does not page anyone. It is status evidence, not a remediation policy, and treating it as automatic recovery is how a stalled rollout stays stalled overnight.",
+      "visual": {
+        "type": "progressDeadline",
+        "spec": "NEW. A stalled rollout with the deadline elapsing and a condition appearing, while the controller visibly keeps retrying and the old ReplicaSet stays in place. Show the imagined automatic rollback and strike it through."
+      }
+    },
+    {
+      "id": "field-conflicts",
+      "n": 6,
+      "stage": null,
+      "title": "A conflict names an owner",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "Server-Side Apply records ownership per field. So a conflict is not a retry problem; it is information. Another manager owns that field, and the API is telling you who. Read managedFields and decide deliberately. Forcing transfers ownership, which is right when ownership is genuinely moving and wrong when it is a controller that will simply set the value back.",
+      "visual": {
+        "type": "fieldConflicts",
+        "spec": "REUSE the managedFields component from module 02 rather than rebuilding it. Extend only to show reading managedFields as the deliberate step between the conflict and the decision."
+      }
+    },
+    {
+      "id": "stalled-evidence",
+      "n": 7,
+      "stage": null,
+      "title": "The minimum discriminating evidence",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "For a stalled rollout there is a minimum set of evidence. The Deployment's conditions and current revision. Desired, current and available counts on both ReplicaSets. Pod readiness and events. The surge and unavailable arithmetic. And managedFields or admission errors if the updates themselves were rejected. Those five distinguish every common cause.",
+      "visual": {
+        "type": "stalledEvidence",
+        "spec": "NEW. Five evidence items as a diagnostic card, each with the cause it isolates: wrong revision, capacity bound, failing readiness, admission rejection, ownership conflict. Lay them out so the reader can invert from symptom to item."
+      }
+    },
+    {
+      "id": "close",
+      "n": 8,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "Delivery, then. A failure here has a signature. The tool says it worked and the cluster disagrees, or a field you set is owned by someone else and comes back wrong. Both are visible in the objects themselves. A successful release and a healthy workload are separate claims. Check both.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the first segment shrinks back into the spine."
+      }
+    }
+  ]
+}

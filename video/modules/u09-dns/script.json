@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "Segment twelve of the spine: DNS. A Service has a name, and something has to turn that name into an address. This module is the resolver settings inside the Pod, the plugin chain inside CoreDNS, and why most DNS bugs live between the two.",
+      "narration": "You queried one name. The resolver sent five, and four of them failed first. This is the DNS segment of the request path. It covers the resolver policy inside the Pod, the plugin chain inside CoreDNS, and the caches between them. By the end you can explain why a name resolves slowly, resolves wrongly, or resolves to something stale, and check each layer separately.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with the DNS segment lit."
@@ -102,7 +102,7 @@
       "title": "The endpoint is itself a Service",
       "lane": "pod",
       "estSeconds": 42,
-      "narration": "One detail makes DNS failures confusing. The endpoint the resolver asks is normally the ClusterIP of the DNS Service. So resolving any name depends on Service routing already working, which is the data plane from the last module. When that path breaks, DNS appears broken and every symptom points at CoreDNS. CoreDNS is fine. The route to it is not. Testing a CoreDNS Pod address directly separates the two in one command.",
+      "narration": "One detail makes DNS failures confusing. The endpoint the resolver asks is normally the ClusterIP of the DNS Service. So resolving any name depends on Service routing already working, which is the data plane underneath it. When that path breaks, DNS appears broken and every symptom points at CoreDNS. CoreDNS is fine. The route to it is not. Testing a CoreDNS Pod address directly separates the two in one command.",
       "visual": {
         "type": "dnsIsAService",
         "spec": "NEW. The resolver's query going to a ClusterIP, and that ClusterIP resolving through the same data plane taught in module 08 before it ever reaches a CoreDNS Pod. Break the data-plane hop: the query never arrives, CoreDNS stays visibly healthy, and the application reports a DNS failure. Then show the direct-to-Pod test bypassing the Service and succeeding, which is what isolates the fault. The healthy-but-unreachable CoreDNS is the image to land."
@@ -167,7 +167,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 40,
-      "narration": "Segment twelve, then. Check the Pod's resolv.conf first. Then dig against the kube-dns Service, and against a CoreDNS Pod address. Read the coredns ConfigMap and the CoreDNS logs. Those four checks separate client policy, Service routing, configuration, and a stale watch. The next module is storage, and the handshake that decides where a Pod can even run.",
+      "narration": "The DNS segment, then. Check the Pod's resolv.conf first. Then dig against the kube-dns Service, and against a CoreDNS Pod address. Read the coredns ConfigMap and the CoreDNS logs. Those four checks separate client policy, Service routing, configuration, and a stale watch. When a name misbehaves, test the layers separately: resolver policy, Service routing, CoreDNS itself, then the caches.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: the DNS segment shrinks back into the spine, and the CSI segment lights to preview module ten. Note that module order follows the course, not the packet path, so the previewed segment is not the adjacent one."

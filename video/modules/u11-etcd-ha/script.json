@@ -5,7 +5,8 @@
     "module": 11,
     "unit": "u11",
     "spineSegment": "admission / storage",
-    "assumes": "Intent to Packet"
+    "assumes": "Intent to Packet",
+    "beneath": "etcd"
   },
   "meta": {
     "narrationSpeed": 1,
@@ -24,7 +25,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "Back to segment two of the spine, and underneath it. Every write you have followed through this series ended in etcd. This module is what keeps etcd available. Why that differs from keeping the API server available, and what a backup does not contain.",
+      "narration": "You have a backup. You have never restored it. Until you do, you have a file, not a recovery plan. This goes underneath the storage segment of the request path, into etcd itself. It covers quorum arithmetic, and why adding one member to make an odd cluster even adds no fault tolerance. It covers what a snapshot does not contain. By the end you can size a cluster for the failures you intend to survive, and prove a restore actually works.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with the admission / storage segment lit, and etcd drawn beneath that segment as the layer this module descends into."
@@ -89,7 +90,7 @@
       "title": "When the majority is gone",
       "lane": "control",
       "estSeconds": 40,
-      "narration": "Lose etcd quorum and writes stop cluster-wide, however many API servers are still healthy. Every one of them will accept your connection and fail your write. This is the sharpest version of a pattern from module one. The thing that looks up is not the thing that is broken. The number of healthy replicas in front tells you nothing.",
+      "narration": "Lose etcd quorum and writes stop cluster-wide, however many API servers are still healthy. Every one of them will accept your connection and fail your write. This is the sharpest version of a pattern that runs through the whole control plane. The thing that looks up is not the thing that is broken. The number of healthy replicas in front tells you nothing.",
       "visual": {
         "type": "quorumLoss",
         "spec": "NEW. Three healthy API servers behind a load balancer, all green, all accepting connections — and a degraded etcd group below them without a majority. Send a write: it passes the API servers and dies at the storage layer. Keep every API server green throughout. The green front and the failed write together are the beat."
@@ -128,7 +129,7 @@
       "title": "The deceptive minutes",
       "lane": "control",
       "estSeconds": 42,
-      "narration": "Delete the etcd data directory on a single-member control plane and watch what happens. Cluster state is gone, because it lived only there. And the running containers keep going. Traffic keeps flowing. It is the same deceptive pattern from module one, at its most extreme. The data plane outlives the control plane, and everything looks fine for a while.",
+      "narration": "Delete the etcd data directory on a single-member control plane and watch what happens. Cluster state is gone, because it lived only there. And the running containers keep going. Traffic keeps flowing. It is the same deceptive pattern, at its most extreme. The data plane outlives the control plane, and everything looks fine for a while.",
       "visual": {
         "type": "deceptiveMinutes",
         "spec": "NEW. A timeline from the moment the data directory is deleted. Control-plane state gone immediately; workloads still serving; a clock running. Show the point where it stops looking fine — a node fails, or something needs rescheduling, and nothing responds. Put the elapsed time on screen so the delay reads as a duration."
@@ -167,7 +168,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 40,
-      "narration": "Segment two, underneath. A failure here has a signature: everything is green and nothing can be changed, or everything is green and a write silently did not persist. Both look healthy from the front. The last module is what protects this layer from the traffic above it, and how to prove which layer is actually at fault.",
+      "narration": "Underneath the storage segment, then. Without quorum, etcd cannot commit new writes. It does not make acknowledged writes silently disappear. Check member health, endpoint status and quorum before you trust a green front end. A backup you have not restored is only a hypothesis. Restore one deliberately, before you need it.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: the admission / storage segment shrinks back into the spine, and the whole spine brightens slightly to preview the final module, which is about the spine as a diagnostic tool rather than any single segment."

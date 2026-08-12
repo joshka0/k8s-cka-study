@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "The service segment, from outside the cluster this time. Something has to accept a request at the edge and get it to a Pod. This module is what the routing objects actually do, which is less than people assume, and where the boundaries are.",
+      "narration": "Your route is stored, and nothing is being served. On Gateway API that often shows as Accepted with no working listener. On Ingress the object can exist with the same inert result. This is the Service segment of the request path, seen from outside the cluster. It covers what Ingress and the Gateway API actually describe, and who owns each part of a route. It also covers why a NetworkPolicy can exist without enforcing anything. By the end you can tell a configuration problem from a data-plane one.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with the service segment lit and an external arrow arriving from outside the spine, marking north-south traffic."
@@ -128,7 +128,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 36,
-      "narration": "The edge, then. A failure here has a signature. The object exists and nothing serves it, or something serves it and the backend was never ready. Those are different owners, and status on the object usually tells you which. The next module goes back to the node, and what the scheduler could not promise.",
+      "narration": "The edge, then. A failure here has a signature. A route object exists and nothing serves it, or something serves it and the backend was never ready. For routes, status usually separates those owners. Accepted and served are different claims. For NetworkPolicy, storage is not enforcement. Name the layer before you trust the object.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: the service segment shrinks back into the spine, the kubelet segment lights to preview the next module."

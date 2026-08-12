@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "Segment two of the spine: admission and storage. The pilot showed a write passing five gates in about forty seconds. This module is what happens inside them, why one of them can take down a cluster, and what a conflict is actually telling you.",
+      "narration": "One webhook, installed by one team, can stall every deployment in a cluster. Nothing looks broken. This is the admission and storage segment of the request path. It covers the gates a write passes before it is stored. Who you are, what you may do, what may change the object, and what may reject it. By the end you can trace a rejected request to the gate that rejected it, and say what a conflict is telling you.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE module 01's spineLocator with segment two lit instead of one."
@@ -141,7 +141,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 40,
-      "narration": "Segment two, then. A failure here has a signature: your write is refused, or accepted and then quietly altered. Both leave a trace in the API response, and neither produces a pod. If you got an object back and nothing happened afterwards, you are past this segment. You are into the next one: controllers, watches, and the loop that is supposed to notice. That is module three.",
+      "narration": "The admission and storage segment, then. A failure here has a signature: your write is refused, or accepted and then quietly altered. Both outcomes appear in the API response. An accepted workload object can still lead to Pods after a controller acts. If you got an object back and nothing happened afterwards, this segment did its job. The failure is downstream, in whatever was supposed to notice the object. When a write is refused, name the gate that refused it. Each gate has a different owner and a different fix.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: segment two shrinks back into the spine, segment three lights to preview the next module."

@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "The controller segment, and the things that deliberately do not happen yet. Kubernetes has several mechanisms for holding a transition back. They look similar and they are not interchangeable. This module is which one blocks what.",
+      "narration": "Kubernetes has four mechanisms for holding a transition back. They look interchangeable, and they are not. This covers leader election as optimistic concurrency, and what scheduling gates, readiness gates, finalizers and Leases each actually block. By the end you can look at a stuck object and name the gate holding it, instead of deleting things until it moves.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with the controller-queue segment lit."
@@ -141,7 +141,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 34,
-      "narration": "Deliberate delay, then. A failure here has a signature. Something is waiting and the thing that should release it is gone, or never existed. That is the same shape as an orphaned finalizer, in a different place. The last module puts every segment together as a method.",
+      "narration": "Deliberate delay, then. A failure here has a signature. Something is waiting and the thing that should release it is gone, or never existed. That is the same shape as an orphaned finalizer, in a different place. When something has not happened yet, ask what is holding it. Four mechanisms, four different answers.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: the controller-queue segment shrinks back and the whole spine brightens, preparing for the final module."

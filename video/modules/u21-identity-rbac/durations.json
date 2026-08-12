@@ -1,0 +1,10 @@
+{
+  "authz-plus-admission": 22.0995,
+  "cert-errors": 16.169688,
+  "close": 18.10275,
+  "escalation-paths": 23.353375,
+  "locate": 22.15175,
+  "node-is-a-principal": 19.931313,
+  "permissions-are-additive": 19.017063,
+  "scope-is-the-permission": 18.076625
+}

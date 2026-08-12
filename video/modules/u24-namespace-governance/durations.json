@@ -1,0 +1,11 @@
+{
+  "close": 20.453813,
+  "limitrange-breaks-quota": 17.946063,
+  "limitrange-vs-quota": 21.237438,
+  "locate": 24.110938,
+  "prove-resize": 15.934625,
+  "rejected-not-pending": 20.114188,
+  "resize-desired-vs-applied": 19.957438,
+  "resize-qos": 16.195813,
+  "what-quota-counts": 17.345188
+}

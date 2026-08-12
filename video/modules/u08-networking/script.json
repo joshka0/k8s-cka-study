@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "Segment eight of the spine: CNI. The runtime is creating a Pod sandbox, and that sandbox needs a network. This module is how it gets one. Why Service identity is a different problem with a different owner, and what to check when a name resolves but nothing answers.",
+      "narration": "DNS resolves, the ClusterIP times out, and nothing in the workload is wrong. This is the CNI segment of the request path. It covers how a Pod gets a network, and how a Service address becomes a real backend. It covers why a NetworkPolicy grants permission rather than a route. By the end you can split a connectivity failure into the layer that owns it.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with segment eight lit."
@@ -180,7 +180,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 40,
-      "narration": "Segment eight, then. Ask which path failed. Did the sandbox get an address. Can peers reach that address. Does the Service address reach a ready endpoint. Each answer points at a different owner, and separating them is the whole value. The next module is the one that turned a name into an address.",
+      "narration": "The CNI segment, then. Ask which path failed. Did the sandbox get an address. Can peers reach that address. Does the Service address reach a ready endpoint. Each answer points at a different owner, and separating them is the whole value. Separate reachability, permission and translation. Each has a different owner and a different log.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: segment eight shrinks back into the spine, segment nine lights to preview the next module."

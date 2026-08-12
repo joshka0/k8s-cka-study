@@ -1,11 +1,11 @@
 {
-  "close": 13.29625,
+  "close": 9.821938,
   "daemonset-job": 35.892125,
   "four-promises": 28.107688,
   "hpa-vpa-fix": 27.193375,
   "hpa-vpa": 35.395813,
   "job-semantics": 29.309313,
-  "locate": 12.695438,
+  "locate": 22.909313,
   "pdb": 34.194188,
   "preempt-vs-evict": 22.961563,
   "readiness-gates-rollout": 31.2685,

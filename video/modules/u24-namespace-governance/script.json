@@ -1,0 +1,138 @@
+{
+  "title": "Rejected, Not Pending",
+  "subtitle": "Module 24 — LimitRange and quota at admission, and proving a live resize took effect",
+  "series": {
+    "module": 24,
+    "unit": "u24",
+    "spineSegment": "admission / storage",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/cka-deep-content.js unit u24. CKA-deep arc: deepens a segment already introduced rather than advancing the spine.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 28,
+      "narration": "A quota failure does not leave you a Pending Pod. A direct create is refused and stores nothing. A controller may still exist with FailedCreate events and no child Pods. This covers the admission gate at namespace scope. It covers what LimitRange and ResourceQuota each do, why the rejection happens before scheduling starts, and how a live resize is applied. By the end you can read an absent Pod correctly, and prove a resize reached the container.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the admission / storage segment lit."
+      }
+    },
+    {
+      "id": "limitrange-vs-quota",
+      "n": 1,
+      "stage": null,
+      "title": "One object, or the whole namespace",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "Two objects govern a namespace and they work at different scales. A LimitRange shapes a single object: it can default and constrain container and Pod compute, and it can constrain PVC storage requests. A ResourceQuota budgets the namespace in aggregate, capping total consumption and object counts. One shapes what you submitted. The other decides whether there is room for it. One edits what you submitted.",
+      "visual": {
+        "type": "limitRangeVsQuota",
+        "spec": "NEW. A single Pod passing through a LimitRange that fills in and bounds its fields, then the namespace total being checked against a quota. Two stages, two scales, drawn distinctly — shaping versus budgeting."
+      }
+    },
+    {
+      "id": "rejected-not-pending",
+      "n": 2,
+      "stage": null,
+      "title": "Forbidden is not Pending",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "Both are enforced at admission, which changes where the failure appears. A quota violation returns Forbidden and the object is never stored. There is no Pod to inspect, no scheduler event, and nothing Pending. So when you see exceeded quota, the component to look at is the API request that was rejected, not the scheduler. Pending and Forbidden are different boundaries.",
+      "visual": {
+        "type": "rejectedNotPending",
+        "spec": "NEW. Two failure paths side by side: an admission rejection where no object is ever created, and a scheduling failure where a Pod exists and sits Pending. Show the empty result of the first — there is nothing to describe — because that absence is the diagnostic."
+      }
+    },
+    {
+      "id": "what-quota-counts",
+      "n": 3,
+      "stage": null,
+      "title": "What quota can actually count",
+      "lane": "control",
+      "estSeconds": 36,
+      "narration": "A quota accounts declared API resources and object counts. Requests, limits, and how many of a kind may exist. It does not measure what your containers are really using. Runtime utilisation is a metrics and cgroup concern, and admission has no access to it. A namespace can be at its quota while its Pods sit idle.",
+      "visual": {
+        "type": "whatQuotaCounts",
+        "spec": "NEW. Declared values feeding the quota accounting on one side, and actual runtime usage on the other, visibly disconnected. Show a namespace at 100% of quota with low measured utilisation, both accurate."
+      }
+    },
+    {
+      "id": "limitrange-breaks-quota",
+      "n": 4,
+      "stage": null,
+      "title": "How a default breaks a quota",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "Which explains a confusing interaction. Adding a LimitRange can make previously valid Pods fail. The LimitRange injects default requests or limits, quota then evaluates the object as admitted rather than as submitted, and those defaults count against the budget. Nothing about the Pod changed. What changed is what the namespace now says it means.",
+      "visual": {
+        "type": "limitRangeBreaksQuota",
+        "spec": "NEW. The same submitted Pod evaluated twice: once with no LimitRange, admitted comfortably; once with a LimitRange injecting defaults, pushing the namespace total over quota and being rejected. Keep the submitted YAML identical in both, because that is the surprise."
+      }
+    },
+    {
+      "id": "resize-desired-vs-applied",
+      "n": 5,
+      "stage": null,
+      "title": "Accepted is not applied",
+      "lane": "node",
+      "estSeconds": 42,
+      "narration": "In-place resize changes a container's requests or limits without replacing the Pod, where policy and node support allow it. But acceptance and application are separate. The API stores your desired values. The kubelet then applies them, and Pod status reports what was actually allocated, along with deferred or infeasible outcomes. An accepted patch is not proof the cgroup changed.",
+      "visual": {
+        "type": "resizeDesiredApplied",
+        "spec": "NEW. Desired and actuated resources as two distinct fields on one Pod, updated at different times by different actors. Show the accepted patch landing immediately and the applied value lagging, then a deferred outcome where it never catches up."
+      }
+    },
+    {
+      "id": "resize-qos",
+      "n": 6,
+      "stage": null,
+      "title": "QoS does not move",
+      "lane": "node",
+      "estSeconds": 34,
+      "narration": "One rule constrains the whole feature: an in-place resize does not change the Pod's QoS class. The class is fixed for the Pod's lifetime, which keeps its scheduling and eviction semantics stable. If you need a different class, you need a new Pod. Resizing is not a way to promote a workload to Guaranteed.",
+      "visual": {
+        "type": "resizeQos",
+        "spec": "NEW. A Pod resized while its QoS class stays visibly fixed, with the eviction ranking that depends on it unchanged. Beside it, the only route to a different class: replacement."
+      }
+    },
+    {
+      "id": "prove-resize",
+      "n": 7,
+      "stage": null,
+      "title": "Proving it took effect",
+      "lane": "node",
+      "estSeconds": 36,
+      "narration": "So proving a live resize worked has three steps. Compare the desired resources in the spec. Read the allocated and applied resource status. Then check the Pod's resize condition for deferred or infeasible. If those three agree, the change is real. If they do not, you have found where it stopped.",
+      "visual": {
+        "type": "proveResize",
+        "spec": "NEW. Three checks stacked with the field each reads, and two outcomes: all three agreeing, and a mismatch localised to a specific step. Make the mismatch case the more prominent one — it is the reason to check at all."
+      }
+    },
+    {
+      "id": "close",
+      "n": 8,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "Namespace governance, then. A failure here has a signature. The object was never created at all, or it exists and the resize never reached the cgroup. Neither looks like a scheduling problem. A rejection leaves no Pod behind. When a Pod is absent rather than Pending, look at admission. When resources changed in the spec, prove they were applied.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the admission / storage segment shrinks back, the service segment lights to preview the next module."
+      }
+    }
+  ]
+}

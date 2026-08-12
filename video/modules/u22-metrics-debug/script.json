@@ -1,0 +1,125 @@
+{
+  "title": "The Metrics API Is Not Monitoring",
+  "subtitle": "Module 22 — what kubectl top actually reads, and preserving evidence before restart",
+  "series": {
+    "module": 22,
+    "unit": "u22",
+    "spineSegment": "kubelet",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/cka-deep-content.js unit u22. CKA-deep arc: deepens a segment already introduced rather than advancing the spine.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 28,
+      "narration": "kubectl top failed, and your monitoring is fine. Those two facts are unrelated. This covers the evidence a node produces. It covers what the metrics pipeline actually carries, which is narrower than most people assume. It covers how to investigate a crash loop without destroying the proof. By the end you can gather evidence from a container that has already restarted, and from an image with no shell in it.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the kubelet segment lit."
+      }
+    },
+    {
+      "id": "one-narrow-pipeline",
+      "n": 1,
+      "stage": null,
+      "title": "One narrow pipeline",
+      "lane": "node",
+      "estSeconds": 42,
+      "narration": "kubectl top reads exactly one path. The kubelet exposes summarised CPU and memory usage. metrics-server collects it and serves the aggregated metrics API. kubectl top and resource-metric autoscaling consume that. Custom and external HPA metrics are separate APIs. It is built for recent resource signals. It is not application metrics, not durable history, not logs, and not control-plane health.",
+      "visual": {
+        "type": "metricsPipeline",
+        "spec": "NEW. The single chain from kubelet through metrics-server to its consumers, drawn narrow and specific. Around it, the things people expect it to cover — application metrics, history, logs, component health — shown explicitly outside the chain."
+      }
+    },
+    {
+      "id": "top-fails",
+      "n": 2,
+      "stage": null,
+      "title": "When top fails",
+      "lane": "node",
+      "estSeconds": 40,
+      "narration": "So when kubectl top fails, trace that chain rather than reaching for your dashboards. Is metrics-server running. Is its aggregated API registered and available. Is the kubelet's summary endpoint reachable from it. Prometheus is a separate observability path entirely, and its health proves nothing about this one.",
+      "visual": {
+        "type": "topFails",
+        "spec": "NEW. The same chain with each link testable, and a failure injected at one point. Beside it, a healthy Prometheus stack drawn as a parallel, unrelated path — so the reader sees why one can be green while the other is broken."
+      }
+    },
+    {
+      "id": "three-metric-kinds",
+      "n": 3,
+      "stage": null,
+      "title": "Three kinds of metric",
+      "lane": "node",
+      "estSeconds": 38,
+      "narration": "Three kinds of metric get called monitoring and they answer different questions. Resource metrics are CPU and memory for Pods and Nodes. Component metrics are Kubernetes internals and health. Application metrics are whatever your workload emits. Their collection and retention paths differ, so knowing which one you need tells you where to look.",
+      "visual": {
+        "type": "threeMetricKinds",
+        "spec": "NEW. Three columns with what each measures, who collects it and how long it lives. Make the retention difference explicit — that is what decides whether a question is answerable an hour later."
+      }
+    },
+    {
+      "id": "preserve-evidence",
+      "n": 4,
+      "stage": null,
+      "title": "Preserve the perishable first",
+      "lane": "node",
+      "estSeconds": 42,
+      "narration": "For a crash loop, the order is about perishability. Start with status, conditions and events. Compare the current and previous container logs, and read the termination state. Then use exec if the image has tools, or an ephemeral debug container if it does not. Reach for node journals and crictl only when the kubelet or API path is unavailable. Restarting early erases the context you needed.",
+      "visual": {
+        "type": "preserveEvidence",
+        "spec": "NEW. An evidence ladder ordered by how quickly each item disappears, with the cheapest and most perishable first. Show a restart happening early and greying out the evidence it destroys, so the cost of reaching for a restart is visible."
+      }
+    },
+    {
+      "id": "distroless",
+      "n": 5,
+      "stage": null,
+      "title": "No shell in the image",
+      "lane": "node",
+      "estSeconds": 40,
+      "narration": "Which matters most when the image has no shell. A distroless container cannot be exec'd into usefully, and that is not a dead end. Describe it and read its events. Read current and previous logs. Read the termination reason and exit code. Then attach an ephemeral debug container, or run a debug copy with the tools you need.",
+      "visual": {
+        "type": "distrolessDebug",
+        "spec": "NEW. A container with no shell, and the sequence of evidence that does not require one, ending with an ephemeral debug container attached to the running Pod. Show exec failing early so the alternatives read as the actual path, not a fallback."
+      }
+    },
+    {
+      "id": "crictl",
+      "n": 6,
+      "stage": null,
+      "title": "When crictl earns its place",
+      "lane": "node",
+      "estSeconds": 34,
+      "narration": "crictl talks directly to the container runtime through the CRI socket. That makes it the right tool when the kubelet or the API path is unavailable and kubectl can tell you nothing. It is node and runtime evidence. It is not a replacement for kubectl, and reaching for it while the API is healthy usually means looking in the wrong place.",
+      "visual": {
+        "type": "crictlScope",
+        "spec": "NEW. The API path shown broken, with kubectl unable to answer, and crictl reaching the runtime directly on the node. Mark clearly that this is below the API boundary — the same boundary drawn in the troubleshooting module."
+      }
+    },
+    {
+      "id": "close",
+      "n": 7,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "Evidence, then. A failure here has a signature. The container restarted and the useful proof is about to disappear. Read previous logs, lastState and events before you restart anything again. Gather the evidence before you destroy the thing holding it.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the kubelet segment shrinks back and the first segment lights to preview the next module."
+      }
+    }
+  ]
+}

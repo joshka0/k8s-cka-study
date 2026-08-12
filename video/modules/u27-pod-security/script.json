@@ -1,0 +1,138 @@
+{
+  "title": "Admission Checks The Spec",
+  "subtitle": "Module 27 — Pod Security Admission versus runtime enforcement, and choosing an isolation boundary",
+  "series": {
+    "module": 27,
+    "unit": "u27",
+    "spineSegment": "admission / storage",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/cka-deep-content.js unit u27. CKA-deep arc: deepens a segment already introduced rather than advancing the spine. Final module of the CKA-deep arc; the close recaps the whole course.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 28,
+      "narration": "Pod Security Admission passed. That is not a security claim. This covers the admission gate and the boundary underneath it. Admission evaluates the spec you submitted and nothing at runtime. It covers the three modes, and how to choose a real isolation boundary. By the end you can say what your current boundary does and does not contain.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the admission / storage segment lit, and the kubelet segment faintly marked as where enforcement happens."
+      }
+    },
+    {
+      "id": "psa-modes",
+      "n": 1,
+      "stage": null,
+      "title": "Three modes, one blocks",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "Pod Security Admission is selected by namespace labels, which pick a standard level and a mode. The levels are privileged, baseline and restricted. Enforce rejects the Pod. Audit records it in the audit log. Warn returns a message to the client and creates it anyway. Only enforce blocks anything. A namespace labelled warn is telling you about violations while accepting every one of them.",
+      "visual": {
+        "type": "psaModes",
+        "spec": "NEW. The same violating Pod submitted to three namespaces, one per mode, with three different outcomes: rejected, created with an audit record, created with a client warning. Make clear that two of the three still create the Pod."
+      }
+    },
+    {
+      "id": "spec-not-runtime",
+      "n": 2,
+      "stage": null,
+      "title": "It evaluates the spec",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "And what it evaluates is the Pod spec. securityContext fields, host namespaces, volume types, privileged mode, and related settings are checked against the standard before the object is stored. Whether the runtime and kernel actually enforce those settings on the node is a separate question. Whether the runtime actually enforces them is a separate question, answered by the runtime and the kernel, not by the API server.",
+      "visual": {
+        "type": "specNotRuntime",
+        "spec": "NEW. Two boundaries drawn apart: admission reading the spec and deciding, then the runtime and kernel applying settings later on the node. Show a spec that passes admission and a runtime that does not deliver what it promised, with the gap between them labelled."
+      }
+    },
+    {
+      "id": "passed-is-not-secure",
+      "n": 3,
+      "stage": null,
+      "title": "Passing Restricted is not a claim",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "So the Pod passed Restricted admission is not a complete security claim. The standards are a bounded baseline, not the whole of policy. Admission checked a spec, not a running process. The runtime, the RuntimeClass and the kernel have to actually enforce the mechanisms. And network, identity, image provenance and secret handling are separate controls that this never looked at.",
+      "visual": {
+        "type": "passedIsNotSecure",
+        "spec": "NEW. A Restricted pass badge, with everything it does not cover arranged around it: runtime enforcement, network, identity, image provenance, secrets. Give the uncovered area far more visual weight than the badge."
+      }
+    },
+    {
+      "id": "privilege-reducers",
+      "n": 4,
+      "stage": null,
+      "title": "What actually reduces privilege",
+      "lane": "node",
+      "estSeconds": 38,
+      "narration": "The settings that genuinely reduce privilege at runtime are specific. Running as a non-root user. Dropping capabilities rather than adding them. A seccomp profile. A read-only root filesystem. Disallowing privilege escalation. Those shape the process and runtime boundary. A controller revision or a label carries no isolation property at all.",
+      "visual": {
+        "type": "privilegeReducers",
+        "spec": "NEW. Each setting with the specific capability or syscall surface it removes, drawn as the boundary shrinking. Beside them, things that look like security but change nothing at runtime — labels, annotations, revisions — set aside."
+      }
+    },
+    {
+      "id": "runtimeclass",
+      "n": 5,
+      "stage": null,
+      "title": "A selector, not an implementation",
+      "lane": "node",
+      "estSeconds": 42,
+      "narration": "RuntimeClass names a CRI runtime handler, and can carry scheduling constraints and Pod overhead. It may select a sandboxed runtime. But the object is a selector and a contract; the implementation lives in the node's runtime configuration. If the handler is not configured on eligible nodes, the RuntimeClass buys you nothing, and the Pod will simply fail to run there.",
+      "visual": {
+        "type": "runtimeClassPath",
+        "spec": "NEW. The path from RuntimeClass object, through the scheduler honouring its constraints, to a node whose runtime has the named handler configured. Break the last step: the object is valid, the node lacks the handler, the Pod cannot run. The object-versus-implementation gap is the beat."
+      }
+    },
+    {
+      "id": "user-namespaces",
+      "n": 6,
+      "stage": null,
+      "title": "Remapping the identity",
+      "lane": "node",
+      "estSeconds": 38,
+      "narration": "User namespaces do something different again. They remap container user IDs, so root inside the container is an unprivileged identity on the host. That changes the kernel's identity mapping at the container boundary. It is a stronger property than any spec field, because it does not depend on the workload behaving.",
+      "visual": {
+        "type": "userNamespaces",
+        "spec": "NEW. The same UID zero inside a container mapping to an unprivileged host UID, drawn across the container-host boundary. Contrast with the non-remapped case where container root is host root. The mapping table is the image."
+      }
+    },
+    {
+      "id": "choose-a-boundary",
+      "n": 7,
+      "stage": null,
+      "title": "Choosing between them",
+      "lane": "node",
+      "estSeconds": 38,
+      "narration": "So which do you choose. RuntimeClass selects a node-configured runtime and isolation implementation, and may add scheduling constraints and Pod overhead. User namespaces remap identities within a supported runtime when the Pod opts in. They are complementary rather than alternatives. Account for each feature's own costs: handler placement and overhead for RuntimeClass, node support and volume limits for user namespaces.",
+      "visual": {
+        "type": "chooseBoundary",
+        "spec": "NEW. A decision card comparing RuntimeClass, user namespaces and both together, with what each provides and what each costs. Draw them as composable rather than mutually exclusive."
+      }
+    },
+    {
+      "id": "close",
+      "n": 8,
+      "stage": null,
+      "title": "The end of the course",
+      "lane": null,
+      "estSeconds": 32,
+      "narration": "Name the transition you expected, name the component that owns it, and read the evidence at that boundary. That is what separates knowing Kubernetes commands from understanding the system underneath them. Admission checks the spec you submitted. If you need a runtime boundary, choose one deliberately.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, final state: the whole spine lit end to end with every module number marked against its segment. No preview — this is the last frame of the course."
+      }
+    }
+  ]
+}

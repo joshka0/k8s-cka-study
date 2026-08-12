@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 28,
-      "narration": "Segment three of the spine: watch and cache. The pilot said controllers notice your object and act. This module is how they notice, and why a lost message does not matter. It also covers how a controller can bring down an API server by talking to itself.",
+      "narration": "A controller missed your change, and nothing in the logs says so. This is the watch and cache segment of the request path. It covers how controllers notice work, and the shared cache they usually read instead of the API server. It covers why level-based reconciliation recovers when current state is observed again. It also covers how one badly written controller degrades a whole cluster. By the end you can explain why reconciliation is safe to repeat, and recognise a loop that is eating the API server.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE module 01's spineLocator with segment three lit."
@@ -167,7 +167,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 40,
-      "narration": "Segment three, then. A failure here has a distinctive shape. Your object exists and is correct, but nothing downstream ever happens. Or something happens endlessly. Check whether the controller is running, whether its queue is draining, and whether it is writing on every pass. Next module: what the controllers actually create, and why the four workload kinds are not interchangeable.",
+      "narration": "The watch and cache segment, then. A failure here has a distinctive shape. Your object exists and is correct, but nothing downstream ever happens. Or something happens endlessly. Check whether the controller is running, whether its queue is draining, and whether it is writing on every pass. When a controller looks stuck, ask what it watched and what it enqueued. The answer is rarely in the object it failed to write.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: segment three shrinks back, segment four lights for the next module."

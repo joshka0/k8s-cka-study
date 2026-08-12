@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "Segment six again, the kubelet, from a different angle. This module is what actually happens when configuration changes. Why a Secret update can leave your application on the old credential, and how kubelet eviction differs from a kernel kill.",
+      "narration": "You updated the Secret, and the application is still using the old credential. Nothing failed. This covers how configuration actually reaches a running process. It covers why a Deployment does not roll when a referenced ConfigMap changes, and how quality of service is derived rather than declared. By the end you can predict whether a config change reaches your container, and tell an eviction from a kernel kill.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with the kubelet segment lit, marked as a second visit rather than a new stage."
@@ -128,7 +128,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 36,
-      "narration": "The kubelet again, then. A failure here has a signature. Nothing changed when you expected it to, or something died and you have to separate eviction from OOM. Evicted and OOMKilled often appear in object status. When they do not, the node still holds the rest. Do not stop at the Deployment. The next module goes the other way, out to the edge, and how traffic gets in.",
+      "narration": "The kubelet again, then. A failure here has a signature. Nothing changed when you expected it to, or something died and you have to separate eviction from OOM. Evicted and OOMKilled often appear in object status. When they do not, inspect kubelet and kernel logs while that node evidence is still available. Do not stop at the Deployment. A change to configuration is not a change to a running process. Ask what actually reaches the container.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: the kubelet segment shrinks back into the spine and the service segment lights to preview the next module."

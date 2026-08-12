@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 26,
-      "narration": "Same segment as module four, but now the objects are yours. A CRD puts your own kind into the same API the built-in controllers use. That is powerful, and it makes you responsible for an API other people will depend on.",
+      "narration": "A CustomResourceDefinition is the easiest way to publish an API that other people will depend on. That is exactly the problem. This covers what a CRD gives you on its own, and what a controller has to add. It covers how versioning, storage migration and finalizers behave once somebody relies on you. By the end you can ship a custom API you are still able to change later.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE with segment four lit, annotated 'your own kinds'."
@@ -180,7 +180,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 36,
-      "narration": "Your objects now travel the same spine as everything else. They pass the same gates, sit in the same store, and wait on the same controllers. Next module: the scheduler, and the difference between what a Pod requests and what it uses.",
+      "narration": "Your objects now travel the same spine as everything else. They pass the same gates, sit in the same store. Any reconciliation behaviour depends on a controller that watches their kind. Before you publish a kind, decide how you will change it later. That decision costs far less now than after adoption.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: preview segment five."

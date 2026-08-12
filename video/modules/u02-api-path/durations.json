@@ -1,11 +1,11 @@
 {
   "admission-shape": 30.79825,
   "authn-vs-authz": 43.572125,
-  "close": 20.688875,
+  "close": 28.264375,
   "concurrency": 28.813,
   "failure-policy": 28.682375,
   "field-ownership": 33.724,
-  "locate": 13.217875,
+  "locate": 24.084813,
   "still-rejected": 35.526438,
   "webhook-cost": 36.23175,
   "webhook-design": 34.84725

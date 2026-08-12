@@ -1,9 +1,9 @@
 {
   "claim-teardown": 16.692125,
   "class-vs-claim": 18.599125,
-  "close": 14.968063,
+  "close": 16.352563,
   "dra-handshake": 31.32075,
-  "locate": 12.643188,
+  "locate": 19.173813,
   "pending-evidence-dra": 18.546875,
   "plugin-vs-dra": 17.99825,
   "scalar-vs-structured": 20.506063,

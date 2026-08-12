@@ -1,0 +1,125 @@
+{
+  "title": "Membership Is Not Eligibility",
+  "subtitle": "Module 25 — Service types as layers, and what EndpointSlice conditions actually encode",
+  "series": {
+    "module": 25,
+    "unit": "u25",
+    "spineSegment": "service",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/cka-deep-content.js unit u25. CKA-deep arc: deepens a segment already introduced rather than advancing the spine. ",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 28,
+      "narration": "A load balancer has an address. That proves almost nothing about whether anything answers. This is the Service segment of the request path, one layer deeper. It covers how Service types stack, what an EndpointSlice condition really encodes, and why traffic policy can strand a request on the wrong node. By the end you can read endpoint state to find backends that were selected but never became eligible.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the service segment lit."
+      }
+    },
+    {
+      "id": "types-are-layers",
+      "n": 1,
+      "stage": null,
+      "title": "Each type adds a layer",
+      "lane": "pod",
+      "estSeconds": 42,
+      "narration": "Service types are layers, not alternatives. ClusterIP is the base. NodePort allocates a port on nodes on top of it. LoadBalancer asks an implementation to provide external reachability, still using Service semantics underneath. So a LoadBalancer Service is a ClusterIP Service with more in front of it. Every layer below can still be the thing that is broken.",
+      "visual": {
+        "type": "typesAreLayers",
+        "spec": "NEW. Three concentric layers with ClusterIP at the core, NodePort wrapping it, LoadBalancer outside that. Show a request traversing inward through every layer. Break the innermost one and show the outer layers still looking healthy."
+      }
+    },
+    {
+      "id": "external-traffic-local",
+      "n": 2,
+      "stage": null,
+      "title": "Local is not a hint",
+      "lane": "pod",
+      "estSeconds": 42,
+      "narration": "externalTrafficPolicy Local preserves the client source address and avoids an extra hop. It also changes which endpoints are eligible at the receiving node: only node-local ones. That is a real behaviour change, not a performance hint. A node with no local endpoint will not serve the traffic at all, and that is the trade you are making.",
+      "visual": {
+        "type": "externalTrafficLocal",
+        "spec": "NEW. The same request arriving at two nodes under Local: one with a local endpoint, serving and preserving the source address; one with none, refusing rather than forwarding. Put the preserved source IP and the unserved case side by side as the two halves of one trade."
+      }
+    },
+    {
+      "id": "lb-address-proves-little",
+      "n": 3,
+      "stage": null,
+      "title": "An address is not reachability",
+      "lane": "pod",
+      "estSeconds": 42,
+      "narration": "So a LoadBalancer showing an ingress address proves that provisioning happened. Nothing else. Backend health is separate. The Service ports may be wrong. The EndpointSlices may be empty or unready. Traffic policy may exclude every endpoint on the node that received the packet. And the Pod's own listener or policy may still refuse it. Five independent failures behind one green address.",
+      "visual": {
+        "type": "lbAddressProvesLittle",
+        "spec": "NEW. A provisioned ingress address at the top, and five independent break points beneath it, each able to fail while the address stays green. Give the address a small footprint and the failures the space — the imbalance is the argument."
+      }
+    },
+    {
+      "id": "conditions-encode-more",
+      "n": 4,
+      "stage": null,
+      "title": "Ready, serving, terminating",
+      "lane": "pod",
+      "estSeconds": 44,
+      "narration": "EndpointSlice conditions encode more than presence. Membership comes from the Service selector when there is one, or from manually managed Endpoints and EndpointSlices when there is not. The conditions then distinguish ready, serving and terminating. An endpoint can be present and not ready. It can be terminating and still serving, which is exactly what lets a graceful shutdown drain. Reading membership alone tells you an address exists, not that anything will use it.",
+      "visual": {
+        "type": "conditionsEncodeMore",
+        "spec": "NEW. One EndpointSlice with several endpoints in different condition combinations, each annotated with what a data plane does about it. Include a terminating-but-serving endpoint explicitly, since that combination is the one people do not expect."
+      }
+    },
+    {
+      "id": "strict-vs-preferred",
+      "n": 5,
+      "stage": null,
+      "title": "A requirement, or a preference",
+      "lane": "pod",
+      "estSeconds": 40,
+      "narration": "Locality comes in two strengths and confusing them wastes time. Strict internal traffic policy requires a node-local endpoint: no local endpoint, no traffic. Topology-aware routing and traffic distribution express a preference, and they will fall back. During failure analysis, treat a requirement and a hint completely differently, because only one of them can be the reason nothing is being served.",
+      "visual": {
+        "type": "strictVsPreferred",
+        "spec": "NEW. Two panels running the same failure: under a strict requirement traffic stops; under a preference it falls back to a remote endpoint and continues. Label one Requirement and the other Hint, and make the outcome difference unmistakable."
+      }
+    },
+    {
+      "id": "slice-diagnosis",
+      "n": 6,
+      "stage": null,
+      "title": "The shortest diagnosis",
+      "lane": "pod",
+      "estSeconds": 40,
+      "narration": "So the shortest EndpointSlice-centred diagnosis has five steps. Verify selector membership. Inspect the ready, serving and terminating conditions. Check the IP family and the port. Apply the traffic policy and locality rules to see which endpoints are actually eligible. Then test the Pod's listener directly. Each step removes one explanation.",
+      "visual": {
+        "type": "sliceDiagnosis",
+        "spec": "NEW. Five ordered checks, each with what it eliminates, ending at the Pod's own listener. Mark the eligibility step as the one most often skipped — membership and eligibility being different is the module's core point."
+      }
+    },
+    {
+      "id": "close",
+      "n": 7,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "Exposure, then. A failure here has a signature. Everything is present and nothing is eligible, or the address exists and the backends never became ready. Read Service status for the address. Read EndpointSlice conditions for eligibility. Selected is not eligible.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the service segment shrinks back into the spine."
+      }
+    }
+  ]
+}

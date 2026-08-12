@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 32,
-      "narration": "Back to the front of the spine, where every request arrives. This module is what protects the API server when too many arrive at once. Then the last thing the series owes you: which piece of evidence proves which layer is at fault.",
+      "narration": "The cluster is slow and every dashboard is green. This covers what protects the API server when too many requests arrive at once, and which piece of evidence proves which layer is at fault. It covers Priority and Fairness, the load your own controllers create, and the difference between status, events and audit. By the end you can isolate a layer instead of guessing at one.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with the first segment lit, and the rest of the spine visible but dim — the finale returns to the entry point before recapping the whole path."
@@ -89,7 +89,7 @@
       "title": "Why informers exist at all",
       "lane": "control",
       "estSeconds": 40,
-      "narration": "This is also the load-shaped reason informers exist. Repeated listing, reconnecting, or requesting huge objects amplifies load on the API server and on etcd behind it. Informers share list and watch caches across controllers, which turns many pollers into one watch. Module three framed that as correctness. Here it is capacity.",
+      "narration": "This is also the load-shaped reason informers exist. Repeated listing, reconnecting, or requesting huge objects amplifies load on the API server and on etcd behind it. Informers share list and watch caches across controllers, which turns many pollers into one watch. Reconciliation frames that as correctness. Here it is capacity.",
       "visual": {
         "type": "informersAsLoad",
         "spec": "NEW. Left: many controllers each listing independently, with the request count and etcd load climbing. Right: the same controllers sharing one informer cache fed by a single watch, with the load collapsing. Put the request counts on screen for both so the difference is quantitative, not just visual. Reference module three's framing without re-explaining informers."
@@ -154,7 +154,7 @@
       "title": "The spine is the method",
       "lane": null,
       "estSeconds": 50,
-      "narration": "Which brings the series back to where it started. The spine is not a diagram to memorise. It is a path any symptom can be walked along. Intent arrives and is admitted. It is stored. Something watches, something reconciles, something schedules. A kubelet acts. Runtime, network and storage each do their part. Endpoints, Service and DNS make it reachable. Every failure you have studied has a home segment, and often only one. Start there. If the evidence disagrees, walk the neighbouring segment.",
+      "narration": "Which brings you back to where the request path starts. The spine is not a diagram to memorise. It is a path any symptom can be walked along. Intent arrives and is admitted. It is stored. Something watches, something reconciles, something schedules. A kubelet acts. Runtime, network and storage each do their part. Endpoints, Service and DNS make it reachable. Every failure you have studied has a home segment, and often only one. Start there. If the evidence disagrees, walk the neighbouring segment.",
       "visual": {
         "type": "spineRecap",
         "spec": "REUSE the pilot's SpineRecap. Extend it: walk the full spine once, and as each segment lights, surface the characteristic failure signature taught in that module — write refused, nothing reconciles, no node name, no address, resolves but nothing answers, and so on. This is the payoff frame of the whole series, so it must be legible and unhurried."
@@ -180,7 +180,7 @@
       "title": "The end of the spine",
       "lane": null,
       "estSeconds": 36,
-      "narration": "Twelve modules, one spine. If you can name the segment a symptom belongs to, you already have the next question. That is the difference between knowing Kubernetes commands and understanding the system underneath them, and it is what an interviewer is actually listening for.",
+      "narration": "One spine, whatever you are looking at. If you can name the segment a symptom belongs to, you already have the next question. That is the difference between knowing Kubernetes commands and understanding the system underneath them, and it is what an interviewer is actually listening for.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, final state: the whole spine lit end to end, with all twelve module numbers marked against their segments. No preview of a next module — this is the last frame of the series. Hold it long enough to read."

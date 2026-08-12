@@ -1,8 +1,8 @@
 {
-  "close": 18.964813,
+  "close": 19.80075,
   "drain-is-not-upgrade": 10.893,
   "helm-vs-kustomize": 19.252125,
-  "locate": 16.039125,
+  "locate": 20.479938,
   "safe-not-successful": 28.003188,
   "skew-boundaries": 17.449688,
   "static-pod-first-check": 26.879938,

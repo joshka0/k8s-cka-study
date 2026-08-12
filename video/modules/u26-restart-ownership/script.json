@@ -1,0 +1,125 @@
+{
+  "title": "Ask Which Object Restarted",
+  "subtitle": "Module 26 — three restart owners, native sidecars, and the Job result protocol",
+  "series": {
+    "module": 26,
+    "unit": "u26",
+    "spineSegment": "kubelet",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/cka-deep-content.js unit u26. CKA-deep arc: deepens a segment already introduced rather than advancing the spine. ",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 28,
+      "narration": "Something restarted. That one word hides three different owners and three different answers. This covers who restarts what. It covers the kubelet acting on a restart policy, the controller replacing a whole Pod, and the Job deciding the work is finished. It also covers native sidecars and per-index backoff. By the end you can ask which object restarted and get a useful answer.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the kubelet segment lit."
+      }
+    },
+    {
+      "id": "three-owners",
+      "n": 1,
+      "stage": null,
+      "title": "Three owners, three objects",
+      "lane": "node",
+      "estSeconds": 44,
+      "narration": "Three different things restart, and they act on different objects. The kubelet restarts a container inside an existing Pod, according to the restart policy. A workload controller creates a replacement Pod when desired replicas are missing. The Job controller counts completions and failures and decides whether more Pods are needed at all. Asking which object is being restarted answers most of the question.",
+      "visual": {
+        "type": "threeRestartOwners",
+        "spec": "NEW. Three owners with the object each acts on: container inside a Pod, Pod inside a ReplicaSet, Pod inside a Job's completion accounting. Draw the object boundary each one crosses, because that boundary is the discriminator."
+      }
+    },
+    {
+      "id": "uid-and-count",
+      "n": 2,
+      "stage": null,
+      "title": "UID and restart count",
+      "lane": "node",
+      "estSeconds": 42,
+      "narration": "There is a precise way to tell them apart. The same Pod UID with a higher restart count means the kubelet restarted a container in the existing sandbox. A new UID means a new Pod object entirely, created by a controller. Then ownerReferences and events name which controller did it. Two fields separate the two cases, and neither requires guesswork.",
+      "visual": {
+        "type": "uidAndCount",
+        "spec": "NEW. Two timelines: one Pod keeping its UID while restartCount increments, and one Pod replaced by a new object with a fresh UID. Put both UIDs on screen and make the difference legible — that is the whole check."
+      }
+    },
+    {
+      "id": "oomkilled-who",
+      "n": 3,
+      "stage": null,
+      "title": "OOMKilled, and still the same Pod",
+      "lane": "node",
+      "estSeconds": 36,
+      "narration": "So a container that is OOMKilled and comes back with the same Pod UID was restarted by the kubelet. No controller was involved. The Pod object never changed. Which also means that looking at the Deployment for an explanation will find nothing, because nothing at that level happened.",
+      "visual": {
+        "type": "oomkilledWho",
+        "spec": "NEW. An OOM kill inside a Pod, the kubelet restarting the container, and the Deployment above it visibly untouched — no new ReplicaSet, no new Pod, no event. The absence upstream is the point."
+      }
+    },
+    {
+      "id": "native-sidecars",
+      "n": 4,
+      "stage": null,
+      "title": "Why a Job with a sidecar can finish",
+      "lane": "node",
+      "estSeconds": 42,
+      "narration": "Native sidecars are init containers with a restart policy of Always. They start before the main containers and keep running alongside them, and the kubelet stops them once the main containers finish. That is what lets a Job with a sidecar actually complete. The classic never-exiting sidecar problem, where a proxy kept a Job running forever, is exactly what this was designed to remove.",
+      "visual": {
+        "type": "nativeSidecars",
+        "spec": "NEW. A Job Pod with a native sidecar: sidecar starts first, main container runs and exits, sidecar is stopped, Job completes. Beside it the old shape, where a plain sidecar keeps running and the Job never finishes. Two outcomes from one difference."
+      }
+    },
+    {
+      "id": "job-knobs",
+      "n": 5,
+      "stage": null,
+      "title": "Independent knobs",
+      "lane": "control",
+      "estSeconds": 44,
+      "narration": "A Job's result protocol is several independent settings, not one. Indexed completion gives each unit of work a stable index. backoffLimitPerIndex bounds retries for each index separately. podFailurePolicy classifies Pod outcomes, so a permanent exit code need not be retried at all. It requires restartPolicy Never on the template. successPolicy can declare success before every index finishes. And activeDeadlineSeconds caps total active time regardless.",
+      "visual": {
+        "type": "jobKnobs",
+        "spec": "NEW. Five settings as separate dials on one Job, each with the question it answers. Show them acting independently — changing one leaves the others untouched — because treating them as one retry setting is the mistake."
+      }
+    },
+    {
+      "id": "per-index-backoff",
+      "n": 6,
+      "stage": null,
+      "title": "Why a global limit is awkward",
+      "lane": "control",
+      "estSeconds": 38,
+      "narration": "Which is why a single global backoff limit is awkward for a large indexed Job. A handful of permanently broken shards can exhaust the whole budget and fail work that would have succeeded. Per-index accounting lets healthy indexes finish and records exactly which indexes failed. The Job still ends Failed if any index is permanently failed. But you keep the completed work and a named failure set, instead of one global retry budget wiping unfinished indexes mid-run.",
+      "visual": {
+        "type": "perIndexBackoff",
+        "spec": "NEW. A large indexed Job where a few indexes fail permanently. Under a global limit the whole Job fails with most work incomplete. Under per-index limits the healthy indexes complete and the failures are named. Show both end states with their completion counts."
+      }
+    },
+    {
+      "id": "close",
+      "n": 7,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 30,
+      "narration": "Restarts, then. A failure here has a signature. Something keeps coming back and you are looking at the wrong object, or a Job never finishes because something in it never exits. Both are answered by the Pod's identity. Ask which object restarted. The kubelet, the controller and the Job each mean something different by it.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the kubelet segment shrinks back, holding the spine for the final module."
+      }
+    }
+  ]
+}

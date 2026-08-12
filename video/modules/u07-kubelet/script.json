@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "Segment six of the spine: the kubelet. A name was written into the API, and nothing has happened on the node yet. This module is what the kubelet does with that name. The four contracts it speaks across, and why a Pod can be Running and still be useless.",
+      "narration": "A Pod says Running, and it is serving nothing. This is the kubelet segment of the request path: what happens on the node once a node name is written. It covers the order a Pod is built in, the four contracts the kubelet speaks across, and what its three probes each gate. By the end you can tell a container that is alive from one that is ready, and know which log holds the answer.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with segment six lit."
@@ -37,7 +37,7 @@
       "title": "A loop, not an inbox",
       "lane": "node",
       "estSeconds": 42,
-      "narration": "Nobody tells the kubelet to start a Pod. There is no command, no dispatch, no push. It watches the API for Pods assigned to its node and drives them toward the state those objects describe. Same loop shape as every controller in module three, running on the node instead of the control plane. It coordinates the runtime, the network, storage, secrets, probes, and the status it reports back.",
+      "narration": "Nobody tells the kubelet to start a Pod. There is no command, no dispatch, no push. It watches the API for Pods assigned to its node and drives them toward the state those objects describe. It is the same loop shape as any other controller, running on the node instead of the control plane. It coordinates the runtime, the network, storage, secrets, probes, and the status it reports back.",
       "visual": {
         "type": "kubeletLoop",
         "spec": "NEW. The kubelet drawn as a reconcile loop anchored to one node, watching the API rather than receiving from it. Draw the push model first and strike it through — no arrow from the scheduler into the kubelet. Then the pull: a watch line up to the API, and six spokes out to the things it coordinates (runtime, network, storage, secrets, probes, status). The six spokes must be legible labels, not icons."
@@ -167,7 +167,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 40,
-      "narration": "Segment six, then. A failure here often means the Pod is bound and node-side setup did not finish. Binding does not prove the kubelet admitted it. The API stores conditions, events and the last reported status, and the node's own logs show the current failure. The next segment is the one the sandbox was waiting for, the network attachment itself. That is module eight.",
+      "narration": "The kubelet segment, then. A failure here often means the Pod is bound and node-side setup did not finish. Binding does not prove the kubelet admitted it. The API stores conditions, events and the last reported status, and the node's own logs show the current failure. Running is a phase, not a promise. Ask what the probes gate, and which boundary reported the failure.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: segment six shrinks back into the spine, segment seven lights to preview the next module."

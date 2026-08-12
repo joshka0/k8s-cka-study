@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 26,
-      "narration": "Still on segment three, one level up. The pilot showed a Deployment becoming a ReplicaSet becoming Pods. This module is why you would pick something other than a Deployment, and what happens when two autoscalers disagree.",
+      "narration": "You reached for a Deployment, because that is what you always reach for. The other workload controllers make different promises, and one of them is probably the one you needed. This covers what each controller actually guarantees. It covers what happens when two autoscalers fight over the same Pods, and what a PodDisruptionBudget does not protect you from. By the end you can pick a controller from the invariant your workload needs.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE with segment three lit, annotated 'the objects controllers create'."
@@ -167,7 +167,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 38,
-      "narration": "Controllers create the objects. What they cannot do is choose a node. That is the next segment, and it is where Pending lives. Next module: custom resources and operators. The scheduler follows after that.",
+      "narration": "Controllers create the objects. What they cannot do is choose a node. Pick the controller from the invariant, not from habit. Name what must stay true, and the choice makes itself.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: segment four lights to preview scheduling."

@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "Back to the front of the spine, before any of it exists. Something has to create the control plane in the first place. This module is what kubeadm actually builds. Why a control-plane container missing after a reboot is a file problem, and what separates a safe upgrade from a merely successful one.",
+      "narration": "A control-plane container is missing after a reboot. If its static Pod manifest is gone, the kubelet has no desired state to recreate it from. This covers what kubeadm actually builds before it hands over and leaves. It covers the static Pod files on disk, the separately versioned boundaries between components, and what a safe upgrade needs. By the end you can recover a control plane that no API is available to tell you about.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with the first segment lit and the whole spine drawn faint behind it, to say: this module is about how the spine itself gets built."
@@ -63,7 +63,7 @@
       "title": "The container is gone after a reboot",
       "lane": "control",
       "estSeconds": 42,
-      "narration": "A control-plane container is absent after a reboot. The highest-value first check is not the API. A kubeadm control plane is represented by static Pod manifests on disk. If the kubelet cannot read or realise one, the API object you are looking at may only be a stale mirror Pod. Read `/etc/kubernetes/manifests` and the kubelet. If a manifest is missing or unreadable, the mirror Pod in the API is not the process. Treat the API view as a reflection rather than the truth.",
+      "narration": "A control-plane container is absent after a reboot. The highest-value first check is not the API. A kubeadm control plane is represented by static Pod manifests on disk. If the kubelet cannot read or realise one, the API object you are looking at may only be a stale mirror Pod. Read /etc/kubernetes/manifests and the kubelet. If a manifest is missing or unreadable, the mirror Pod in the API is not the process. Treat the API view as a reflection rather than the truth.",
       "visual": {
         "type": "staticPodMirror",
         "spec": "NEW. A manifest file on disk, the kubelet reading it, and the mirror Pod it publishes into the API. Break the disk side: the manifest is unreadable, the kubelet cannot realise it, and the API still shows the mirror Pod from before. Label that object clearly as a stale reflection, not a running process."
@@ -141,7 +141,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 38,
-      "narration": "That is the layer underneath everything else in this series. A failure here has a signature. The cluster does not answer at all, a node never joins, or an upgrade leaves two components disagreeing about a version. None of it appears in an application log. The next module is what happens to configuration and memory once the cluster is running.",
+      "narration": "That is the layer underneath every other segment of the request path. A failure here has a signature. The cluster does not answer at all, a node never joins, or an upgrade leaves two components disagreeing about a version. None of it appears in an application log. When the API cannot tell you anything, the files on disk still can. Know where kubeadm put them.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: the first segment shrinks back and the whole spine returns to its normal weight, closing the bootstrap detour."

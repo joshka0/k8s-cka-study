@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "The scheduler segment, for workloads that need hardware. A Pod asking for a GPU is not asking for CPU with a different name. This module is how devices became scheduling state, and where a device-backed Pod gets stuck.",
+      "narration": "Asking for a GPU can mean two different things. One is a number a node advertises. The other is an object the scheduler allocates. This is the scheduler segment of the request path, for workloads that need hardware. It covers classes and claims, the allocation handshake, and the three owners a device-backed Pod depends on. By the end you can find where such a Pod is stuck.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with the scheduler segment lit and a device symbol attached to the pending Pod."
@@ -141,7 +141,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 34,
-      "narration": "Devices, then. A failure here has a signature. The Pod is Pending and no node is at fault, or it is bound and the device was never prepared. Three objects hold those answers between them. The next module goes back to the API itself, and the machinery layered on top of it.",
+      "narration": "Devices, then. A failure here has a signature. The Pod is Pending and ordinary node fit looks fine, or it is bound and the device was never prepared. Three objects hold those answers between them. A device-backed Pod has three owners. Read the status on each object before you blame the scheduler.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: the scheduler segment shrinks back, the first segment lights to preview the API-machinery module."

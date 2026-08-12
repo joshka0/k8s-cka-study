@@ -1,0 +1,11 @@
+{
+  "close": 15.621125,
+  "field-conflicts": 19.435,
+  "helm-success": 17.919938,
+  "locate": 18.4685,
+  "progress-deadline": 19.173813,
+  "render-then-reconcile": 27.768063,
+  "review-the-payload": 17.345188,
+  "rollout-arithmetic": 20.506063,
+  "stalled-evidence": 18.912563
+}

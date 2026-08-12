@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "The first segment again, and what can be layered onto it. Not every Kubernetes API is stored by the API server you are talking to. This module is aggregation, what a watch owes you, and how to evaluate policy without a network call.",
+      "narration": "Some of the APIs you query are not stored by the API server you are talking to. This covers the machinery layered onto the front of the request path. It covers the aggregation layer, and when it is worth its cost. It covers what a watch owes you before its history expires, and how to evaluate policy without a network call. By the end you can tell a CRD problem from an aggregated-API problem, and read a 410 correctly.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with the first segment lit and a second, external API server drawn beside it to foreshadow aggregation."
@@ -128,7 +128,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 34,
-      "narration": "The API layer, then. A failure here has a signature. A whole API group stops answering while the rest of the cluster is fine, or a watch client quietly rebuilds because its history expired. Neither looks like an application problem. The next module is about things that deliberately do not happen yet.",
+      "narration": "The API layer, then. A failure here has a signature. A whole API group stops answering while the rest of the cluster is fine, or a watch client quietly rebuilds because its history expired. Neither looks like an application problem. Not every API behaves like a CRD. Ask what serves it before you try to debug it.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: the first segment shrinks back, the controller-queue segment lights to preview the next module."

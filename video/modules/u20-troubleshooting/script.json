@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 32,
-      "narration": "The last module, and it is not a new segment. It is the method for using every segment you have learned. This module is where to start when something is broken, how to descend when the API cannot answer, and the algorithm underneath all of it.",
+      "narration": "kubectl cannot diagnose the API server that makes kubectl work. This is the method for using every segment of the request path. It covers where to start when something is broken, how to descend when the API cannot answer, and which log survives a restart. By the end you have a procedure that still works when your usual tools do not.",
       "visual": {
         "type": "spineRecap",
         "spec": "REUSE the pilot's SpineRecap, showing the whole spine at once — this module belongs to all of it rather than to one segment."
@@ -128,7 +128,7 @@
       "title": "The algorithm underneath",
       "lane": "control",
       "estSeconds": 44,
-      "narration": "Underneath all of it is one algorithm, and it is short. State the transition you expected and what you actually observe. Identify which component owns that transition. Read status, events and logs at that boundary and nowhere else. Compare against one adjacent layer that is healthy. Then change one thing, and verify it. Everything in these twenty units is a way of answering step two quickly.",
+      "narration": "Underneath all of it is one algorithm, and it is short. State the transition you expected and what you actually observe. Identify which component owns that transition. Read status, events and logs at that boundary and nowhere else. Compare against one adjacent layer that is healthy. Then change one thing, and verify it. Every segment of the request path is a way of answering step two quickly.",
       "visual": {
         "type": "theAlgorithm",
         "spec": "NEW. Five steps as the closing frame of the whole course, each numbered and legible as a still. Under step two, the spine drawn small as the lookup that answers 'who owns this transition'. This is the frame the series has been building toward — give it room and hold it."
@@ -141,7 +141,7 @@
       "title": "The end of the spine",
       "lane": null,
       "estSeconds": 34,
-      "narration": "Twenty units. One method. If you can state the transition you expected, and name the component that owns it, you already have your next question. That is the whole difference between recalling Kubernetes commands and understanding the system underneath them.",
+      "narration": "One method. If you can state the transition you expected, and name the component that owns it, you already have your next question. That is the whole difference between recalling Kubernetes commands and understanding the system underneath them.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, final state: the whole spine lit end to end with every module number marked against its segment, including the advanced arc. No preview — this is the last frame of the course."

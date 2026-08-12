@@ -1,0 +1,125 @@
+{
+  "title": "Scope Is Part Of The Permission",
+  "subtitle": "Module 21 — how RBAC actually composes, and how a node earns its identity",
+  "series": {
+    "module": 21,
+    "unit": "u21",
+    "spineSegment": "admission / storage",
+    "assumes": "Intent to Packet"
+  },
+  "meta": {
+    "narrationSpeed": 1,
+    "voiceReferenceId": "c023b17b38144a60b3984153247d993f",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "note": "Timing comes from the synthesised audio. estSeconds is a planning estimate only. Content authority: assets/cka-deep-content.js unit u21. CKA-deep arc: deepens a segment already introduced rather than advancing the spine.",
+    "sharedProject": "../../src"
+  },
+  "beats": [
+    {
+      "id": "locate",
+      "n": 0,
+      "stage": null,
+      "title": "You are here",
+      "lane": null,
+      "estSeconds": 28,
+      "narration": "No Role in the namespace looks privileged. That is not proof of least privilege. This covers the authorization gate and the identity behind it. It covers why scope is part of a permission, and why rules only ever add. It covers the paths by which a subject reaches more than you granted. It also covers how a node earns an identity the API trusts. By the end you can audit a permission graph rather than a single Role.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE spineLocator with the admission / storage segment lit."
+      }
+    },
+    {
+      "id": "scope-is-the-permission",
+      "n": 1,
+      "stage": null,
+      "title": "Scope is half the grant",
+      "lane": "control",
+      "estSeconds": 42,
+      "narration": "RBAC grants verbs over resources, and it has no deny rule. What varies is scope. A Role is namespaced. A ClusterRole is cluster-scoped, but binding it with a RoleBinding confines its rules to that one namespace. A ClusterRoleBinding grants everywhere. So the same ClusterRole means two different things depending on how it is bound.",
+      "visual": {
+        "type": "scopeMatrix",
+        "spec": "NEW. A two-by-two of Role and ClusterRole against RoleBinding and ClusterRoleBinding, with the resulting effective scope in each cell. Highlight the ClusterRole-plus-RoleBinding cell — reusable rules, one namespace — because that is the combination people misread."
+      }
+    },
+    {
+      "id": "permissions-are-additive",
+      "n": 2,
+      "stage": null,
+      "title": "The union, not the worst case",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "Effective permission is the union of every applicable grant. Which is why saying this ServiceAccount has no privileged Role proves nothing. You have to consider every RoleBinding and ClusterRoleBinding that reaches it, the groups it belongs to, and anything that can impersonate it. Least privilege is a property of the whole graph, not of one object.",
+      "visual": {
+        "type": "permissionUnion",
+        "spec": "NEW. One subject with several grants arriving from different bindings and group memberships, combining into a single effective set that is visibly larger than any individual grant. Show the mistake beside it: inspecting one Role and concluding safety."
+      }
+    },
+    {
+      "id": "escalation-paths",
+      "n": 3,
+      "stage": null,
+      "title": "What actually escalates",
+      "lane": "control",
+      "estSeconds": 40,
+      "narration": "Three things turn indirect authority into real privilege, and they are worth auditing by name. The right to bind roles you do not already hold — create on bindings is not enough without bind or the permissions themselves. Impersonation, because it borrows another identity outright. And aggregation, because a ClusterRole can absorb rules from others as labels change. Audit the reachable permission graph, not the Role you were shown.",
+      "visual": {
+        "type": "escalationPaths",
+        "spec": "NEW. Three escalation routes from a modest starting subject to broad authority: binding creation, impersonation, aggregation. Draw each as a path through the graph rather than a property of one object, ending in the same elevated state."
+      }
+    },
+    {
+      "id": "node-is-a-principal",
+      "n": 4,
+      "stage": null,
+      "title": "A node is an authenticated principal",
+      "lane": "node",
+      "estSeconds": 44,
+      "narration": "A node is not just an object; it is a principal the API authenticates. A bootstrapping kubelet presents a temporary token, submits a certificate signing request, and receives a client certificate. Its identity follows a convention: system:node, then the node name, inside the system:nodes group. The Node object existing is not the beginning of trust. The credential is.",
+      "visual": {
+        "type": "nodeIdentity",
+        "spec": "NEW. The bootstrap sequence as an identity being minted: temporary token, CSR submitted, certificate issued, identity named. Show the Node object appearing after that, not before, and mark the identity convention explicitly as the thing authorization keys on."
+      }
+    },
+    {
+      "id": "authz-plus-admission",
+      "n": 5,
+      "stage": null,
+      "title": "Two constraints, not one",
+      "lane": "node",
+      "estSeconds": 40,
+      "narration": "Two mechanisms then constrain that identity, and they act at different stages. The Node authorizer limits which API operations a kubelet may request at all. NodeRestriction admission constrains the mutations that get through, so a kubelet cannot modify objects belonging to another node. Authorization decides whether you may ask. Admission decides whether what you asked for is acceptable.",
+      "visual": {
+        "type": "nodeAuthzAdmission",
+        "spec": "NEW. One kubelet request passing through two distinct gates, each rejecting a different thing: an operation it may not request at all, and a permitted operation carrying an unacceptable payload. Reuse the gate visual language from module 02 so the two stages read as the same pipeline."
+      }
+    },
+    {
+      "id": "cert-errors",
+      "n": 6,
+      "stage": null,
+      "title": "Joined, and still NotReady",
+      "lane": "node",
+      "estSeconds": 38,
+      "narration": "So a node that joined but stays NotReady, with certificate errors in the kubelet log, is an identity problem rather than a scheduling one. The kubelet must authenticate before it can update Node status or renew its lease. A join command that returned success does not prove the certificate handoff completed.",
+      "visual": {
+        "type": "certErrors",
+        "spec": "NEW. A node with a failed credential attempting to report status, the request rejected at authentication, and the Node object staying stale as a result. Show the successful-looking join command earlier in the timeline, so the gap between it and working credentials is visible."
+      }
+    },
+    {
+      "id": "close",
+      "n": 7,
+      "stage": null,
+      "title": "Back to the spine",
+      "lane": null,
+      "estSeconds": 32,
+      "narration": "Identity, then. A failure here has a signature. A request is refused and no rule ever granted it, or a node cannot authenticate and speak for itself at all. One is authorization. The other is identity. Neither is answered in the workload. Audit the graph, not the Role. Scope, aggregation and impersonation all reach further than one rule suggests.",
+      "visual": {
+        "type": "spineLocator",
+        "spec": "REUSE, reversed: the admission / storage segment shrinks back into the spine."
+      }
+    }
+  ]
+}

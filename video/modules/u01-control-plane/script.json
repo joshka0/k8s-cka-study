@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 34,
-      "narration": "In the pilot we followed one declaration from kubectl apply to a packet. Fourteen stages. This module is the first one: desired object. It covers everything upstream of a scheduler decision. Who accepts your write, who stores it, and who notices. And what happens to all of it when the control plane goes down.",
+      "narration": "Your control plane is down, and traffic is still flowing. Both are true at once, and neither tells you what to fix. This is the front of the request path, where a write is accepted, stored and noticed. It covers the five components that do the work, the one contract they speak through, and the store underneath them. By the end you can name which component owns a failure, and say exactly what an outage stops.",
       "visual": {
         "type": "spineLocator",
         "spec": "NEW. The full 14-segment spine from the pilot's recap, drawn small across the top. The first segment lights and enlarges while the rest dim. A bracket drops beneath it labelled 'this module'. Reuse the pilot's SpineRecap row layout and colours so the two read as the same diagram."
@@ -37,7 +37,7 @@
       "title": "Five actors",
       "lane": "control",
       "estSeconds": 58,
-      "narration": "Five core roles explain this part of the path. The API server exposes the API and enforces request policy. etcd stores API state. Controllers reconcile objects. The scheduler chooses a node. The kubelet drives assigned Pods on one node. Runtime, network, storage and Service data-plane failures have other owners. Reciting that list is worth doing. The boundaries between them matter more. In a kubeadm cluster, check the kube-system Pods and `/etc/kubernetes/manifests`. Read static-Pod container logs. Check kubelet with systemctl and journalctl. Check API readiness and etcd health before you blame a downstream controller.",
+      "narration": "Five core roles explain this part of the path. The API server exposes the API and enforces request policy. etcd stores API state. Controllers reconcile objects. The scheduler chooses a node. The kubelet drives assigned Pods on one node. Runtime, network, storage and Service data-plane failures have other owners. Reciting that list is worth doing. The boundaries between them matter more. In a kubeadm cluster, check the kube-system Pods and /etc/kubernetes/manifests. Read static-Pod container logs. Check kubelet with systemctl and journalctl. Check API readiness and etcd health before you blame a downstream controller.",
       "visual": {
         "type": "componentMap",
         "spec": "NEW. Five chips arranged around a central API server node — not in a row. Each names its one-line ownership beneath it. As each is spoken it lights and draws its connection to the API server. End state: five chips, five connections, all through the middle. No connections between the outer four."
@@ -154,7 +154,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 42,
-      "narration": "Segment one of the spine, then: desired object. Start with the API response. A rejected write returns an error. A successful read-back proves the object exists. Downstream failures may leave Events, status conditions or only component logs. Do not require an Event before you inspect the next owner. Next module: the five gates that write has to pass, and what it costs to put your own webhook in that path.",
+      "narration": "The desired object segment, then. Start with the API response. A rejected write returns an error. A successful read-back proves the object exists. Downstream failures may leave Events, status conditions or only component logs. Do not require an Event before you inspect the next owner. Whatever is broken, ask which of these five owns it. That question is the map.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE this module's opening spineLocator, reversed: the enlarged first segment shrinks back into the full spine, then the second segment lights to preview the next module. Hold on the complete spine with the module title card."

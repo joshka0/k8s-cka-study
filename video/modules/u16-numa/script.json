@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "The kubelet again, at the hardware. The scheduler has already decided this node can fit your Pod. This module is why that decision can still be refused locally, and what actually produces predictable latency.",
+      "narration": "The scheduler decided this node fits. The node refused the Pod anyway. This is the kubelet segment of the request path, down at the hardware. It covers the topology hints the node managers exchange, what exclusive CPUs require, and why a CPU limit is not isolation. By the end you can explain where latency and jitter actually come from, and which policy would have prevented that refusal.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with the kubelet segment lit, and the scheduler segment shown already passed, to set up the tension between the two."
@@ -141,7 +141,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 34,
-      "narration": "The node, at the hardware. A failure here has a signature. The Pod was placed and then refused — that refusal is on the Pod object. Or it runs and misses its latency target while every average looks fine — that one lives on the node. Know which evidence lives where. The next module is how devices are asked for in the first place.",
+      "narration": "The node, at the hardware. A failure here has a signature. The Pod was placed and then refused — that refusal is on the Pod object. Or it runs and misses its latency target while every average looks fine — that one lives on the node. Know which evidence lives where. Feasible for the cluster is not feasible for the node. When a node refuses, ask what it was trying to align.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: the kubelet segment shrinks back into the spine, holding the whole spine visible for the advanced arc's continuation."

@@ -24,7 +24,7 @@
       "title": "You are here",
       "lane": null,
       "estSeconds": 30,
-      "narration": "Segment five of the spine: the scheduler queue and binding. The pilot showed a Pod picking up a node name in a second or two. This module is the machinery behind that name, why a Pod sits Pending in a cluster that looks empty, and what preemption actually costs.",
+      "narration": "A Pod stays Pending while every node shows free CPU. The scheduler compares declared requests against allocatable capacity, and current usage never enters that check. Resources are only one constraint. This is the scheduler queue and binding segment of the request path. It covers how a node is filtered and scored, the single value binding writes, and what preemption can and cannot fix. By the end you can read a Pending Pod's events and name the constraint that stopped it.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE spineLocator with segment five lit."
@@ -128,7 +128,7 @@
       "title": "A hint, not a reservation",
       "lane": "control",
       "estSeconds": 42,
-      "narration": "Module four separated preemption from eviction. What preemption costs the scheduler is a gap. Once victims are chosen, the pending Pod gets a nominated node — and that is a hint, not a reservation. Termination takes time. Grace periods run. In that window the cluster changes, and the Pod can land somewhere else entirely, or wait again. Saying the nominated node guarantees placement is the wrong answer.",
+      "narration": "Preemption and eviction are separate mechanisms. What preemption costs the scheduler is a gap. Once victims are chosen, the pending Pod gets a nominated node — and that is a hint, not a reservation. Termination takes time. Grace periods run. In that window the cluster changes, and the Pod can land somewhere else entirely, or wait again. Saying the nominated node guarantees placement is the wrong answer.",
       "visual": {
         "type": "nominatedNode",
         "spec": "NEW. A high-priority Pod is pending; victims on node-3 are selected and marked terminating with a visible grace-period countdown. The pending Pod carries a 'nominatedNodeName: node-3' tag drawn as a sticky note, deliberately not as a lock. During the countdown a different Pod is scheduled onto node-3's freed capacity, and when the countdown ends the nominated Pod re-enters the queue. Show the tag surviving unchanged while the outcome diverges from it."
@@ -154,7 +154,7 @@
       "title": "Back to the spine",
       "lane": null,
       "estSeconds": 40,
-      "narration": "Segment five, then. A failure here has a signature: the Pod exists, it has passed every gate, and it has no node name. No kubelet has been asked to run the Pod yet. Node state can still be the cause. Check readiness, schedulability, taints, labels, allocatable resources, topology and storage constraints. The scheduler compares all of them before it writes a node name. Once that name is written the failure moves — to the kubelet, the runtime, and the boundaries they own. That is module seven.",
+      "narration": "When a Pod stays Pending, first ask whether it has a node name. If it has none, no kubelet has been asked to run the Pod yet. Read its scheduling events before you inspect the nodes. Then test each reported reason against readiness, schedulability, taints, labels, allocatable resources, topology, storage, and scheduling gates. Preemption helps only if evicting lower-priority Pods would make a node feasible, and the Pod's own policy allows it. A node name marks the handoff. After it is written, the node's kubelet owns what happens next.",
       "visual": {
         "type": "spineLocator",
         "spec": "REUSE, reversed: segment five shrinks back into the spine, segment six lights to preview the next module."

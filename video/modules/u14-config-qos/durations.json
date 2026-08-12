@@ -1,9 +1,9 @@
 {
   "besteffort-incomplete": 22.987688,
-  "close": 20.924,
+  "close": 22.726438,
   "delivery-semantics": 21.681563,
   "eviction-vs-oom": 22.778688,
-  "locate": 12.98275,
+  "locate": 20.192563,
   "qos-is-derived": 18.599125,
   "rollout-trigger": 15.725625,
   "secret-is-not-encryption": 16.639938,
