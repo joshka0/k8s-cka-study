@@ -1,0 +1,21 @@
+{
+  "id": "u06-pending-taint",
+  "title": "A Pod is Pending in a cluster with free capacity",
+  "unit": "u6",
+  "segments": [
+    "scheduler-binding"
+  ],
+  "points": 6,
+  "cluster": "systems",
+  "owns": [
+    "ns/checkout",
+    "node/lab-u06-target"
+  ],
+  "breaks": [],
+  "requiresHealthy": [
+    "api-server",
+    "scheduler",
+    "node/any-schedulable"
+  ],
+  "chainAfter": null
+}

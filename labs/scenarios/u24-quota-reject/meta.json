@@ -1,0 +1,12 @@
+{
+  "id": "u24-quota-reject",
+  "title": "A Deployment has no Pods at all — not even Pending",
+  "unit": "u24",
+  "segments": ["admission-storage"],
+  "points": 5,
+  "cluster": "systems",
+  "owns": ["ns/reports", "quota/reports"],
+  "breaks": [],
+  "requiresHealthy": ["api-server", "node/any-schedulable"],
+  "chainAfter": null
+}
