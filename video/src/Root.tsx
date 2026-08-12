@@ -23,6 +23,21 @@ import u09 from '../modules/u09-dns/script.json';
 import u10 from '../modules/u10-storage/script.json';
 import u11 from '../modules/u11-etcd-ha/script.json';
 import u12 from '../modules/u12-scale-evidence/script.json';
+import u13 from '../modules/u13-bootstrap/script.json';
+import u14 from '../modules/u14-config-qos/script.json';
+import u15 from '../modules/u15-ingress-gateway/script.json';
+import u16 from '../modules/u16-numa/script.json';
+import u17 from '../modules/u17-devices-dra/script.json';
+import u18 from '../modules/u18-api-machinery/script.json';
+import u19 from '../modules/u19-coordination/script.json';
+import u20 from '../modules/u20-troubleshooting/script.json';
+import u21 from '../modules/u21-identity-rbac/script.json';
+import u22 from '../modules/u22-metrics-debug/script.json';
+import u23 from '../modules/u23-declarative-delivery/script.json';
+import u24 from '../modules/u24-namespace-governance/script.json';
+import u25 from '../modules/u25-service-exposure/script.json';
+import u26 from '../modules/u26-restart-ownership/script.json';
+import u27 from '../modules/u27-pod-security/script.json';
 
 const Pilot: React.FC<{ showCaptions: boolean }> = ({ showCaptions }) => {
   return (
@@ -61,6 +76,21 @@ const MODULES = [
   { id: 'Module10', name: 'u10-storage', script: u10 },
   { id: 'Module11', name: 'u11-etcd-ha', script: u11 },
   { id: 'Module12', name: 'u12-scale-evidence', script: u12 },
+  { id: 'Module13', name: 'u13-bootstrap', script: u13 },
+  { id: 'Module14', name: 'u14-config-qos', script: u14 },
+  { id: 'Module15', name: 'u15-ingress-gateway', script: u15 },
+  { id: 'Module16', name: 'u16-numa', script: u16 },
+  { id: 'Module17', name: 'u17-devices-dra', script: u17 },
+  { id: 'Module18', name: 'u18-api-machinery', script: u18 },
+  { id: 'Module19', name: 'u19-coordination', script: u19 },
+  { id: 'Module20', name: 'u20-troubleshooting', script: u20 },
+  { id: 'Module21', name: 'u21-identity-rbac', script: u21 },
+  { id: 'Module22', name: 'u22-metrics-debug', script: u22 },
+  { id: 'Module23', name: 'u23-declarative-delivery', script: u23 },
+  { id: 'Module24', name: 'u24-namespace-governance', script: u24 },
+  { id: 'Module25', name: 'u25-service-exposure', script: u25 },
+  { id: 'Module26', name: 'u26-restart-ownership', script: u26 },
+  { id: 'Module27', name: 'u27-pod-security', script: u27 },
 ];
 
 export const RemotionRoot: React.FC = () => {

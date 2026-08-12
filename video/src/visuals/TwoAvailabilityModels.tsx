@@ -47,7 +47,7 @@ export const TwoAvailabilityModels: React.FC<VisualProps> = () => {
 
         {/* LEFT — API servers, interchangeable */}
         <div style={{ position: 'absolute', left: 60, top: 56, width: 720, borderRadius: 18, border: `2px solid ${PALETTE.blue}66`, background: `${PALETTE.blue}04`, padding: '16px 20px', opacity: leftIn }}>
-          <Label color={PALETTE.blue} size={13} style={{ marginBottom: 12 }}>API servers — identical, interchangeable units</Label>
+          <Label color={PALETTE.blueInk} size={13} style={{ marginBottom: 12 }}>API servers — identical, interchangeable units</Label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ fontFamily: MONO, color: PALETTE.ink, fontSize: 15, fontWeight: 900, border: `1px solid ${PALETTE.line}`, borderRadius: 10, background: '#0d1522', padding: '12px 14px', textAlign: 'center' }}>
               load<br />balancer

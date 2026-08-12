@@ -44,7 +44,7 @@ const ModuleBinding: React.FC = () => {
       {/* scheduler → binding → API server */}
       <Horizontal center gap={40}>
         <Box pad={16} borderColor={PALETTE.blue} style={{ width: 190, textAlign: 'center' }}>
-          <Label color={PALETTE.blue} size={12}>control plane</Label>
+          <Label color={PALETTE.blueInk} size={12}>control plane</Label>
           <div style={{ fontFamily: MONO, color: PALETTE.ink, fontSize: 22, fontWeight: 900 }}>scheduler</div>
         </Box>
 
@@ -72,7 +72,7 @@ const ModuleBinding: React.FC = () => {
         </div>
 
         <Box pad={16} borderColor={PALETTE.blue} style={{ width: 200, textAlign: 'center' }}>
-          <Label color={PALETTE.blue} size={12}>control plane</Label>
+          <Label color={PALETTE.blueInk} size={12}>control plane</Label>
           <div style={{ fontFamily: SANS, color: PALETTE.ink, fontSize: 24, fontWeight: 900 }}>API server</div>
         </Box>
       </Horizontal>
@@ -189,7 +189,7 @@ const PilotBinding: React.FC = () => {
         {/* scheduler + its next pod */}
         <div style={{ position: 'relative' }}>
           <Box pad={16} borderColor={PALETTE.blue} style={{ width: 190, textAlign: 'center' }}>
-            <Label color={PALETTE.blue} size={12}>control plane</Label>
+            <Label color={PALETTE.blueInk} size={12}>control plane</Label>
             <div style={{ fontFamily: MONO, color: PALETTE.ink, fontSize: 22, fontWeight: 900 }}>scheduler</div>
           </Box>
           {/* next pod, scheduler turns to it */}
@@ -246,7 +246,7 @@ const PilotBinding: React.FC = () => {
         </div>
 
         <Box pad={16} borderColor={PALETTE.blue} style={{ width: 200, textAlign: 'center' }}>
-          <Label color={PALETTE.blue} size={12}>control plane</Label>
+          <Label color={PALETTE.blueInk} size={12}>control plane</Label>
           <div style={{ fontFamily: SANS, color: PALETTE.ink, fontSize: 24, fontWeight: 900 }}>API server</div>
         </Box>
       </Horizontal>

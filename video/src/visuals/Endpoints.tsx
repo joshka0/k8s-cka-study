@@ -57,7 +57,7 @@ const PilotEndpoints: React.FC = () => {
 
       {/* endpointslice object gains a row */}
       <Box pad={16} borderColor={PALETTE.blue} style={{ width: 760, margin: '34px auto 0', textAlign: 'center' }}>
-        <Label color={PALETTE.blue} size={12}>Service · EndpointSlice</Label>
+        <Label color={PALETTE.blueInk} size={12}>Service · EndpointSlice</Label>
         <div style={{ fontFamily: MONO, fontSize: 17, marginTop: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', color: PALETTE.muted }}>
             <span>ready backends</span>
@@ -111,9 +111,9 @@ const PilotEndpoints: React.FC = () => {
           opacity: emptyCase,
         }}
       >
-        <Label color={PALETTE.amber} size={11}>no ready backends</Label>
+        <Label color={PALETTE.amber} size={11}>no ready endpoints</Label>
         <div style={{ fontFamily: MONO, color: PALETTE.amber, fontSize: 16, fontWeight: 800, marginTop: 4 }}>
-          EndpointSlice empty (0 rows)
+          matching addresses present · none ready
         </div>
       </div>
     </div>
@@ -223,7 +223,7 @@ const ModuleEndpoints: React.FC = () => {
                 </div>
                 {isThird && (
                   <div style={{ marginTop: 10, minHeight: 20 }}>
-                    {flip > 0.3 ? (
+                    {flip > 0.5 ? (
                       <Label color={PALETTE.good} size={11} style={{ textTransform: 'none', letterSpacing: 0 }}>
                         readiness flips → condition changes
                       </Label>
@@ -266,7 +266,7 @@ const ModuleEndpoints: React.FC = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <Label color={PALETTE.blue} size={12}>Service · EndpointSlice</Label>
+            <Label color={PALETTE.blueInk} size={12}>Service · EndpointSlice</Label>
             <span style={{ fontFamily: MONO, color: PALETTE.muted, fontSize: 13, fontWeight: 700 }}>
               membership: label match — not readiness
             </span>

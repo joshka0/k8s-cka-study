@@ -83,13 +83,16 @@ export interface ModuleContext {
   subtitle: string;
   spineSegment: string;
   spineOrdinal: number;
+  /** The layer this module descends into beneath its segment, if any. Declared
+   *  by the module so the locator needs no per-module knowledge. */
+  beneath?: string;
 }
 
 export interface VisualModule {
   module: ModuleContext;
   /** Spine ordinal (1..14) the module locator should magnify this beat. */
   light: number;
-  /** True on the closing "back to the spine" beat (reversed, previews next). */
+  /** True on the closing "back to the spine" beat, which holds the whole path. */
   close: boolean;
 }
 

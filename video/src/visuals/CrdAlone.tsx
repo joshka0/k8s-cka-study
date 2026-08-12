@@ -37,7 +37,7 @@ export const CrdAlone: React.FC<VisualProps> = () => {
         </Box>
         <span style={{ color: PALETTE.muted, fontSize: 22 }}>→</span>
         <Box pad={10} borderColor={PALETTE.blue} style={{ opacity: kind }}>
-          <Label color={PALETTE.blue} size={10}>API server</Label>
+          <Label color={PALETTE.blueInk} size={10}>API server</Label>
           <div style={{ fontFamily: MONO, color: PALETTE.blue, fontSize: 17, fontWeight: 900 }}>+ new kind: widgets.example.io</div>
         </Box>
       </div>

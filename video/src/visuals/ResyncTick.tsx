@@ -29,7 +29,7 @@ export const ResyncTick: React.FC<VisualProps> = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 50, opacity: cache }}>
         {/* the cached objects */}
         <Box pad={16} borderColor={PALETTE.blue} style={{ width: 560 }}>
-          <Label color={PALETTE.blue} size={11} style={{ marginBottom: 12 }}>informer cache</Label>
+          <Label color={PALETTE.blueInk} size={11} style={{ marginBottom: 12 }}>informer cache</Label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {OBJS.map((o, i) => {
               const isMissed = i === 2;

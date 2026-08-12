@@ -28,7 +28,16 @@ export const ComponentMap: React.FC<VisualProps> = () => {
 
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-      <Label color={PALETTE.cyan} size={12} style={{ textAlign: 'center', marginTop: 10 }}>
+      {/* This header was the only in-flow child of an `inset: 0` root, and the
+        * stage centres its child's flow content — so the one flow item landed
+        * in the vertical middle of the frame, printed across the API server
+        * box. The footer below already avoids this by positioning itself; the
+        * header has to do the same. */}
+      <Label
+        color={PALETTE.cyan}
+        size={12}
+        style={{ position: 'absolute', top: 10, left: 0, right: 0, textAlign: 'center' }}
+      >
         five things do the work — every interaction runs through the API server
       </Label>
 
@@ -107,7 +116,7 @@ export const ComponentMap: React.FC<VisualProps> = () => {
       >
         <Box pad={18} borderColor={PALETTE.blue} bg={`${PALETTE.blue}14`}
           style={{ boxShadow: `0 0 34px ${PALETTE.blue}44` }}>
-          <Label color={PALETTE.blue} size={12}>control plane</Label>
+          <Label color={PALETTE.blueInk} size={12}>control plane</Label>
           <div style={{ fontFamily: SANS, color: PALETTE.ink, fontSize: 30, fontWeight: 900 }}>API server</div>
           <div style={{ fontFamily: MONO, color: PALETTE.muted, fontSize: 13, marginTop: 5, fontWeight: 700 }}>
             the only writer of state

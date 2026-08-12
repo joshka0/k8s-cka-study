@@ -61,7 +61,7 @@ export const HeadlessService: React.FC<VisualProps> = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <Label color={PALETTE.blue} size={12.5}>normal Service — ClusterIP</Label>
+              <Label color={PALETTE.blueInk} size={12.5}>normal Service — ClusterIP</Label>
               <span style={{ fontFamily: MONO, color: PALETTE.muted, fontSize: 14, fontWeight: 800 }}>spec.clusterIP: 10.0.0.1</span>
             </div>
 

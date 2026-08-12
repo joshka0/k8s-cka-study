@@ -30,7 +30,7 @@ export const WebhookChecklist: React.FC<VisualProps> = () => {
       </Label>
 
       <Box pad={26} borderColor={PALETTE.blue} bg={`${PALETTE.blue}08`} style={{ width: 1180, margin: '0 auto', borderRadius: 26, opacity: card }}>
-        <Label color={PALETTE.blue} size={13} style={{ marginBottom: 18 }}>before you write a webhook</Label>
+        <Label color={PALETTE.blueInk} size={13} style={{ marginBottom: 18 }}>before you write a webhook</Label>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {RULES.map((r, i) => {

@@ -26,7 +26,7 @@ export const InformerLoop: React.FC<VisualProps> = () => {
       {/* shared-cache architecture */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 30, opacity: arch }}>
         <Box pad={14} borderColor={PALETTE.blue} style={{ width: 200, textAlign: 'center' }}>
-          <Label color={PALETTE.blue} size={11}>control plane</Label>
+          <Label color={PALETTE.blueInk} size={11}>control plane</Label>
           <div style={{ fontFamily: MONO, color: PALETTE.ink, fontSize: 20, fontWeight: 900 }}>API server</div>
         </Box>
 

@@ -64,7 +64,7 @@ export const CsiTwoHalves: React.FC<VisualProps> = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <Label color={PALETTE.blue} size={13.5}>control-plane half — the sidecars</Label>
+            <Label color={PALETTE.blueInk} size={13.5}>control-plane half — the sidecars</Label>
             <span style={{ fontFamily: MONO, color: PALETTE.muted, fontSize: 12, fontWeight: 800 }}>privileged: no</span>
           </div>
           {SIDECARS.map((s, i) => (

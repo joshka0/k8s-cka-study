@@ -193,7 +193,7 @@ const ModuleDataPlane: React.FC = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <Label color={PALETTE.blue} size={12}>Service manifest — unchanged</Label>
+            <Label color={PALETTE.blueInk} size={12}>Service manifest — unchanged</Label>
             <span style={{ fontFamily: MONO, color: PALETTE.good, fontSize: 13, fontWeight: 900 }}>identical below every implementation</span>
           </div>
           <div style={{ fontFamily: MONO, fontSize: 17, lineHeight: 1.75, color: PALETTE.ink }}>

@@ -36,7 +36,7 @@ export const OperatorTest: React.FC<VisualProps> = () => {
       <div style={{ display: 'flex', justifyContent: 'center', gap: 80 }}>
         {/* run-once */}
         <div style={{ width: 640, border: `1px solid ${PALETTE.blue}55`, borderRadius: 22, padding: 20, opacity: 0.25 + colOne * 0.75 }}>
-          <Label color={PALETTE.blue} size={14} style={{ marginBottom: 14 }}>run-once</Label>
+          <Label color={PALETTE.blueInk} size={14} style={{ marginBottom: 14 }}>run-once</Label>
           {ONE.map((c, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: MONO, color: PALETTE.ink, fontSize: 18, fontWeight: 800, padding: '10px 12px', opacity: colOne }}>
               <span style={{ fontSize: 22 }}>{c.icon}</span> {c.task}

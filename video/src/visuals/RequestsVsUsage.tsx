@@ -55,7 +55,7 @@ export const RequestsVsUsage: React.FC<VisualProps> = () => {
         {/* left — what the scheduler sees */}
         <div style={{ width: 760, textAlign: 'center' }}>
           <div style={{ marginBottom: 10 }}>
-            <Label color={PALETTE.blue} size={12}>what the scheduler sees</Label>
+            <Label color={PALETTE.blueInk} size={12}>what the scheduler sees</Label>
           </div>
           <div style={{ position: 'relative', width: COL_W, margin: '0 auto' }}>
             {/* chip lane above the column — the bounced-off new Pod */}

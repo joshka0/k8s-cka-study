@@ -135,7 +135,7 @@ export const TrafficChain: React.FC<VisualProps> = () => {
           >
             <div style={{ fontFamily: MONO, color: PALETTE.ink, fontSize: 20, fontWeight: 900 }}>Service</div>
             <div style={{ fontFamily: MONO, color: PALETTE.muted, fontSize: 14, fontWeight: 700, marginTop: 4 }}>my-svc</div>
-            <Label color={PALETTE.blue} size={11} style={{ marginTop: 14 }}>traffic enters</Label>
+            <Label color={PALETTE.blueInk} size={11} style={{ marginTop: 14 }}>traffic enters</Label>
           </div>
 
           {/* the four links */}

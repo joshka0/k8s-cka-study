@@ -92,7 +92,7 @@ export const StaleStatus: React.FC<VisualProps> = () => {
             opacity: scene,
           }}
         >
-          <Label color={PALETTE.blue} size={12} style={{ marginBottom: 6 }}>API server — stored Pod object</Label>
+          <Label color={PALETTE.blueInk} size={12} style={{ marginBottom: 6 }}>API server — stored Pod object</Label>
           <div style={{ fontFamily: MONO, color: PALETTE.ink, fontSize: 17, fontWeight: 800 }}>
             web-7f9c8 · status.phase:
             <span style={{ color: PALETTE.good, fontWeight: 900 }}> Running</span>

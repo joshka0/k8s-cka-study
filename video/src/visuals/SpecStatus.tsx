@@ -26,7 +26,7 @@ export const SpecStatus: React.FC<VisualProps> = () => {
       <div style={{ display: 'flex', justifyContent: 'center', gap: 40, opacity: obj }}>
         {/* spec */}
         <Box pad={16} borderColor={PALETTE.blue} bg={`${PALETTE.blue}08`} style={{ width: 420 }}>
-          <Label color={PALETTE.blue} size={12} style={{ marginBottom: 10 }}>spec · intent (written by user)</Label>
+          <Label color={PALETTE.blueInk} size={12} style={{ marginBottom: 10 }}>spec · intent (written by user)</Label>
           <Field k="replicas" v="10" />
           <div style={{ fontFamily: MONO, color: PALETTE.muted, fontSize: 13, fontWeight: 700, marginTop: 8 }}>what was requested</div>
         </Box>

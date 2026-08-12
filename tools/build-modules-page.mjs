@@ -34,6 +34,11 @@ const mmss = (secs) => {
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 };
 
+// A clean checkout has no rendered video at all. Reading the directory
+// unconditionally crashed instead of producing the script-only state the
+// no-video branch below already handles. Read it once, tolerantly.
+const VIDEO_FILES = existsSync(VIDEO_OUT) ? readdirSync(VIDEO_OUT) : [];
+
 const entries = readdirSync(MODULES)
   .filter((d) => existsSync(path.join(MODULES, d, 'script.json')))
   .map((d) => {
@@ -44,8 +49,8 @@ const entries = readdirSync(MODULES)
     // Only an exact module export is a full lesson. Beat proofs and legacy
     // excerpts also start with ModuleNN-, so treating any prefix match as a
     // module video silently links a two-minute page entry to a short clip.
-    const mp4 = readdirSync(VIDEO_OUT)
-      .find((f) => f === `${prefix}.mp4`);
+    const mp4 = VIDEO_FILES
+    .find((f) => f === `${prefix}.mp4`);
     return {
       n,
       dir: d,
@@ -92,7 +97,7 @@ const html = `<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Twelve narrated video modules on Kubernetes architecture, one per course unit — each going deeper on one segment of the request path.">
+  <meta name="description" content="${entries.length} narrated video modules on Kubernetes architecture, one per course unit — each going deeper on one segment of the request path.">
   <title>Video Modules — Kubernetes Beyond YAML</title>
   <script>
     // Same path-agnostic guard as index.html: assets are referenced relatively,
@@ -139,7 +144,7 @@ const html = `<!doctype html>
 <main class="wrap">
   <h1>Video modules</h1>
   <p class="lede">
-    Twelve narrated modules, one per course unit. The pilot walks the whole
+    ${entries.length} narrated modules, one per course unit. The pilot walks the whole
     request path end to end; each module then goes deeper on a single segment
     of it. They assume you have watched the pilot, and they teach only what
     their unit teaches.

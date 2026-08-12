@@ -63,7 +63,7 @@ export const SnapshotOmits: React.FC<VisualProps> = () => {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <Label color={PALETTE.blue} size={12.5}>inside — the snapshot (etcd)</Label>
+            <Label color={PALETTE.blueInk} size={12.5}>inside — the snapshot (etcd)</Label>
             <span style={{ fontFamily: MONO, color: PALETTE.muted, fontSize: 12.5, fontWeight: 800 }}>snapshot.db</span>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>

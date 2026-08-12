@@ -95,7 +95,17 @@ async function synth(text, referenceId, key) {
   });
   if (!res.ok) {
     // Surface the API's own message, never the request that carried the key.
-    const detail = await res.text().catch(() => '');
+    // The body is untrusted: a proxy or debug error page could echo the
+    // Authorization header back. Redact the key from anything we print, and
+    // prefer a parsed message field over the raw body.
+    const raw = await res.text().catch(() => '');
+    let detail = raw;
+    try {
+      const j = JSON.parse(raw);
+      detail = String(j.message || j.error || j.detail || raw);
+    } catch (e) { /* not JSON — fall back to the raw body, redacted below */ }
+    if (key) detail = detail.split(key).join('[redacted]');
+    detail = detail.replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [redacted]');
     throw new Error(`fish.audio HTTP ${res.status}: ${detail.slice(0, 300)}`);
   }
   const buf = Buffer.from(await res.arrayBuffer());
@@ -105,10 +115,26 @@ async function synth(text, referenceId, key) {
 
 // The pilot lives at the project root; each module owns a directory holding its
 // script and the narration rendered from it.
-const moduleName = arg('module');
-const BASE = moduleName && moduleName !== true
-  ? path.join(ROOT, 'modules', String(moduleName))
-  : ROOT;
+//
+// `--module` and `--suffix` become path components, so they are validated
+// rather than trusted: a bare `--module` used to select the pilot silently, and
+// a `..` segment or separator could write outside the narration directory —
+// destructive with --force.
+const rawModule = arg('module');
+if (rawModule === true) {
+  console.error('--module needs a value, e.g. --module u02-api-path');
+  process.exit(1);
+}
+const moduleName = rawModule ? String(rawModule) : null;
+if (moduleName && (moduleName.includes('/') || moduleName.includes(path.sep) || moduleName.includes('..'))) {
+  console.error(`--module must be a single directory name, got ${moduleName}`);
+  process.exit(1);
+}
+const BASE = moduleName ? path.join(ROOT, 'modules', moduleName) : ROOT;
+if (moduleName && path.dirname(path.resolve(BASE)) !== path.resolve(ROOT, 'modules')) {
+  console.error(`--module resolved outside modules/: ${BASE}`);
+  process.exit(1);
+}
 const OUT = path.join(BASE, 'narration');
 const scriptPath = path.join(BASE, 'script.json');
 if (!fs.existsSync(scriptPath)) {
@@ -134,12 +160,16 @@ if (!referenceId) {
 const only = arg('only');
 const force = !!arg('force');
 const suffix = arg('suffix', '') === true ? '' : (arg('suffix', '') || '');
+if (suffix.includes('/') || suffix.includes(path.sep) || suffix.includes('..')) {
+  console.error(`--suffix must not contain a path separator, got ${suffix}`);
+  process.exit(1);
+}
 
 const beats = script.beats.filter(b => (only && only !== true ? b.id === only : true));
 if (!beats.length) { console.error(`no beat matched --only ${only}`); process.exit(1); }
 
-fs.mkdirSync(OUT, { recursive: true });
 const key = apiKey();
+fs.mkdirSync(OUT, { recursive: true });
 console.log(`voice ${voiceName} · model ${MODEL} · ${beats.length} beat(s)`);
 
 let made = 0, skipped = 0;

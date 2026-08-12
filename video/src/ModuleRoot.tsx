@@ -25,6 +25,7 @@ export function makeModuleVideo(script: ModuleScript, moduleName: string) {
     subtitle: script.subtitle,
     spineSegment: script.series.spineSegment,
     spineOrdinal: spineOrdinal(script.series.spineSegment),
+    beneath: (script.series as any).beneath,
   };
 
   const Video: React.FC<{ showCaptions: boolean }> = ({ showCaptions }) => {

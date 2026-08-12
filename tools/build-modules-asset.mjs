@@ -25,6 +25,11 @@ function seconds(dir, script) {
   }, 0);
 }
 
+// A clean checkout has no rendered video at all. Reading the directory
+// unconditionally crashed instead of producing the script-only state the
+// no-video branch below already handles. Read it once, tolerantly.
+const VIDEO_FILES = existsSync(OUT_DIR) ? readdirSync(OUT_DIR) : [];
+
 const entries = {};
 for (const d of readdirSync(MODULES)) {
   const dir = path.join(MODULES, d);
@@ -35,8 +40,7 @@ for (const d of readdirSync(MODULES)) {
   const pad = String(n).padStart(2, '0');
   // Only the exact export is a complete module. Beat proofs and excerpts also
   // use a ModuleNN- prefix and must never become the lesson player's source.
-  const file = readdirSync(OUT_DIR)
-    .find((f) => f === `Module${pad}.mp4`);
+    const file = VIDEO_FILES.find((f) => f === `Module${pad}.mp4`);
   if (!file) continue;                       // no video yet, no section
   entries[script.series.unit] = {
     n,

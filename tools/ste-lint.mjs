@@ -57,7 +57,11 @@ const strip = s => String(s)
 
 function sentences(text) {
   return strip(text)
-    .split(/(?<=[.!?])\s+(?=[A-Z(])/)
+    // A sentence here legitimately begins lowercase: a camelCase API field
+    // (`backoffLimitPerIndex — …`), a dotted path (`spec.nodeName is empty`),
+    // or a tool name (`kubectl describe …`). Requiring a capital merged those
+    // into the previous sentence and reported list items as one run-on.
+    .split(/(?<=[.!?])\s+(?=[A-Z(]|[a-z]+[A-Z]|[a-z]+\.[a-z]|(?:kubectl|kubeadm|etcdctl|etcd|kubelet|crictl|containerd|runc|nftables|iptables|dig)\b)/)
     .map(s => s.trim())
     .filter(Boolean);
 }

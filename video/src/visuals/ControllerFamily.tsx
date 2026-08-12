@@ -31,7 +31,7 @@ export const ControllerFamily: React.FC<VisualProps> = () => {
       {/* the single binary */}
       <div style={{ display: 'flex', justifyContent: 'center', opacity: box }}>
         <Box pad={18} borderColor={PALETTE.blue} bg={`${PALETTE.blue}12`} style={{ width: 560, textAlign: 'center', boxShadow: unpack > 0 ? `0 0 18px ${PALETTE.blue}55` : 'none' }}>
-          <Label color={PALETTE.blue} size={12}>one binary · one process</Label>
+          <Label color={PALETTE.blueInk} size={12}>one binary · one process</Label>
           <div style={{ fontFamily: MONO, color: PALETTE.ink, fontSize: 30, fontWeight: 900, marginTop: 4 }}>
             kube-controller-manager
           </div>

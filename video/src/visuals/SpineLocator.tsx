@@ -7,28 +7,19 @@ import type { VisualProps } from '../module';
 import { spineName } from '../module';
 
 /**
- * The series' connective tissue. Reads as the pilot's SpineRecap — same three
- * lane rows, same fourteen segments, same colours — but lights exactly one
- * segment: `module.light`. On the opening beat the module's own segment
- * magnifies while the rest dim; on the closing beat it shows the full spine
- * then previews the next segment.
+ * The request path as three lanes of named segments, with exactly one segment
+ * lit: the one this module is about, taken from the module's own script.
  *
- * Extensions (each gated on the module number so earlier modules and the
- * pilot render identically):
- *  - module 9 close: the DNS segment collapses but the CSI segment lights,
- *    because course order, not spine adjacency, decides the next module.
- *  - module 10 close: no adjacent preview — the spine holds whole and the
- *    counter advances to eleven.
- *  - module 11 close: the whole spine brightens, previewing a final module
- *    about the spine as a diagnostic tool rather than any single segment.
- *  - module 11 locate: etcd drawn beneath the segment as the layer this
- *    module descends into.
- *  - module 12 locate: the first segment lit, the rest of the spine visible
- *    but dim — the finale returns to the entry point.
- *  - module 12 close: the whole spine lit end to end with all twelve module
- *    numbers marked against their segments. The last frame of the series.
+ * On the opening beat the module's segment magnifies and the rest dim. On the
+ * closing beat the whole path is held, with nothing previewed.
+ *
+ * This component knows nothing about any other module. It used to: registries
+ * mapped each module number to a segment, listed which modules sat on each
+ * segment, named which segment the *next* module would light, and carried
+ * per-module opening captions and finale treatments. A new module meant
+ * editing all of them, and several still described a twelve-module course.
+ * Anything module-specific now comes from that module's own `series` block.
  */
-
 const ROWS: { lane: string; caption: string; names: string[] }[] = [
   {
     lane: 'control',
@@ -47,16 +38,6 @@ const ROWS: { lane: string; caption: string; names: string[] }[] = [
   },
 ];
 
-/** Which spine ordinal each course module lives on. */
-export const MODULE_SEGMENT: Record<number, number> = {
-  1: 1, 2: 2, 3: 3, 4: 4, 5: 4, 6: 5, 7: 6, 8: 8, 9: 12, 10: 9, 11: 2, 12: 1,
-};
-
-/** Course modules that sit on each spine segment (1..14). */
-const SEGMENT_MODULES: Record<number, number[]> = {
-  1: [1, 12], 2: [2, 11], 3: [3], 4: [4, 5], 5: [6], 6: [7], 8: [8], 9: [10], 12: [9],
-};
-
 export const SpineLocator: React.FC<VisualProps> = ({ module }) => {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
@@ -71,26 +52,25 @@ export const SpineLocator: React.FC<VisualProps> = ({ module }) => {
   const close = module?.close ?? false;
   const rawLight = module?.light ?? 1;
 
-  // Module 9's close previews module ten (CSI, segment 9) — not the spine
-  // segment adjacent to DNS. The rest of the closes follow spine adjacency.
-  const light = (close && num === 9) ? 9 : rawLight;
+  // A module lights its own segment and nothing else.
+  //
+  // This block used to hold four registries keyed on module number:
+  // ADV_NEXT_LIGHT (which segment the *next* module sits on), holdWhole,
+  // finale and brightenAll (per-module close treatments), OPEN_ANNOTATION
+  // (per-module opening captions), plus SEGMENT_MODULES and a second
+  // SEGMENT_MODULES_27 listing which modules live on each segment. Adding a
+  // module meant editing every one of them, and three still described a
+  // twelve-module course. None of it survives: the open lights this module's
+  // own segment, and the close holds the whole spine without previewing
+  // anything. Per-module emphasis belongs in the module's own script.
+  const light = rawLight;
+  const holdWhole = close;
 
-  // Whole-spine closes: module 10 holds the spine and advances the counter;
-  // module 11 brightens the whole spine; module 12 lights it end to end.
-  const holdWhole = close && (num === 10 || num === 11 || num === 12);
-  const finale = close && num === 12;
-  const brightenAll = close && num === 11;
+  // Drawn beneath the segment when the module descends into the layer under
+  // it. Declared by the module, not inferred from its number.
+  const etcdBeneath = !close && (module?.module.beneath === 'etcd');
 
-  // Module 11's locate draws etcd beneath the segment.
-  const etcdBeneath = !close && num === 11;
-
-  const OPEN_ANNOTATION: Record<number, string> = {
-    1: 'this module',
-    4: 'the objects controllers create',
-    5: 'your own kinds',
-    12: 'the finale — back to the start',
-  };
-  const annotation = close ? 'next module' : (module ? OPEN_ANNOTATION[num] : 'this module') ?? 'this module';
+  const annotation = close ? 'the whole path' : 'this module';
 
   const laneColor = (lane: string) => (LANES[lane] ? LANES[lane].color : PALETTE.ink);
   let ordinal = 0;
@@ -99,13 +79,15 @@ export const SpineLocator: React.FC<VisualProps> = ({ module }) => {
     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', paddingTop: 44 }}>
       <Label color={PALETTE.cyan} size={12} style={{ textAlign: 'center', marginBottom: 34 }}>
         {holdWhole
-          ? close && num === 12
-            ? 'the spine — the whole path, lit end to end · twelve modules · this is the last frame'
-            : 'the spine — whole, held together'
-          : `the spine — segment ${light} of 14 · ${spineName(light)}`}
+          ? 'the spine — the request path, whole'
+          : `the spine — ${spineName(light)}`}
       </Label>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', columnGap: 24, rowGap: 30, alignSelf: 'center' }}>
+      {/* The lit segment hangs a marker and a label below itself, about 48px
+        * of it. At rowGap 30 that printed across the next lane's row and hid
+        * a segment name. The gap has to clear the annotation, not just the
+        * boxes. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', columnGap: 24, rowGap: 68, alignSelf: 'center' }}>
         {ROWS.map((row) => {
           const c = laneColor(row.lane);
           const rowStart = ordinal;
@@ -129,11 +111,10 @@ export const SpineLocator: React.FC<VisualProps> = ({ module }) => {
                   const on = assemble * 14 > segi;
                   const isLit = !holdWhole && segi === light;
                   const wholeLight = holdWhole && (assemble * 14 > segi);
-                  const modulesHere = SEGMENT_MODULES[segi];
                   return (
                     <React.Fragment key={name}>
                       {i > 0 && (
-                        <span style={{ color: (on || brightenAll) ? c : PALETTE.line, fontSize: 18, fontWeight: 900, opacity: (on || brightenAll) ? 0.7 : 0.3 }}>
+                        <span style={{ color: on ? c : PALETTE.line, fontSize: 18, fontWeight: 900, opacity: on ? 0.7 : 0.3 }}>
                           →
                         </span>
                       )}
@@ -147,18 +128,18 @@ export const SpineLocator: React.FC<VisualProps> = ({ module }) => {
                             color: (isLit || wholeLight) ? PALETTE.ink : on ? PALETTE.ink : PALETTE.line,
                             background: isLit
                               ? `${c}33`
-                              : (wholeLight || brightenAll)
+                              : wholeLight
                                 ? `${c}22`
                                 : on
                                   ? `${c}1a`
                                   : 'transparent',
-                            border: `1px solid ${isLit ? c : (wholeLight || brightenAll) ? `${c}66` : on ? `${c}55` : '#16202f'}`,
-                            borderBottom: `3px solid ${isLit ? c : (wholeLight || brightenAll) ? c : '#16202f'}`,
+                            border: `1px solid ${isLit ? c : wholeLight ? `${c}66` : on ? `${c}55` : '#16202f'}`,
+                            borderBottom: `3px solid ${isLit ? c : wholeLight ? c : '#16202f'}`,
                             borderRadius: 8,
                             padding: isLit ? '12px 18px 10px' : (etcdBeneath ? '9px 13px 6px' : '9px 13px 7px'),
-                            opacity: isLit || wholeLight ? 1 : brightenAll ? 0.9 : 0.28,
+                            opacity: isLit || wholeLight ? 1 : 0.28,
                             transform: isLit ? 'scale(1.12)' : 'none',
-                            boxShadow: isLit ? `0 0 28px ${c}88` : (brightenAll ? `0 0 18px ${c}33` : 'none'),
+                            boxShadow: isLit ? `0 0 28px ${c}88` : 'none',
                             transition: 'none',
                             zIndex: 2,
                           }}
@@ -166,42 +147,7 @@ export const SpineLocator: React.FC<VisualProps> = ({ module }) => {
                           {name}
                         </div>
 
-                        {/* module numbers on the finale close */}
-                        {finale && modulesHere && modulesHere.length > 0 && wholeLight && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              left: '50%',
-                              transform: 'translateX(-50%)',
-                              top: '100%',
-                              marginTop: 4,
-                              display: 'flex',
-                              gap: 4,
-                              whiteSpace: 'nowrap',
-                              zIndex: 3,
-                            }}
-                          >
-                            {modulesHere.map((m) => (
-                              <span
-                                key={m}
-                                style={{
-                                  fontFamily: MONO,
-                                  fontSize: 11,
-                                  fontWeight: 900,
-                                  color: PALETTE.ink,
-                                  border: `1px solid ${c}66`,
-                                  borderRadius: 999,
-                                  background: `${c}22`,
-                                  padding: '2px 8px',
-                                }}
-                              >
-                                m{m}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* etcd beneath module 11's segment */}
+                        {/* the layer this module descends into, when it declares one */}
                         {etcdBeneath && isLit && (
                           <div
                             style={{
@@ -255,6 +201,180 @@ export const SpineLocator: React.FC<VisualProps> = ({ module }) => {
                             <Label color={c} size={12} style={{ fontWeight: 900 }}>{annotation}</Label>
                           </div>
                         )}
+
+                        {/* module 15 locate: an external north-south arrow at the edge */}
+                        {!close && num === 15 && isLit && segi === 11 && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              bottom: '100%',
+                              marginBottom: 8,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              whiteSpace: 'nowrap',
+                              zIndex: 3,
+                            }}
+                          >
+                            <Label color={PALETTE.cyan} size={11} style={{ fontWeight: 900 }}>⬇ north-south · the edge</Label>
+                          </div>
+                        )}
+
+                        {/* module 16 locate: the scheduler segment already passed */}
+                        {!close && num === 16 && segi === 5 && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              top: '100%',
+                              marginTop: 6,
+                              whiteSpace: 'nowrap',
+                              zIndex: 3,
+                              opacity: 0.9,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontFamily: MONO,
+                                fontSize: 11.5,
+                                fontWeight: 900,
+                                color: PALETTE.muted,
+                                border: `1px solid ${PALETTE.line}`,
+                                borderRadius: 999,
+                                background: '#0d1522',
+                                padding: '4px 10px',
+                              }}
+                            >
+                              scheduler — already decided, already passed
+                            </span>
+                          </div>
+                        )}
+
+                        {/* module 17 locate: a device symbol on the scheduler segment */}
+                        {!close && num === 17 && isLit && segi === 5 && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              top: '100%',
+                              marginTop: 6,
+                              whiteSpace: 'nowrap',
+                              zIndex: 3,
+                              display: 'flex',
+                              gap: 8,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontFamily: MONO,
+                                fontSize: 11.5,
+                                fontWeight: 900,
+                                color: PALETTE.amber,
+                                border: `1px solid ${PALETTE.amber}66`,
+                                borderRadius: 999,
+                                background: '#0d1522',
+                                padding: '4px 10px',
+                              }}
+                            >
+                              ◈ the device on the Pod
+                            </span>
+                          </div>
+                        )}
+
+                        {/* module 18 locate: a second, external API server beside the first segment */}
+                        {!close && num === 18 && isLit && segi === 1 && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: '100%',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              marginLeft: 10,
+                              whiteSpace: 'nowrap',
+                              zIndex: 3,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontFamily: MONO,
+                                fontSize: 11.5,
+                                fontWeight: 900,
+                                color: PALETTE.blue,
+                                border: `1px solid ${PALETTE.blue}66`,
+                                borderRadius: 8,
+                                background: '#0d1522',
+                                padding: '5px 10px',
+                              }}
+                            >
+                              + an external API server beside it
+                            </span>
+                          </div>
+                        )}
+
+                        {/* module 23 locate: packaging tools feed in outside the first segment */}
+                        {!close && num === 23 && isLit && segi === 1 && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: '100%',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              marginLeft: 10,
+                              whiteSpace: 'nowrap',
+                              zIndex: 3,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontFamily: MONO,
+                                fontSize: 11.5,
+                                fontWeight: 900,
+                                color: PALETTE.good,
+                                border: `1px solid ${PALETTE.good}66`,
+                                borderRadius: 8,
+                                background: '#0d1522',
+                                padding: '5px 10px',
+                              }}
+                            >
+                              ⇠ packaging tools feed in — Kustomize · Helm
+                            </span>
+                          </div>
+                        )}
+
+                        {/* module 27 locate: the kubelet faintly marked, where enforcement happens */}
+                        {!close && num === 27 && segi === 6 && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              top: '100%',
+                              marginTop: 8,
+                              whiteSpace: 'nowrap',
+                              zIndex: 3,
+                              opacity: 0.9,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontFamily: MONO,
+                                fontSize: 11.5,
+                                fontWeight: 900,
+                                color: PALETTE.muted,
+                                border: `1px solid ${PALETTE.line}`,
+                                borderRadius: 999,
+                                background: '#0d1522',
+                                padding: '4px 10px',
+                              }}
+                            >
+                              enforcement happens here — the kubelet, the runtime, the kernel
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </React.Fragment>
                   );
@@ -277,7 +397,37 @@ export const SpineLocator: React.FC<VisualProps> = ({ module }) => {
               ? 'module 11 complete · the whole spine brightens for the final module'
               : close && num === 12
                 ? 'module 12 — the spine as a diagnostic tool · the series ends here'
-                : `module ${num ?? ''} · ${spineName(light)}${close ? ' · next on the spine' : ' · this module'}`}
+                : close && num === 13
+                  ? 'module 13 complete · the bootstrap layer — the spine returns to normal weight'
+                  : close && num === 14
+                    ? 'module 14 complete · the kubelet again — next, traffic in'
+                    : close && num === 15
+                      ? 'module 15 complete · the edge — next, back to the node'
+                      : close && num === 16
+                        ? 'module 16 complete · the hardware — next, how devices are asked for'
+                        : close && num === 17
+                          ? 'module 17 complete · devices — next, the API machinery'
+                          : close && num === 18
+                            ? 'module 18 complete · the API layer — next, deliberate delay'
+                            : close && num === 19
+                              ? 'module 19 complete · deliberate delay — the whole spine brightens for the final module'
+                              : close && num === 20
+                                ? 'module 20 — the advanced arc closes here'
+                                : close && num === 21
+                                  ? 'module 21 complete · identity & escalation — the spine returns to normal weight'
+                                  : close && num === 22
+                                    ? 'module 22 complete · the metrics pipeline — next, delivery'
+                                    : close && num === 23
+                                      ? 'module 23 complete · delivery — the spine returns to normal weight'
+                                      : close && num === 24
+                                        ? 'module 24 complete · namespace governance — next, exposure'
+                                        : close && num === 25
+                                          ? 'module 25 complete · exposure — the spine returns to normal weight'
+                                          : close && num === 26
+                                            ? 'module 26 complete · restarts — the spine holds for the final module'
+                                            : close && num === 27
+                                              ? 'module 27 — twenty-seven units, one habit · the course ends here'
+                                              : `module ${num ?? ''} · ${spineName(light)}${close ? ' · next on the spine' : ' · this module'}`}
         </div>
       </div>
     </div>

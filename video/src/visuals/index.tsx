@@ -136,6 +136,126 @@ import { ObjectIsContract } from './ObjectIsContract';
 import { AuditAnswers } from './AuditAnswers';
 import { IsolateLayer } from './IsolateLayer';
 import { NinetySeconds } from './NinetySeconds';
+// module 13 — Bootstrap and Steady State
+import { KubeadmComposes } from './KubeadmComposes';
+import { BootstrapHandoff } from './BootstrapHandoff';
+import { StaticPodMirror } from './StaticPodMirror';
+import { SkewBoundaries } from './SkewBoundaries';
+import { DrainIsNotUpgrade } from './DrainIsNotUpgrade';
+import { WorkerUpgradeOrder } from './WorkerUpgradeOrder';
+import { PackagingNotReconciling } from './PackagingNotReconciling';
+import { SafeUpgrade } from './SafeUpgrade';
+// module 14 — Config, QoS, Eviction
+import { DeliverySemantics } from './DeliverySemantics';
+import { RolloutTrigger } from './RolloutTrigger';
+import { SecretIsNotEncryption } from './SecretIsNotEncryption';
+import { StaleCredential } from './StaleCredential';
+import { QosDerived } from './QosDerived';
+import { EvictionVsOom } from './EvictionVsOom';
+import { EvictionRanking } from './EvictionRanking';
+// module 15 — Ingress and Gateway
+import { IntentNotDataplane } from './IntentNotDataplane';
+import { AcceptedNotServed } from './AcceptedNotServed';
+import { OwnershipSplit } from './OwnershipSplit';
+import { RequestBoundaries } from './RequestBoundaries';
+import { ServiceDiagnosis } from './ServiceDiagnosis';
+import { AcceptedYetInert } from './AcceptedYetInert';
+import { PolicyPermitsEdge } from './PolicyPermitsEdge';
+// module 16 — NUMA Topology
+import { ClusterVsLocal } from './ClusterVsLocal';
+import { HintProtocol } from './HintProtocol';
+import { ExclusiveCpus } from './ExclusiveCpus';
+import { AdmissionRejection } from './AdmissionRejection';
+import { LimitIsNotIsolation } from './LimitIsNotIsolation';
+import { LatencySources } from './LatencySources';
+import { SingleNumaNode } from './SingleNumaNode';
+import { JitterChecklist } from './JitterChecklist';
+// module 17 — Devices and DRA
+import { ScalarVsStructured } from './ScalarVsStructured';
+import { ClassVsClaim } from './ClassVsClaim';
+import { DraHandshake } from './DraHandshake';
+import { PluginVsDra } from './PluginVsDra';
+import { ThreeOwnersDra } from './ThreeOwnersDra';
+import { TemplateVsNamed } from './TemplateVsNamed';
+import { DraPendingCauses } from './DraPendingCauses';
+import { ClaimTeardown } from './ClaimTeardown';
+// module 18 — API Machinery
+import { AggregationLayer } from './AggregationLayer';
+import { WhenAggregation } from './WhenAggregation';
+import { WatchSemantics } from './WatchSemantics';
+import { AggregationCost } from './AggregationCost';
+import { CelAdmission } from './CelAdmission';
+import { CelTradeoffs } from './CelTradeoffs';
+import { ReviewApis } from './ReviewApis';
+// module 19 — Coordination: Leases, Gates, Eviction
+import { LeaseElection } from './LeaseElection';
+import { TwoLeaseJobs } from './TwoLeaseJobs';
+import { SimultaneousTakeover } from './SimultaneousTakeover';
+import { LeaseLimits } from './LeaseLimits';
+import { FourGates } from './FourGates';
+import { PdbNotAGate } from './PdbNotAGate';
+import { SchedulingGatesLoad } from './SchedulingGatesLoad';
+import { GatedDiagnosis } from './GatedDiagnosis';
+// module 20 — Troubleshooting Spine
+import { NearestAuthority } from './NearestAuthority';
+import { ControlPlaneOrder } from './ControlPlaneOrder';
+import { NotReadyEvidence } from './NotReadyEvidence';
+import { NinetySecondNotReady } from './NinetySecondNotReady';
+import { PhaseVsEvents } from './PhaseVsEvents';
+import { PreviousLogs } from './PreviousLogs';
+import { ResolvesButFails } from './ResolvesButFails';
+import { TheAlgorithm } from './TheAlgorithm';
+// module 21 — identity, authorization, escalation
+import { ScopeMatrix } from './ScopeMatrix';
+import { PermissionUnion } from './PermissionUnion';
+import { EscalationPaths } from './EscalationPaths';
+import { NodeIdentity } from './NodeIdentity';
+import { NodeAuthzAdmission } from './NodeAuthzAdmission';
+import { CertErrors } from './CertErrors';
+// module 22 — metrics and debugging
+import { MetricsPipeline } from './MetricsPipeline';
+import { TopFails } from './TopFails';
+import { ThreeMetricKinds } from './ThreeMetricKinds';
+import { PreserveEvidence } from './PreserveEvidence';
+import { DistrolessDebug } from './DistrolessDebug';
+import { CrictlScope } from './CrictlScope';
+// module 23 — delivery, rollouts, stalled progress
+import { TwoStateMachines } from './TwoStateMachines';
+import { HelmSuccess } from './HelmSuccess';
+import { ReviewPayload } from './ReviewPayload';
+import { RolloutArithmetic } from './RolloutArithmetic';
+import { ProgressDeadline } from './ProgressDeadline';
+import { StalledEvidence } from './StalledEvidence';
+// module 24 — namespace governance, quotas, resize
+import { LimitRangeVsQuota } from './LimitRangeVsQuota';
+import { RejectedNotPending } from './RejectedNotPending';
+import { WhatQuotaCounts } from './WhatQuotaCounts';
+import { LimitRangeBreaksQuota } from './LimitRangeBreaksQuota';
+import { ResizeDesiredApplied } from './ResizeDesiredApplied';
+import { ResizeQos } from './ResizeQos';
+import { ProveResize } from './ProveResize';
+// module 25 — Service exposure
+import { TypesAreLayers } from './TypesAreLayers';
+import { ExternalTrafficLocal } from './ExternalTrafficLocal';
+import { LbAddressProvesLittle } from './LbAddressProvesLittle';
+import { ConditionsEncodeMore } from './ConditionsEncodeMore';
+import { StrictVsPreferred } from './StrictVsPreferred';
+import { SliceDiagnosis } from './SliceDiagnosis';
+// module 26 — restarts and ownership
+import { ThreeRestartOwners } from './ThreeRestartOwners';
+import { UidAndCount } from './UidAndCount';
+import { OomkilledWho } from './OomkilledWho';
+import { NativeSidecars } from './NativeSidecars';
+import { JobKnobs } from './JobKnobs';
+import { PerIndexBackoff } from './PerIndexBackoff';
+// module 27 — Pod security
+import { PsaModes } from './PsaModes';
+import { SpecNotRuntime } from './SpecNotRuntime';
+import { PassedIsNotSecure } from './PassedIsNotSecure';
+import { PrivilegeReducers } from './PrivilegeReducers';
+import { RuntimeClassPath } from './RuntimeClassPath';
+import { UserNamespaces } from './UserNamespaces';
+import { ChooseBoundary } from './ChooseBoundary';
 
 export const VISUALS: Record<string, React.ComponentType<VisualProps>> = {
   // pilot
@@ -276,6 +396,127 @@ export const VISUALS: Record<string, React.ComponentType<VisualProps>> = {
   auditAnswers: AuditAnswers,
   isolateLayer: IsolateLayer,
   ninetySeconds: NinetySeconds,
+  // module 13 — Bootstrap and Steady State
+  kubeadmComposes: KubeadmComposes,
+  bootstrapHandoff: BootstrapHandoff,
+  staticPodMirror: StaticPodMirror,
+  skewBoundaries: SkewBoundaries,
+  drainIsNotUpgrade: DrainIsNotUpgrade,
+  workerUpgradeOrder: WorkerUpgradeOrder,
+  packagingNotReconciling: PackagingNotReconciling,
+  safeUpgrade: SafeUpgrade,
+  // module 14 — Config, QoS, Eviction
+  deliverySemantics: DeliverySemantics,
+  rolloutTrigger: RolloutTrigger,
+  secretIsNotEncryption: SecretIsNotEncryption,
+  staleCredential: StaleCredential,
+  qosDerived: QosDerived,
+  evictionVsOom: EvictionVsOom,
+  evictionRanking: EvictionRanking,
+  // module 15 — Ingress and Gateway
+  intentNotDataplane: IntentNotDataplane,
+  acceptedNotServed: AcceptedNotServed,
+  ownershipSplit: OwnershipSplit,
+  requestBoundaries: RequestBoundaries,
+  serviceDiagnosis: ServiceDiagnosis,
+  acceptedYetInert: AcceptedYetInert,
+  policyPermitsEdge: PolicyPermitsEdge,
+  // module 16 — NUMA Topology
+  clusterVsLocal: ClusterVsLocal,
+  hintProtocol: HintProtocol,
+  exclusiveCpus: ExclusiveCpus,
+  admissionRejection: AdmissionRejection,
+  limitIsNotIsolation: LimitIsNotIsolation,
+  latencySources: LatencySources,
+  singleNumaNode: SingleNumaNode,
+  jitterChecklist: JitterChecklist,
+  // module 17 — Devices and DRA
+  scalarVsStructured: ScalarVsStructured,
+  classVsClaim: ClassVsClaim,
+  draHandshake: DraHandshake,
+  pluginVsDra: PluginVsDra,
+  threeOwnersDra: ThreeOwnersDra,
+  templateVsNamed: TemplateVsNamed,
+  draPendingCauses: DraPendingCauses,
+  claimTeardown: ClaimTeardown,
+  // module 18 — API Machinery
+  aggregationLayer: AggregationLayer,
+  whenAggregation: WhenAggregation,
+  watchSemantics: WatchSemantics,
+  aggregationCost: AggregationCost,
+  celAdmission: CelAdmission,
+  celTradeoffs: CelTradeoffs,
+  reviewApis: ReviewApis,
+  // module 19 — Coordination: Leases, Gates, Eviction
+  leaseElection: LeaseElection,
+  twoLeaseJobs: TwoLeaseJobs,
+  simultaneousTakeover: SimultaneousTakeover,
+  leaseLimits: LeaseLimits,
+  fourGates: FourGates,
+  pdbNotAGate: PdbNotAGate,
+  schedulingGatesLoad: SchedulingGatesLoad,
+  gatedDiagnosis: GatedDiagnosis,
+  // module 20 — Troubleshooting Spine
+  nearestAuthority: NearestAuthority,
+  controlPlaneOrder: ControlPlaneOrder,
+  notReadyEvidence: NotReadyEvidence,
+  ninetySecondNotReady: NinetySecondNotReady,
+  phaseVsEvents: PhaseVsEvents,
+  previousLogs: PreviousLogs,
+  resolvesButFails: ResolvesButFails,
+  theAlgorithm: TheAlgorithm,
+  // module 21 — identity, authorization, escalation
+  scopeMatrix: ScopeMatrix,
+  permissionUnion: PermissionUnion,
+  escalationPaths: EscalationPaths,
+  nodeIdentity: NodeIdentity,
+  nodeAuthzAdmission: NodeAuthzAdmission,
+  certErrors: CertErrors,
+  // module 22 — metrics and debugging
+  metricsPipeline: MetricsPipeline,
+  topFails: TopFails,
+  threeMetricKinds: ThreeMetricKinds,
+  preserveEvidence: PreserveEvidence,
+  distrolessDebug: DistrolessDebug,
+  crictlScope: CrictlScope,
+  // module 23 — delivery, rollouts, stalled progress
+  twoStateMachines: TwoStateMachines,
+  helmSuccess: HelmSuccess,
+  reviewPayload: ReviewPayload,
+  rolloutArithmetic: RolloutArithmetic,
+  progressDeadline: ProgressDeadline,
+  fieldConflicts: ManagedFields, // additively extended for module 23; module 02 path preserved
+  stalledEvidence: StalledEvidence,
+  // module 24 — namespace governance, quotas, resize
+  limitRangeVsQuota: LimitRangeVsQuota,
+  rejectedNotPending: RejectedNotPending,
+  whatQuotaCounts: WhatQuotaCounts,
+  limitRangeBreaksQuota: LimitRangeBreaksQuota,
+  resizeDesiredApplied: ResizeDesiredApplied,
+  resizeQos: ResizeQos,
+  proveResize: ProveResize,
+  // module 25 — Service exposure
+  typesAreLayers: TypesAreLayers,
+  externalTrafficLocal: ExternalTrafficLocal,
+  lbAddressProvesLittle: LbAddressProvesLittle,
+  conditionsEncodeMore: ConditionsEncodeMore,
+  strictVsPreferred: StrictVsPreferred,
+  sliceDiagnosis: SliceDiagnosis,
+  // module 26 — restarts and ownership
+  threeRestartOwners: ThreeRestartOwners,
+  uidAndCount: UidAndCount,
+  oomkilledWho: OomkilledWho,
+  nativeSidecars: NativeSidecars,
+  jobKnobs: JobKnobs,
+  perIndexBackoff: PerIndexBackoff,
+  // module 27 — Pod security
+  psaModes: PsaModes,
+  specNotRuntime: SpecNotRuntime,
+  passedIsNotSecure: PassedIsNotSecure,
+  privilegeReducers: PrivilegeReducers,
+  runtimeClassPath: RuntimeClassPath,
+  userNamespaces: UserNamespaces,
+  chooseBoundary: ChooseBoundary,
 };
 
 /** Fallback used only if a beat introduces a visual.type with no component. */

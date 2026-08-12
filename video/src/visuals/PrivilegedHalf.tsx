@@ -44,7 +44,7 @@ export const PrivilegedHalf: React.FC<VisualProps> = () => {
         <div style={{ position: 'absolute', left: 60, top: 66, width: 1500, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
           <div style={{ flex: 1, borderRadius: 16, border: `2px solid ${PALETTE.blue}66`, background: `${PALETTE.blue}04`, padding: '14px 18px', opacity: cpIn }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Label color={PALETTE.blue} size={12}>control-plane node — the controller half lives here</Label>
+              <Label color={PALETTE.blueInk} size={12}>control-plane node — the controller half lives here</Label>
               <span style={{ fontFamily: MONO, color: PALETTE.muted, fontSize: 13, fontWeight: 800 }}>unprivileged</span>
             </div>
             <div style={{ fontFamily: MONO, color: PALETTE.ink, fontSize: 16, fontWeight: 800, borderRadius: 10, border: `1px solid ${PALETTE.line}`, background: '#0d1522', padding: '10px 14px' }}>

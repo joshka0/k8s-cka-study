@@ -3,6 +3,7 @@ import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { LANES, PALETTE } from '../theme';
 import { Label, MONO, SANS } from '../ui';
 import type { VisualProps } from '../module';
+import { spineName } from '../module';
 import { seg } from '../motion';
 
 /**
@@ -38,33 +39,36 @@ const ROWS: { lane: string; caption: string; names: string[] }[] = [
 
 const TOTAL = ROWS.reduce((n, r) => n + r.names.length, 0);
 
-/** Which spine ordinal each course module lives on. */
-const MODULE_SEGMENT: Record<number, number> = {
-  1: 1, 2: 2, 3: 3, 4: 4, 5: 4, 6: 5, 7: 6, 8: 8, 9: 12, 10: 9, 11: 2, 12: 1,
-};
-
-/** The characteristic failure signature taught in each module. */
-const MODULE_SIGNATURE: Record<number, string> = {
-  1: 'write refused — admission and validation gates',
+/* The characteristic failure signature of each spine segment.
+ *
+ * This was keyed by module number, alongside a map of which segment each
+ * module sat on, so the walk below stepped through twelve modules. Both had to
+ * grow every time a module was added, and the walk hard-coded a count of 12.
+ * Signatures belong to segments: the spine is fixed at fourteen, whatever the
+ * course does around it. */
+const SEGMENT_SIGNATURE: Record<number, string> = {
+  1: 'the object you asked for was never created',
   2: 'rejected before storage — admission or webhook',
   3: 'nothing reconciles — watch or cache stale',
   4: 'replicas never converge — spec and status disagree',
-  5: 'a new API that breaks every older client',
-  6: 'no node name — Pending forever',
-  7: 'running, not ready — phase green, health red',
+  5: 'no node name — Pending forever',
+  6: 'running, not ready — phase green, health red',
+  7: 'the container never starts — image or runtime',
   8: 'no address — ContainerCreating',
-  9: 'resolves but nothing answers',
-  10: 'claims Pending, volume never mounts',
-  11: 'writes die at the storage layer — quorum lost',
-  12: 'no ground truth — audit off, nothing to recover',
+  9: 'claims Pending, volume never mounts',
+  10: 'selected but never eligible — endpoint conditions',
+  11: 'the Service has no ready backend',
+  12: 'resolves but nothing answers',
+  13: 'packets leave and nothing comes back',
+  14: 'the application itself refuses the request',
 };
 
-export const SpineRecap: React.FC<VisualProps> = ({ module }) => {
+export const SpineRecap: React.FC<VisualProps> = ({ beat, module }) => {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
   const t = frame / durationInFrames;
 
-  const isFinale = module?.module.number === 12;
+  const isFinale = beat.id === 'the-spine';
 
   const assemble = seg(t, 0.06, isFinale ? 0.34 : 0.6);
   const loops = seg(t, 0.62, 0.72);
@@ -72,9 +76,7 @@ export const SpineRecap: React.FC<VisualProps> = ({ module }) => {
 
   // Module 12: walk the twelve modules in course order after assembly.
   const walk = seg(t, 0.4, 0.92);
-  const walkIdx = Math.min(11, Math.floor(walk * 12));
-  const walkModule = walkIdx + 1;
-  const walkSegment = MODULE_SEGMENT[walkModule];
+  const walkSegment = Math.min(TOTAL, Math.floor(walk * TOTAL) + 1);
 
   const laneColor = (lane: string) => (LANES[lane] ? LANES[lane].color : PALETTE.ink);
   let ordinal = 0;
@@ -179,7 +181,7 @@ export const SpineRecap: React.FC<VisualProps> = ({ module }) => {
             }}
           >
             <span style={{ fontFamily: MONO, fontSize: 17, fontWeight: 900, color: PALETTE.amber, whiteSpace: 'nowrap' }}>
-              module {walkModule} · {MODULE_SIGNATURE[walkModule]}
+              {spineName(walkSegment)} · {SEGMENT_SIGNATURE[walkSegment]}
             </span>
           </div>
         )}

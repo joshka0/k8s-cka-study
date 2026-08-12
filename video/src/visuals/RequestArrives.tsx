@@ -37,7 +37,7 @@ export const RequestArrives: React.FC<{ beat: Beat }> = () => {
 
         {/* kubectl */}
         <Box bg="#0f2038" border={2} pad={16} style={{ width: 150, textAlign: 'center' }}>
-          <Label color={PALETTE.blue} size={12}>client</Label>
+          <Label color={PALETTE.blueInk} size={12}>client</Label>
           <div style={{ fontFamily: MONO, color: PALETTE.ink, fontSize: 22, fontWeight: 800 }}>kubectl</div>
         </Box>
 
@@ -72,7 +72,7 @@ export const RequestArrives: React.FC<{ beat: Beat }> = () => {
           pad={16}
           style={{ width: 190, textAlign: 'center' }}
         >
-          <Label color={PALETTE.blue} size={12}>control plane</Label>
+          <Label color={PALETTE.blueInk} size={12}>control plane</Label>
           <div style={{ fontFamily: SANS, color: PALETTE.ink, fontSize: 24, fontWeight: 900 }}>API server</div>
           <div style={{ fontFamily: MONO, color: PALETTE.muted, fontSize: 14, marginTop: 4 }}>the only writer to etcd</div>
         </Box>

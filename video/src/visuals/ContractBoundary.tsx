@@ -59,7 +59,7 @@ export const ContractBoundary: React.FC<VisualProps> = () => {
         {/* controller column */}
         <VerticalBox>
           <Box pad={14} borderColor={PALETTE.blue}>
-            <Label color={PALETTE.blue} size={11}>control plane</Label>
+            <Label color={PALETTE.blueInk} size={11}>control plane</Label>
             <div style={{ fontFamily: MONO, color: PALETTE.ink, fontSize: 26, fontWeight: 900 }}>controller</div>
           </Box>
         </VerticalBox>

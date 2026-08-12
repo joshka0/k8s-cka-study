@@ -107,17 +107,38 @@ export function Vertical({
   );
 }
 
+/* The annotation layer: small uppercase captions above and below every visual.
+ *
+ * Three defects lived here and showed up in all 27 rendered modules.
+ *
+ * 1. No `fontFamily`. A Label outside a `Box` inherits from the document, which
+ *    in the render browser is Times. Every caption in every frame rendered in a
+ *    serif while the pills beside it rendered in mono — three typefaces per
+ *    frame, none of them chosen.
+ * 2. `letterSpacing: 0.12` is `0.12px`, not `0.12em`: React only appends `px`.
+ *    Uppercase text at ~12px got a fifth of a pixel of tracking, so it read as
+ *    crowded rather than spaced.
+ * 3. Sizes were authored at web values (11–13). A 1080p frame played at any
+ *    normal size renders 12px well under the readable floor, and measurement
+ *    put the visual layer at roughly a third the size of the burned-in caption
+ *    below it. `MIN` is the video floor; the multiplier keeps the hierarchy
+ *    that the authored sizes intended.
+ */
+const LABEL_MIN = 12;
+const LABEL_SCALE = 1.55;
+
 export function Label({
   children,
   color = PALETTE.muted,
   size = 13,
-  letter = 0.12,
+  letter = 0.08,
   style,
   weight = 800,
 }: {
   children: React.ReactNode;
   color?: string;
   size?: number;
+  /** Tracking in `em`. */
   letter?: number;
   style?: React.CSSProperties;
   weight?: number;
@@ -126,9 +147,11 @@ export function Label({
     <div
       style={{
         color,
-        fontSize: size,
+        fontFamily: SANS,
+        fontSize: Math.max(size, LABEL_MIN) * LABEL_SCALE,
         fontWeight: weight,
-        letterSpacing: letter,
+        letterSpacing: `${letter}em`,
+        lineHeight: 1.25,
         textTransform: 'uppercase',
         ...style,
       }}

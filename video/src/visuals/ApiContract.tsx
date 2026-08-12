@@ -31,7 +31,7 @@ export const ApiContract: React.FC<VisualProps> = () => {
       <div style={{ display: 'flex', justifyContent: 'center', gap: 80 }}>
         {/* contract column */}
         <div style={{ width: 640, border: `1px solid ${PALETTE.blue}55`, borderRadius: 22, padding: 20, background: `${PALETTE.blue}06` }}>
-          <Label color={PALETTE.blue} size={13} style={{ marginBottom: 14 }}>part of the API contract</Label>
+          <Label color={PALETTE.blueInk} size={13} style={{ marginBottom: 14 }}>part of the API contract</Label>
           {CONTRACT.map((c, i) => (
             <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: MONO, fontSize: 18, fontWeight: 800, color: PALETTE.ink, padding: '10px 12px', opacity: itemIn(i), transform: `translateY(${(1 - itemIn(i)) * 12}px)` }}>
               <span style={{ color: PALETTE.blue }}>✓</span> {c}

@@ -13,10 +13,16 @@ import { appear, seg } from '../motion';
  * volume attach) Pod B is already running the top track. The overlap is the
  * point: a slow bind delays one Pod, never the queue.
  */
-const STAGE_W = 250;
-const GAP = 30;
+// The row is `display:flex; gap:GAP` with an arrow element between boxes, so a
+// gap sits on BOTH sides of every arrow. Real pitch is STAGE_W + 2*GAP +
+// ARROW_W. Modelling it as STAGE_W + GAP drifted every token further from its
+// stage across the row, and pushed the last box off the track.
+const STAGE_W = 240;
+const GAP = 16;
+const ARROW_W = 26;
 const TOP_N = 6;
-const TRACK_W = TOP_N * STAGE_W + (TOP_N - 1) * GAP;
+const PITCH = STAGE_W + 2 * GAP + ARROW_W;
+const TRACK_W = TOP_N * STAGE_W + (TOP_N - 1) * (2 * GAP + ARROW_W);
 // Corrected against the scheduling framework. QueueSort orders Pods BEFORE an
 // attempt begins — it is not a stage inside a Pod's scheduling cycle. Reserve
 // and Permit end the SCHEDULING cycle; the binding cycle is PreBind, Bind and
@@ -31,8 +37,9 @@ const BOTTOM_STAGES = ['pre-bind', 'bind', 'post-bind'];
 const TOP_SUBS = ['setup', 'per-node', 'setup', 'pick best', 'hold the claim', 'may delay'];
 const BOTTOM_SUBS = ['slow work', 'write the name', 'after bind'];
 
-const stageLeft = (i: number) => i * (STAGE_W + GAP);
+const stageLeft = (i: number) => i * PITCH;
 const stageCenter = (i: number) => stageLeft(i) + STAGE_W / 2;
+const BOTTOM_TRACK_W = 3 * STAGE_W + 2 * (2 * GAP + ARROW_W);
 
 interface Hop {
   a: number;
@@ -68,32 +75,40 @@ export const TwoCycles: React.FC<VisualProps> = () => {
   const footer = appear(t, 0.8, 0.9);
   const transfer = appear(t, 0.3, 0.4);
 
-  // Pod A — scheduling cycle first (serial), then the binding cycle.
+  // Pod A — the full serial scheduling cycle, all six stages, then binding.
   const aTop: Hop[] = [
-    { a: 0.1, b: 0.15, x0: -30, x1: stageCenter(0) },
-    { a: 0.15, b: 0.205, x0: stageCenter(0), x1: stageCenter(1) },
-    { a: 0.205, b: 0.26, x0: stageCenter(1), x1: stageCenter(2) },
-    { a: 0.26, b: 0.315, x0: stageCenter(2), x1: stageCenter(3) },
-    { a: 0.315, b: 0.36, x0: stageCenter(3), x1: TRACK_W - 10 },
+    { a: 0.10, b: 0.15, x0: -30, x1: stageCenter(0) },
+    { a: 0.15, b: 0.19, x0: stageCenter(0), x1: stageCenter(1) },
+    { a: 0.19, b: 0.23, x0: stageCenter(1), x1: stageCenter(2) },
+    { a: 0.23, b: 0.27, x0: stageCenter(2), x1: stageCenter(3) },
+    { a: 0.27, b: 0.31, x0: stageCenter(3), x1: stageCenter(4) },
+    { a: 0.31, b: 0.35, x0: stageCenter(4), x1: stageCenter(5) },
+    { a: 0.35, b: 0.40, x0: stageCenter(5), x1: TRACK_W - 10 },
   ];
-  // Pod B — starts the scheduling cycle the moment A leaves it.
+  // Pod B — enters the scheduling cycle as soon as A leaves it, which is the
+  // overlap the beat exists to show.
   const bTop: Hop[] = [
-    { a: 0.38, b: 0.43, x0: -30, x1: stageCenter(0) },
-    { a: 0.43, b: 0.48, x0: stageCenter(0), x1: stageCenter(1) },
-    { a: 0.48, b: 0.53, x0: stageCenter(1), x1: stageCenter(2) },
-    { a: 0.53, b: 0.58, x0: stageCenter(2), x1: stageCenter(3) },
-    { a: 0.58, b: 0.63, x0: stageCenter(3), x1: TRACK_W - 10 },
+    { a: 0.44, b: 0.49, x0: -30, x1: stageCenter(0) },
+    { a: 0.49, b: 0.53, x0: stageCenter(0), x1: stageCenter(1) },
+    { a: 0.53, b: 0.57, x0: stageCenter(1), x1: stageCenter(2) },
+    { a: 0.57, b: 0.61, x0: stageCenter(2), x1: stageCenter(3) },
+    { a: 0.61, b: 0.65, x0: stageCenter(3), x1: stageCenter(4) },
+    { a: 0.65, b: 0.69, x0: stageCenter(4), x1: stageCenter(5) },
+    { a: 0.69, b: 0.74, x0: stageCenter(5), x1: TRACK_W - 10 },
   ];
-  // Pod A — binding cycle, slower; held at pre-bind for a volume attach.
+  // Pod A — the binding cycle has three stages. The gap between the first and
+  // second hop is the volume-attach wait: the token holds at pre-bind, because
+  // `seg` saturates at 1 once a hop ends.
   const aBot: Hop[] = [
-    { a: 0.36, b: 0.42, x0: -30, x1: stageCenter(0) },
-    { a: 0.42, b: 0.48, x0: stageCenter(0), x1: stageCenter(1) },
-    { a: 0.48, b: 0.54, x0: stageCenter(1), x1: stageCenter(2) },
-    { a: 0.54, b: 0.7, x0: stageCenter(2), x1: stageCenter(3) },
-    { a: 0.7, b: 0.76, x0: stageCenter(3), x1: TRACK_W - 10 },
+    { a: 0.41, b: 0.47, x0: -30, x1: stageCenter(0) },
+    { a: 0.62, b: 0.68, x0: stageCenter(0), x1: stageCenter(1) },
+    { a: 0.68, b: 0.74, x0: stageCenter(1), x1: stageCenter(2) },
+    { a: 0.74, b: 0.79, x0: stageCenter(2), x1: BOTTOM_TRACK_W - 10 },
   ];
 
-  const aTopX = lastNonNull(aTop.map((h) => tokenX(h, t)), -30);
+  // Null once A has left the scheduling row: it previously stayed visible on
+  // both tracks at once, showing one Pod in two places.
+  const aTopX = t > 0.41 ? null : lastNonNull(aTop.map((h) => tokenX(h, t)), -30);
   const bTopX = tokenX(bTop[0], t) !== null
     ? lastNonNull(bTop.map((h) => tokenX(h, t)), null)
     : null;
@@ -103,8 +118,9 @@ export const TwoCycles: React.FC<VisualProps> = () => {
   const aBotStage = aBotX !== null ? activeStage(aBotX, BOTTOM_STAGES.length) : -1;
   const aTopStage = aTopX !== null ? activeStage(aTopX) : -1;
 
-  // Volume-attach wait: A stalls at pre-bind (stage 2 of the bottom track).
-  const attachWait = seg(t, 0.56, 0.62) - seg(t, 0.68, 0.72) > 0;
+  // Volume-attach wait: A holds at pre-bind, which is stage 0 of the bottom
+  // track. It was previously annotated at stage 2, which is post-bind.
+  const attachWait = t > 0.49 && t < 0.62;
   const waitPulse = 0.55 + 0.45 * Math.sin(frame / 9);
 
   return (
@@ -117,7 +133,7 @@ export const TwoCycles: React.FC<VisualProps> = () => {
       <div style={{ opacity: tracksIn }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <span style={{ width: 12, height: 12, borderRadius: 4, background: PALETTE.blue, display: 'inline-block' }} />
-          <Label color={PALETTE.blue} size={12}>scheduling cycle — serial · one Pod at a time</Label>
+          <Label color={PALETTE.blueInk} size={12}>scheduling cycle — serial · one Pod at a time</Label>
         </div>
         <div style={{ position: 'relative', width: TRACK_W, margin: '0 auto' }}>
           <StageRow stages={TOP_STAGES} subs={TOP_SUBS} color={PALETTE.blue} active={aTopStage} />
@@ -156,7 +172,7 @@ export const TwoCycles: React.FC<VisualProps> = () => {
             <PodToken x={aBotX} label="pod A" color={PALETTE.cyan} />
           )}
           {attachWait && (
-            <div style={{ position: 'absolute', left: stageLeft(2), top: 110, width: STAGE_W, textAlign: 'center', opacity: 0.6 + 0.4 * waitPulse }}>
+            <div style={{ position: 'absolute', left: stageLeft(0), top: 152, width: STAGE_W, textAlign: 'center', opacity: 0.6 + 0.4 * waitPulse }}>
               <Label color={PALETTE.amber} size={11} style={{ textTransform: 'none', letterSpacing: 0.04 }}>
                 ⏳ volume attach — slow, but only this Pod waits
               </Label>
@@ -179,7 +195,10 @@ function StageRow({ stages, subs, color, active }: { stages: string[]; subs: str
         const on = active === i;
         return (
           <React.Fragment key={s}>
-            {i > 0 && <span style={{ color: PALETTE.line, fontSize: 30, fontWeight: 900 }}>→</span>}
+            {i > 0 && (
+              <span style={{ width: ARROW_W, flex: `0 0 ${ARROW_W}px`, textAlign: 'center',
+                             color: PALETTE.line, fontSize: 26, fontWeight: 900 }}>→</span>
+            )}
             <div
               style={{
                 width: STAGE_W,
@@ -214,7 +233,8 @@ function PodToken({ x, label, color, dim }: { x: number; label: string; color: s
       style={{
         position: 'absolute',
         left: x - 44,
-        top: 26,
+        // Below the box, not over it: at top 26 the token covered the stage name.
+        top: 104,
         width: 88,
         height: 40,
         borderRadius: 10,

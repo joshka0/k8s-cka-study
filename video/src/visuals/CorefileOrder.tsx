@@ -50,7 +50,7 @@ export const CorefileOrder: React.FC<VisualProps> = () => {
 
         {/* LEFT — the Corefile, editable */}
         <div style={{ position: 'absolute', left: 60, top: 70, width: 700, opacity: leftIn }}>
-          <Label color={PALETTE.blue} size={12} style={{ marginBottom: 10 }}>the Corefile — what you write and edit</Label>
+          <Label color={PALETTE.blueInk} size={12} style={{ marginBottom: 10 }}>the Corefile — what you write and edit</Label>
           <div style={{ background: '#0a1019', border: `2px solid ${PALETTE.blue}`, borderRadius: 16, padding: '18px 20px' }}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
               <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ef4444' }} />

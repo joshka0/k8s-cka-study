@@ -82,7 +82,7 @@ export const KubeletLoop: React.FC<VisualProps> = () => {
             opacity: scene,
           }}
         >
-          <Label color={PALETTE.blue} size={12} style={{ position: 'absolute', left: 20, top: 12 }}>control plane</Label>
+          <Label color={PALETTE.blueInk} size={12} style={{ position: 'absolute', left: 20, top: 12 }}>control plane</Label>
         </div>
 
         {/* scheduler — the imagined dispatch source */}
