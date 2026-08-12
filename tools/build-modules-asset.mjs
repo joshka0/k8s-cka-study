@@ -15,6 +15,20 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const MODULES = path.join(ROOT, 'video/modules');
 const OUT_DIR = path.join(ROOT, 'video/out');
 
+/* Where the player fetches video from.
+ *
+ * Default is the repository itself, which is how this started and still works
+ * for a local checkout. Set VIDEO_BASE_URL to serve from object storage:
+ *
+ *   VIDEO_BASE_URL=https://videos.example.dev node tools/build-modules-asset.mjs
+ *
+ * Two limits push video off the repository as the course grows. Cloudflare
+ * Pages refuses any file over 25 MiB, and the largest module is already 22 MB.
+ * And git keeps every version of a binary forever, so one re-render of all 27
+ * modules adds about 400 MB to history that cannot be reclaimed.
+ */
+const VIDEO_BASE_URL = (process.env.VIDEO_BASE_URL || '').replace(/\/+$/, '');
+
 /** Measured narration wins, exactly as the composition resolves it. */
 function seconds(dir, script) {
   const p = path.join(dir, 'durations.json');
@@ -46,7 +60,7 @@ for (const d of readdirSync(MODULES)) {
     n,
     title: script.title,
     subtitle: script.subtitle,
-    src: `video/out/${file}`,
+    src: VIDEO_BASE_URL ? `${VIDEO_BASE_URL}/${file}` : `video/out/${file}`,
     seconds: Math.round(seconds(dir, script)),
     // Spine beats bracket every module; the teaching beats are the contents.
     beats: script.beats.filter((b) => b.lane !== null).map((b) => b.title),
@@ -65,6 +79,7 @@ writeFileSync(
 
 const ids = Object.keys(entries);
 console.log(`  assets/modules.js written — ${ids.length} unit(s) with a video`);
+console.log(`  serving from ${VIDEO_BASE_URL || 'video/out (the repository)'}`);
 for (const id of ids) {
   const e = entries[id];
   const m = `${Math.floor(e.seconds / 60)}:${String(e.seconds % 60).padStart(2, '0')}`;

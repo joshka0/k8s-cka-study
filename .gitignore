@@ -5,3 +5,15 @@ deck/.venv/
 video/node_modules/
 video/out/*.log
 *.tmp
+
+# Rendered module video. Git keeps every version of a binary forever, so one
+# re-render of all modules adds hundreds of MB to history permanently, and
+# Cloudflare Pages refuses any file over 25 MiB — the largest module is
+# already 22 MB. Video is published to object storage instead:
+#   node tools/publish-videos.mjs --bucket <name>
+#   VIDEO_BASE_URL=https://<domain> node tools/build-modules-asset.mjs
+#
+# The videos already tracked stay tracked until the bucket serves them.
+# Untracking first would break every player on the live site, not just the
+# ones that have no file yet.
+video/out/*.mp4
