@@ -16,11 +16,29 @@ grader.
 | 2 | Kubelet breakage reaches the API | **pass** — `systemctl stop kubelet` → NotReady in ~50s; restart → Ready in seconds |
 | 3 | etcd snapshot and status | **pass** — the exam's own `etcdctl` invocation with the real cert paths; `etcdutl snapshot status` verifies the file |
 | 4 | `kubeadm upgrade` feasible | **conditional pass** — `kubeadm` is present and the k8s apt repo is reachable, but only after fixing DNS in the node VM (below) |
-| 5 | NetworkPolicy enforcement | **open** — needs Cilium on the full kernel; first two attempts failed on a missing `cilium-cli` and then on an install timeout |
+| 5 | NetworkPolicy enforcement | **pass** — Cilium on the full kernel: deny-all blocks (curl times out), a targeted allow restores HTTP 200 |
 | 6 | Node stop/start under a scenario | **pass with a constraint** — node returns Ready and schedules Pods, but its **IP changes** (`.64.4` → `.64.6`) |
 
-Four of six clean, one conditional, one open. Enough to build on: every
-scenario written so far targets the passing set.
+Six of six, one of them conditional on a fix we ship ourselves.
+
+## One defect explained two failures
+
+Cilium looked like a kernel problem for three runs. It was not: the full
+kernel carries everything it needs (`CONFIG_VXLAN`, `CONFIG_BRIDGE_NETFILTER`,
+`CONFIG_BPF_JIT`, `CONFIG_DEBUG_INFO_BTF`, all `=y`, verified on the node).
+The actual error was
+
+    failed to pull ... lookup quay.io on 192.168.64.1:53: i/o timeout
+
+which is the **same broken resolver** that blocked the `kubeadm upgrade`
+package fetch. A `kindest/node` cluster comes up regardless because every
+image it needs is pre-baked; the fault only appears when something has to pull
+from a registry. Writing a working nameserver into the node VMs and restarting
+containerd fixed both, and Cilium went Running within a minute.
+
+Worth stating plainly because it nearly cost the right decision: three
+consecutive failures pointed at the exotic explanation (Apple's kernel is too
+minimal for eBPF) when the boring one was already in the notes from check 4.
 
 ## What has to be designed around
 
@@ -36,18 +54,19 @@ and with `nameserver 1.1.1.1` written into the VM the k8s apt repo returns
 302. So the upgrade scenario ships that one-line fix in its setup rather than
 asking the candidate to debug our substrate.
 
-**`container exec` has no shell.** `kubectl exec … -- sh -c '…'` fails with
-`exec: "sh": executable file not found`. Commands are argv arrays, never shell
-strings; `etcdctl` and `etcdutl` are on PATH in the etcd Pod, so this costs
-nothing but has to be known.
+**The etcd Pod has no shell.** `kubectl exec etcd-… -- sh -c '…'` fails with
+`exec: "sh": executable file not found` — that image is distroless, and the
+`sh -c` wrapper most etcd runbooks use does not work. Commands must be argv
+arrays; `etcdctl` and `etcdutl` are on PATH there, so this costs nothing but
+has to be known. (`container exec` into a node VM does have a shell.)
 
-**Cilium is not free.** Apple's bundled kernel has no VXLAN, no
+**NetworkPolicy needs its own tier.** Apple's bundled kernel has no VXLAN, no
 `br_netfilter`, no BPF and no loadable modules, so the stock CNI is kindnet —
-which does not enforce NetworkPolicy at all. NetworkPolicy scenarios therefore
-need `--cni cilium --kernel full` plus `cilium-cli` on the host, and the
-install is slow enough to exceed kiac's default wait on a cold image cache.
-That is why the lab keeps a separate `netpol` tier instead of one cluster for
-everything.
+which does not enforce NetworkPolicy at all, and would grade policy scenarios
+as passing while enforcing nothing. Policy scenarios therefore run on
+`--cni cilium --kernel full`, with `cilium-cli` on the host and the resolver
+fix applied to the node VMs before the install. That tier costs a few minutes
+to create, which is why it is separate rather than the default.
 
 ## Not tested
 
