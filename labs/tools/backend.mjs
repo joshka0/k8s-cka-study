@@ -81,6 +81,24 @@ function kiacBackend() {
     async nodeStop(tier, node) { return exec('container', ['stop', vmName(tier, node)]); },
     async nodeStart(tier, node) { return exec('container', ['start', vmName(tier, node)]); },
 
+    /* Give the node VMs a working resolver.
+     *
+     * They boot pointing at the vmnet gateway, which answers cluster-local
+     * names but times out on public ones. A kindest/node cluster hides this
+     * because its images are pre-baked — it only surfaces when something
+     * pulls from a registry or fetches a package, which is exactly what a
+     * Cilium install and a kubeadm upgrade do. Three Cilium installs failed
+     * on this and read as an eBPF kernel limitation.
+     *
+     * Call after creating any cluster whose scenarios pull anything. */
+    async fixResolver(tier, nodes) {
+      for (const node of nodes) {
+        await this.nodeExec(tier, node, ['sh', '-c',
+          'printf "nameserver 1.1.1.1\\nnameserver 8.8.8.8\\n" > /etc/resolv.conf']);
+        await this.nodeExec(tier, node, ['systemctl', 'restart', 'containerd']).catch(() => {});
+      }
+    },
+
     /** Create the tier's cluster if it is not already up. */
     async ensureCluster(tier) {
       const c = CLUSTERS[tier];
