@@ -6,7 +6,7 @@
     "type": "definition_to_name",
     "answer": "etcd",
     "front": "Which component is the strongly consistent, Raft-backed store holding API-server data?",
-    "back": "<b>etcd</b>. It holds API state only — images live in a registry and on nodes, metrics come from a metrics pipeline, and logs stay on the node unless shipped elsewhere.",
+    "back": "<b>etcd</b>. It stores API state. Images live in registries and on nodes. Metrics come from a metrics pipeline. Logs stay on nodes unless another system ships them.",
     "extra": "<a href='https://kubernetes.io/docs/concepts/overview/components/'>📖 Kubernetes components</a>",
     "tags": [
       "01-the-control-plane-map",
@@ -32,7 +32,7 @@
     "type": "definition_to_name",
     "answer": "kube-apiserver",
     "front": "Which component exposes the supported HTTP API, applies request policy and conversion, and serves reads and watches — the boundary every other component coordinates through?",
-    "back": "<b>kube-apiserver</b>. Components talk to <i>it</i>, not to each other and not to storage.",
+    "back": "<b>kube-apiserver</b>. Components coordinate persisted API state through it, not directly with each other. Other paths exist and are deliberate: the API server calls admission webhooks and aggregated API servers, and the kubelet calls CRI, CNI, and CSI.",
     "extra": "<a href='https://kubernetes.io/docs/concepts/architecture/'>📖 Cluster architecture</a><a href='https://www.youtube.com/watch?v=gjk82Y2vyro&t=900s'>▶ Handling a create request</a>",
     "tags": [
       "01-the-control-plane-map",
@@ -72,7 +72,7 @@
     "unit": "01 The control-plane map",
     "type": "name_to_definition",
     "front": "Why should a controller never read etcd directly?",
-    "back": "The API server adds authn, authz, admission, defaulting, validation, versioned conversion, audit and supported watch semantics. A direct read skips all of it. It also pins the controller to a storage layout that is not a public contract.",
+    "back": "The API server applies authentication, authorization, audit policy, version conversion, and supported read and watch semantics. Direct etcd access bypasses those controls and binds the controller to a private storage format. Admission, defaulting, and object validation apply to writes, not ordinary reads.",
     "extra": "<a href='https://github.com/kubernetes/apiserver/blob/master/ARCHITECTURE.md'>📖 kube-apiserver architecture</a>",
     "tags": [
       "01-the-control-plane-map",
@@ -85,7 +85,7 @@
     "unit": "01 The control-plane map",
     "type": "cloze",
     "front": "Choosing which node a Pod runs on is the job of the {{c1::scheduler}}; executing whatever was assigned to a node is the job of that node's {{c2::kubelet}}.",
-    "back": "The scheduler records placement as a binding. The kubelet never picks its own work.",
+    "back": "For an API-created Pod without <code>spec.nodeName</code>, the scheduler records placement as a binding. The kubelet executes Pods assigned to its node. Static Pods are a separate kubelet-managed path.",
     "tags": [
       "01-the-control-plane-map",
       "recall",
@@ -124,7 +124,7 @@
     "type": "plain_phrase_to_name",
     "answer": "data plane",
     "front": "\"The part of the cluster that keeps forwarding packets and running processes even when nothing can be changed.\"",
-    "back": "The <b>data plane</b>. It outlives the control plane during an outage — which is exactly why \"traffic still flows\" is not a health signal.",
+    "back": "The <b>data plane</b>. It can keep existing processes and programmed forwarding paths working during a control-plane outage. That is why \"traffic still flows\" does not prove the cluster is healthy.",
     "tags": [
       "01-the-control-plane-map",
       "recall"
@@ -147,7 +147,7 @@
     "lesson": "u1l2",
     "unit": "01 The control-plane map",
     "type": "cloze",
-    "front": "During a control-plane outage the data plane can keep serving, because what stops is {{c1::change}} — API writes, placement, repair, endpoint updates and leases.",
+    "front": "During a control-plane outage, existing workloads may keep serving. What stops is {{c1::API-mediated change}}: writes, new placement, controller repair, EndpointSlice updates, and Lease renewals. Kubelets can still restart local containers.",
     "back": "\"Traffic still flows\" is not \"the cluster is healthy\". The cluster has stopped being able to change or heal.",
     "extra": "<a href='https://www.youtube.com/watch?v=gjk82Y2vyro&t=64s'>▶ What happens if the control plane goes down</a>",
     "tags": [
@@ -162,7 +162,7 @@
     "unit": "01 The control-plane map",
     "type": "name_to_definition",
     "front": "The control plane is fully down. What degrades, and what keeps working?",
-    "back": "<b>Degrades:</b> placing new Pods, self-healing after a failure, EndpointSlice updates when a Pod becomes unready, leases, most day-two actions.<br><b>Keeps working:</b> processes already running in live containers, and packets on already-programmed forwarding paths.",
+    "back": "<b>Degrades:</b> new placement, controller-driven replacement, EndpointSlice updates, Lease renewals, and most day-two actions.<br><b>Keeps working:</b> live containers, kubelet-managed local restarts, and packets on viable forwarding paths.",
     "extra": "<a href='https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/'>📖 Control-plane communication</a>",
     "tags": [
       "01-the-control-plane-map",
@@ -203,7 +203,7 @@
     "unit": "02 The API request path",
     "type": "name_to_definition",
     "front": "Trace an API request from HTTP to a stored object, naming what can reject it at each step.",
-    "back": "<ul><li>APF may queue or reject before execution</li><li>Authentication establishes user and groups</li><li>Authorization judges verb + resource attributes</li><li>Mutating then validating admission</li><li>Defaulting, schema validation, quota, immutability</li><li>Persist, then notify watchers</li></ul>Audit observes stages around the whole path.",
+    "back": "<ul><li>Authentication establishes the user and groups</li><li>APF may queue or reject the authenticated request</li><li>Authorization allows or rejects the verb and resource</li><li>The API server decodes, defaults, and converts the object</li><li>Mutating admission may change or reject it</li><li>The API server validates the final object</li><li>Validating admission, including quota when enabled, may reject it</li><li>Storage enforces concurrency, persists the object, and then publishes watch events</li></ul>Audit records the configured stages around the request.",
     "tags": [
       "02-the-api-request-path",
       "understanding"
@@ -214,7 +214,7 @@
     "lesson": "u2l1",
     "unit": "02 The API request path",
     "type": "cloze",
-    "front": "Gate order for a write: authenticate → authorize → {{c1::mutating admission}} → {{c2::validating admission}} → persist and notify watchers.",
+    "front": "Gate order for a write: authenticate → APF → authorize → default and convert → {{c1::mutating admission}} → API validation → {{c2::validating admission}} → persist and notify watchers.",
     "back": "Mutation runs before validation so what gets validated is the final object. Persistence is last, and only then do watchers learn anything.",
     "extra": "<a href='https://kubernetes.io/docs/reference/access-authn-authz/'>📖 API access control</a><a href='https://www.youtube.com/watch?v=jqelVFwhx4g&t=176s'>▶ Why mutating runs before validating</a>",
     "tags": [
@@ -319,7 +319,7 @@
     "unit": "02 The API request path",
     "type": "name_to_definition",
     "front": "Why can one admission webhook stall deployments in a namespace its owners have never heard of?",
-    "back": "Breadth of its match rules is its blast radius: every matching API request now waits on that webhook's Service, TLS and deadline. Scope rules and object selectors are the fix — failure policy only decides what a timeout <i>means</i>.",
+    "back": "Broad match rules create the blast radius: every matching API request waits for the webhook endpoint, TLS handshake, and deadline. Scope rules and object selectors reduce that radius. Failure policy only decides what a call failure means.",
     "extra": "<a href='https://kubernetes.io/docs/concepts/cluster-administration/admission-webhooks-good-practices/'>📖 Admission webhook good practices</a>",
     "tags": [
       "02-the-api-request-path",
@@ -395,7 +395,7 @@
     "unit": "02 The API request path",
     "type": "cloze",
     "front": "{{c1::resourceVersion}} gives updates optimistic concurrency; {{c2::server-side apply}} records field ownership in managed fields.",
-    "back": "Both exist because more than one actor legitimately writes to the same object — and both are defeated by a blind retry.",
+    "back": "Both exist because several actors can write one object. A blind retry does not resolve either guard. Fetch and recompute after a resourceVersion conflict. Resolve field intent or deliberately force ownership after an Apply conflict.",
     "tags": [
       "02-the-api-request-path",
       "recall",
@@ -408,7 +408,7 @@
     "unit": "02 The API request path",
     "type": "name_to_definition",
     "front": "Your controller's update fails with a conflict. What is the safe response?",
-    "back": "Fetch the latest object, recompute the desired delta, retry with bounded backoff. A conflict means someone else changed the object — replaying your stale body destroys their change.",
+    "back": "A conflict means the live object changed after you read it. Fetch the latest object, recompute the desired delta, and retry with bounded backoff. Kubernetes rejects the same stale resourceVersion again. Do not remove the precondition or overwrite unrelated fields.",
     "extra": "<a href='https://kubernetes.io/docs/reference/using-api/api-concepts/'>📖 Kubernetes API concepts</a>",
     "tags": [
       "02-the-api-request-path",
@@ -434,7 +434,7 @@
     "unit": "02 The API request path",
     "type": "name_to_definition",
     "front": "What is a server-side apply conflict actually telling you?",
-    "back": "That another field manager already owns the field paths you are setting. It is an ownership signal, not an error — unconditional <code>force</code> suppresses the signal and silently takes the field from its owner.",
+    "back": "Another field manager owns the field path, and the value you apply differs from the live value. The API server rejects the Apply request. Change your intent, coordinate ownership, or use <code>force</code> deliberately to take ownership and set the value.",
     "tags": [
       "02-the-api-request-path",
       "understanding"
@@ -539,7 +539,7 @@
     "type": "plain_phrase_to_name",
     "answer": "shared informer cache",
     "front": "\"The in-memory copy of API objects that many controllers read from instead of each hitting the API server.\"",
-    "back": "The <b>shared informer cache</b>, kept current by a reflector's list and watch. One watch stream serves every controller that needs those objects.",
+    "back": "The <b>shared informer cache</b>, kept current by a reflector's list and watch. Handlers that use the same SharedInformer instance share its stream and cache. Controllers in other processes normally have their own informers and watches.",
     "tags": [
       "03-reconciliation-watches",
       "recall"
@@ -578,7 +578,7 @@
     "unit": "03 Reconciliation & watches",
     "type": "name_to_definition",
     "front": "Which controllers <i>do</i> behave like a Puppet agent, and why?",
-    "back": "Those reconciling <b>external</b> state — external-dns managing DNS records, a cloud controller managing load balancers, an operator running a database. They converge a real system toward declared state rather than emitting more API objects; they just do it remotely instead of locally. The operator pattern makes the parallel explicit: both encode the runbook a human would otherwise follow.",
+    "back": "Controllers that reconcile <b>external state</b>. Examples include external-dns, cloud controllers, and database operators. They make remote systems match declared state. Like Puppet, they encode work that a human would otherwise do.",
     "tags": [
       "03-reconciliation-watches",
       "understanding"
@@ -590,7 +590,7 @@
     "unit": "03 Reconciliation & watches",
     "type": "discrimination",
     "front": "A Puppet run vs a Kubernetes control loop — how far does the analogy hold?",
-    "back": "<b>Holds:</b> declared state as data, idempotent apply, re-runs on a schedule, resumable after interruption.<br><b>Breaks:</b> a Puppet agent converges <i>a host</i>; a controller usually converges <i>API objects</i> and its output is another object. One agent applies one catalog, where dozens of controllers chain into each other. Puppet polls; controllers watch. Puppet's catalog is the only writer, so it needs no equivalent of <code>resourceVersion</code>, managed fields or finalizers.<br>💡 Closest true match: Puppet agent → kubelet; providers → CRI/CNI/CSI.",
+    "back": "<b>Holds:</b> both use declared state, idempotent actions, and repeated convergence.<br><b>Breaks:</b> a Puppet agent normally applies a catalog to one host. A Kubernetes controller watches API state and may write API objects or external state. Shared API objects use <code>resourceVersion</code> and managed fields for concurrency and ownership. Finalizers coordinate API deletion.<br>💡 Closest node-level analogy: Puppet agent → kubelet. The kubelet follows Pod specs and delegates work through runtime plugins.",
     "tags": [
       "03-reconciliation-watches",
       "understanding",
@@ -629,7 +629,7 @@
     "unit": "03 Reconciliation & watches",
     "type": "name_to_definition",
     "front": "Your controller creates a cloud load balancer. What makes it safe to reconcile repeatedly?",
-    "back": "<ul><li>A stable external idempotency key derived from the object</li><li>Observe whether the resource exists before creating it</li><li>Persist the provider identity back onto the object</li></ul>Every phase must be resumable by a fresh process — in-memory success is lost on restart, and the next reconcile then creates an untracked duplicate.",
+    "back": "<ul><li>Use a stable, provider-enforced idempotency key derived from the object</li><li>Observe whether the external resource already exists</li><li>Persist the provider identity on the object for later lookup</li></ul>Every phase must be resumable by a fresh process. A lost status write must lead to rediscovery of the same resource, not creation of another one.",
     "tags": [
       "03-reconciliation-watches",
       "understanding"
@@ -678,7 +678,7 @@
     "unit": "04 Workloads & disruption",
     "type": "discrimination",
     "front": "DaemonSet vs Job — what does each one guarantee?",
-    "back": "<b>DaemonSet = coverage</b>: one Pod per eligible node, replaced when a node changes eligibility or the Pod dies.<br><b>Job = completion</b>: Pods retried until the configured number of successes, then it stops.<br>One tracks the node set, the other tracks a success count.",
+    "back": "<b>DaemonSet = coverage:</b> it targets one running Pod per eligible node in steady state. Its update policy can briefly add another Pod, and failures can prevent full coverage.<br><b>Job = completion:</b> it seeks the configured successful completions. It can stop as Failed because of backoff, a deadline, or a Pod failure policy.<br>One tracks a node set. The other tracks completion.",
     "tags": [
       "04-workloads-disruption",
       "understanding",
@@ -691,7 +691,7 @@
     "unit": "04 Workloads & disruption",
     "type": "discrimination",
     "front": "Deployment vs StatefulSet — what is the real discriminator?",
-    "back": "Use a StatefulSet when <b>stable network and storage identity and ordered lifecycle are part of correctness</b>. Interviewers probe the answer \"it has a database\". Name the invariant instead, then say what the application's own replication and failure semantics need.",
+    "back": "Use a StatefulSet when correctness needs one or more of these properties: stable ordinal and network identity, stable per-Pod storage, or ordered deployment and scaling. Storage is optional. <code>podManagementPolicy: Parallel</code> can relax deployment and scaling order. Name the workload invariant instead of saying only that it is a database.",
     "tags": [
       "04-workloads-disruption",
       "understanding",
@@ -977,7 +977,7 @@
     "unit": "05 CRDs & operators",
     "type": "name_to_definition",
     "front": "You set the storage version to v2 this morning. What is true of an object created last week?",
-    "back": "It is still stored as v1 and converted on read until something rewrites it. The storage marker only affects new writes — so the conversion path must keep working until you have actually migrated the stored objects.",
+    "back": "Changing the storage version does not rewrite existing objects. If this object has not since been updated or migrated, it remains stored as v1 and converts on read. Keep conversion working until storage migration has rewritten all old objects.",
     "extra": "<a href='https://www.youtube.com/watch?v=7IA-Vw1K7eg&t=480s'>▶ A field that turned into a breaking change</a>",
     "tags": [
       "05-crds-operators",
@@ -1028,7 +1028,7 @@
     "lesson": "u6l1",
     "unit": "06 Scheduling under pressure",
     "type": "cloze",
-    "front": "Scheduling framework order: QueueSort → PreFilter → {{c1::Filter}} → {{c2::Score}} → Reserve → Permit → Bind.",
+    "front": "Queue extension points include PreEnqueue and QueueSort. Scheduling cycle: PreFilter → {{c1::Filter}} → PostFilter when needed → PreScore → {{c2::Score}} → Reserve → Permit. Binding cycle: PreBind → Bind → PostBind.",
     "back": "Filtering answers \"can it run here at all\"; scoring only ranks what survived. Reserve and Permit come after a decision but before it is committed.",
     "extra": "<a href='https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/'>📖 Scheduling framework</a><a href='https://www.youtube.com/watch?v=6p1XcgsFHsU&t=157s'>▶ Filtering: finding feasible nodes</a>",
     "tags": [
@@ -1094,7 +1094,7 @@
     "type": "api_to_name",
     "answer": "nodeName",
     "front": "The scheduler's entire output is one value written into an API object. Which Pod spec field is it?",
-    "back": "<code>spec.nodeName</code>, recorded via a binding. The kubelet on that node is watching, sees the Pod is now its problem, and takes over.",
+    "back": "<code>spec.nodeName</code>. The scheduler sets it by creating a Binding. The kubelet on that node is watching, sees the Pod is now its problem, and takes over.",
     "tags": [
       "06-scheduling-under-pressure",
       "recall",
@@ -1161,7 +1161,7 @@
     "unit": "06 Scheduling under pressure",
     "type": "name_to_definition",
     "front": "Walk through diagnosing a Pending Pod.",
-    "back": "Start with the Pod's scheduling <b>events</b> — they normally name the predicate that failed and how many nodes each eliminated. Then requests vs allocatable, affinity, taints, topology spread, host ports, PVC binding mode and storage topology, and namespace quota. Name the evidence that distinguishes causes, do not recite commands.",
+    "back": "Start with the Pod's scheduling <b>events</b>. They usually name the failed plugin or constraint and the affected nodes. Then compare requests with allocatable capacity. Check affinity, taints, topology spread, host ports, PVC binding mode, and storage topology. Use evidence to distinguish the causes.",
     "tags": [
       "06-scheduling-under-pressure",
       "understanding"
@@ -1185,7 +1185,7 @@
     "lesson": "u6l2",
     "unit": "06 Scheduling under pressure",
     "type": "cloze",
-    "front": "The scheduler filters on declared {{c1::requests}} against allocatable capacity; live {{c2::utilisation}} never enters the calculation.",
+    "front": "The default scheduler's resource-fit filter compares declared {{c1::requests}} with allocatable capacity. Live {{c2::utilisation}} does not enter that filter's fit calculation. Custom scheduler plugins can use other signals.",
     "back": "A cluster can sit at 15% measured CPU and still refuse to schedule, because every Pod requested far more than it uses.",
     "extra": "<a href='https://www.youtube.com/watch?v=6p1XcgsFHsU&t=202s'>▶ Feasible nodes across availability zones</a>",
     "tags": [
@@ -1308,7 +1308,7 @@
     "type": "plain_phrase_to_name",
     "answer": "pause container",
     "front": "\"The container that runs no application code and exists only to hold the Pod's shared namespaces open.\"",
-    "back": "The <b>pause container</b>, PID 1 of the Pod sandbox. It is what the network attachment belongs to before any app container joins.",
+    "back": "The <b>pause container</b>. It anchors the Pod sandbox's shared namespaces, including the network namespace. With <code>shareProcessNamespace: true</code>, it is PID 1 in the shared Pod PID namespace. Otherwise, each container has its own PID namespace.",
     "extra": "<a href='https://www.youtube.com/watch?v=PLCt3lSoXOw&t=389s'>▶ pause is PID 1</a>",
     "tags": [
       "07-kubelet-cri-pods",
@@ -1320,7 +1320,7 @@
     "lesson": "u7l1",
     "unit": "07 Kubelet, CRI & Pods",
     "type": "cloze",
-    "front": "Once a Pod is bound: kubelet sees it → volumes attached and mounted → runtime creates the {{c1::Pod sandbox}} → {{c2::CNI}} configures its network → images pulled and containers created → probes report readiness.",
+    "front": "After a Pod is bound, the kubelet observes it. Kubernetes does not define one total order for setup. The runtime creates the {{c1::Pod sandbox}}, and required {{c2::CNI}} setup configures its network. Required volumes and the sandbox network must be ready before application containers start.",
     "back": "The sandbox comes before normal containers because it anchors the shared namespaces — the network attachment has to belong to something before a container can join it.",
     "extra": "<a href='https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/'>📖 Pod lifecycle</a>",
     "tags": [
@@ -1360,7 +1360,7 @@
     "unit": "07 Kubelet, CRI & Pods",
     "type": "discrimination",
     "front": "CRI vs OCI vs CNI vs CSI — what does each one govern?",
-    "back": "<ul><li><b>CRI</b> — gRPC contract between kubelet and a runtime such as containerd</li><li><b>OCI</b> — image and low-level runtime primitives <i>beneath</i> that boundary; what runc implements</li><li><b>CNI</b> — network attachment for the Pod sandbox</li><li><b>CSI</b> — storage provisioning, attach and mount</li></ul>Four contracts, four failure modes, four sets of logs.",
+    "back": "<ul><li><b>CRI</b> — gRPC contract between kubelet and a runtime such as containerd</li><li><b>OCI Runtime Specification</b> — low-level container execution used by runc</li><li><b>OCI Image Specification</b> — container image format</li><li><b>CNI</b> — network attachment for the Pod sandbox</li><li><b>CSI</b> — storage provisioning and node access</li></ul>These contracts have different owners and failure evidence.",
     "extra": "<a href='https://www.youtube.com/watch?v=gjk82Y2vyro&t=1215s'>▶ Why the Container Runtime Interface exists</a>",
     "tags": [
       "07-kubelet-cri-pods",
@@ -1400,9 +1400,9 @@
     "lesson": "u7l2",
     "unit": "07 Kubelet, CRI & Pods",
     "type": "definition_to_name",
-    "answer": "OCI",
+    "answer": "OCI Runtime Specification",
     "front": "containerd calls runc, which creates namespaces and cgroups for the process. Which specification governs that layer?",
-    "back": "<b>OCI</b>, the Open Container Initiative runtime and image specifications — below the CRI boundary, and not an interface the kubelet uses directly.",
+    "back": "The <b>OCI Runtime Specification</b>. It defines the low-level runtime configuration and lifecycle that runc implements. It sits below CRI and is not an interface that kubelet calls directly.",
     "extra": "<a href='https://www.youtube.com/watch?v=PLCt3lSoXOw&t=389s'>▶ containerd calls runc; pause is PID 1</a>",
     "tags": [
       "07-kubelet-cri-pods",
@@ -1414,7 +1414,7 @@
     "lesson": "u7l2",
     "unit": "07 Kubelet, CRI & Pods",
     "type": "cloze",
-    "front": "Configuring the network attachment for the Pod sandbox is the job of {{c1::CNI}}; implementing Service VIP forwarding is the job of {{c2::kube-proxy}}.",
+    "front": "Configuring the network attachment for the Pod sandbox is the job of {{c1::CNI}}. Implementing Service VIP forwarding is the job of {{c2::the Service data plane}}, such as kube-proxy or an eBPF replacement.",
     "back": "Per-Pod reachability and Service translation are different problems with different owners.",
     "tags": [
       "07-kubelet-cri-pods",
@@ -1546,7 +1546,7 @@
     "unit": "08 Networking & the data plane",
     "type": "plain_phrase_to_name",
     "answer": "EndpointSlice",
-    "front": "\"The object listing which backend addresses are currently ready to receive a Service's traffic.\"",
+    "front": "\"The object that lists Service backend addresses and their ready, serving, and terminating conditions.\"",
     "back": "An <b>EndpointSlice</b>. For selector Services, label matching controls membership; readiness normally changes the endpoint's <code>ready</code> condition without removing its address. Node data planes consume that state when selecting backends.",
     "tags": [
       "08-networking-the-data-plane",
@@ -1613,7 +1613,7 @@
     "unit": "08 Networking & the data plane",
     "type": "name_to_definition",
     "front": "DNS resolves but the ClusterIP times out. Trace it.",
-    "back": "<ul><li>EndpointSlices and Service ports — are there ready backends at all?</li><li>Hit a ready Pod IP directly: if that works, it is Service translation, not the workload</li><li>Node data plane: kube-proxy rules or BPF maps, and conntrack</li><li>Routing, MTU, NetworkPolicy</li><li>Last: is the app actually listening on that port?</li></ul>A correct data plane delivering to a closed port looks identical from the client.",
+    "back": "<ul><li>Check Service ports, targetPort, and EndpointSlice conditions</li><li>Test an eligible Pod IP from the same source and path when possible; success narrows the fault to the Service path or configuration</li><li>Inspect kube-proxy rules or BPF maps and connection tracking</li><li>Inspect routing, MTU, and NetworkPolicy</li><li>Verify that the application listens on the target port</li></ul>For TCP, a timeout normally means a drop or no response. A closed port normally returns connection refused.",
     "tags": [
       "08-networking-the-data-plane",
       "understanding"
@@ -1812,7 +1812,7 @@
     "unit": "09 DNS & CoreDNS",
     "type": "name_to_definition",
     "front": "Why can a high <code>ndots</code> value make external names slow?",
-    "back": "A name with few dots is tried against every search suffix first. Each attempt is a real round trip returning NXDOMAIN before the correct absolute query is sent. Across every request that becomes latency and load nobody can attribute.",
+    "back": "A name with too few dots is tried with search suffixes before its absolute form. Each suffix can add a DNS query and wait. The result can be NXDOMAIN, NODATA, SERVFAIL, a timeout, or a positive answer. Those extra queries add latency and DNS load.",
     "extra": "<a href='https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/'>📖 DNS for Services and Pods</a><a href='https://www.youtube.com/watch?v=lAUmdIGP_fE&t=427s'>▶ How ndots turns one lookup into several</a>",
     "tags": [
       "09-dns-coredns",
@@ -1852,7 +1852,7 @@
     "unit": "09 DNS & CoreDNS",
     "type": "name_to_definition",
     "front": "Resolve <code>payments.prod.svc.cluster.local</code> end to end.",
-    "back": "The name is fully qualified, so no search expansion applies. The resolver sends it to its configured DNS endpoint — possibly a NodeLocal cache in front of the kube-dns Service. CoreDNS's <code>kubernetes</code> plugin answers from the Service and EndpointSlice state it watches, and the reply follows the node network path back.",
+    "back": "With the default <code>ndots:5</code>, the resolver tries this four-dot name with search suffixes before its absolute form. Add a trailing dot, <code>payments.prod.svc.cluster.local.</code>, to make it absolute immediately. The resolver sends queries to its configured DNS endpoint, possibly a NodeLocal cache. CoreDNS synthesises the Service answer from watched API state.",
     "tags": [
       "09-dns-coredns",
       "understanding"
@@ -1877,7 +1877,7 @@
     "unit": "09 DNS & CoreDNS",
     "type": "name_to_definition",
     "front": "CoreDNS reports Ready. What has that <i>not</i> proven?",
-    "back": "Only that the process runs and its plugins started. Still unproven: that the DNS Service routes to it. That its API watch is fresh. That the synthesised records are correct. That upstream resolvers are healthy for forwarded names. That a node-local cache is not serving stale answers. And that the client resolver expands names the way you assume.",
+    "back": "<b>Ready proves:</b> the process runs and its plugins started.<br><b>It does not prove:</b><ul><li>the DNS Service routes to CoreDNS</li><li>the API watch is current</li><li>the synthesised records are correct</li><li>upstream resolvers are healthy</li><li>a node-local cache is current</li><li>the client resolver expands names as expected</li></ul>",
     "tags": [
       "09-dns-coredns",
       "understanding"
@@ -1916,7 +1916,7 @@
     "unit": "09 DNS & CoreDNS",
     "type": "name_to_definition",
     "front": "What does the CoreDNS <code>kubernetes</code> plugin use as its source of truth?",
-    "back": "Watched Service and EndpointSlice objects from the API server. It synthesises records from that state. DNS answers therefore lag reality by exactly as much as its watch does, and a stalled watch shows up as stale records.",
+    "back": "The plugin watches Service and EndpointSlice objects from the API server and synthesises records from that state. Watch propagation can make the source state stale. CoreDNS, NodeLocal, and client caches can add more delay, so answer staleness is not equal to watch lag alone.",
     "extra": "<a href='https://coredns.io/plugins/kubernetes/'>📖 CoreDNS kubernetes plugin</a><a href='https://www.youtube.com/watch?v=lAUmdIGP_fE&t=940s'>▶ The plugin watching Services and endpoints</a>",
     "tags": [
       "09-dns-coredns",
@@ -1954,7 +1954,7 @@
     "lesson": "u10l1",
     "unit": "10 Storage & CSI",
     "type": "name_to_api",
-    "front": "Which binding mode delays provisioning until a Pod is scheduled, so the volume lands in a reachable topology?",
+    "front": "Which binding mode delays binding or provisioning until a Pod uses the claim, so scheduling can select compatible storage topology?",
     "back": "<code>volumeBindingMode: WaitForFirstConsumer</code>. Under it a Pending PVC with no consumer is the designed state, not a fault.",
     "tags": [
       "10-storage-csi",
@@ -1995,7 +1995,7 @@
     "unit": "10 Storage & CSI",
     "type": "name_to_definition",
     "front": "A PVC is Pending. What evidence distinguishes the causes?",
-    "back": "<ul><li>StorageClass and its binding mode → intentional waiting</li><li>Provisioner and reported CSI capacity → no capacity</li><li>PVC events, access mode, namespace quota → quota or mode rejection</li><li>Topology constraints of candidate nodes → nothing compatible</li></ul>Deployment replica count tells you nothing about why one claim cannot bind.",
+    "back": "<ul><li>StorageClass and binding mode → intentional waiting for a consumer</li><li>PVC events and provisioner logs → provisioning failure or unavailable capacity</li><li>Requested access mode and existing PVs → no compatible volume</li><li>Candidate-node topology → no reachable volume topology</li></ul>A Deployment's replica count does not explain why one claim cannot bind.",
     "tags": [
       "10-storage-csi",
       "understanding"
@@ -2006,8 +2006,8 @@
     "lesson": "u10l1",
     "unit": "10 Storage & CSI",
     "type": "cloze",
-    "front": "Storage intent flows: PVC → StorageClass + provisioner → {{c1::PV binding}} → {{c2::VolumeAttachment}} → CSI stage and publish.",
-    "back": "Each hop is a separate object you can inspect when a Pod will not mount.",
+    "front": "Storage intent flows: PVC → StorageClass + provisioner → {{c1::PV binding}} → optional {{c2::VolumeAttachment}} for an attachable driver → optional CSI stage → CSI publish.",
+    "back": "PVC, PV, StorageClass, and an applicable VolumeAttachment are API objects. CSI provisioning, attach, stage, and publish are RPCs. Inspect API objects, events, sidecar logs, node-plugin logs, and kubelet logs at the relevant boundary.",
     "tags": [
       "10-storage-csi",
       "recall",
@@ -2046,7 +2046,7 @@
     "lesson": "u10l2",
     "unit": "10 Storage & CSI",
     "type": "cloze",
-    "front": "Claim to mount: PVC → external-provisioner calls {{c1::CreateVolume}} → PV created and bound → external-attacher drives {{c2::ControllerPublishVolume}} → node plugin runs {{c3::NodeStageVolume}} then {{c4::NodePublishVolume}} → container sees the mount.",
+    "front": "For a dynamically provisioned CSI volume: PVC → external-provisioner calls {{c1::CreateVolume}} → PV binds. If the driver advertises PUBLISH_UNPUBLISH_VOLUME, external-attacher calls {{c2::ControllerPublishVolume}}. If it advertises STAGE_UNSTAGE_VOLUME, the node plugin calls {{c3::NodeStageVolume}}. {{c4::NodePublishVolume}} exposes the volume to the Pod path.",
     "back": "Stage happens once per node; publish happens per Pod target path. Knowing which failed tells you whether the problem is the device or the bind mount.",
     "extra": "<a href='https://github.com/container-storage-interface/spec/blob/master/spec.md'>📖 CSI specification</a>",
     "tags": [
@@ -2062,7 +2062,7 @@
     "type": "plain_phrase_to_name",
     "answer": "VolumeAttachment",
     "front": "\"The API object recording that a particular volume has been attached to a particular node.\"",
-    "back": "A <b>VolumeAttachment</b> — the first thing to check when a Pod is scheduled but stuck mounting, because it tells you whether controller-side attach even completed.",
+    "back": "A <b>VolumeAttachment</b>. It records attach intent for a volume and node when the driver supports controller attach. Check it for an attachable driver. For a non-attachable driver, do not expect one.",
     "tags": [
       "10-storage-csi",
       "recall"
@@ -2125,8 +2125,8 @@
     "lesson": "u10l2",
     "unit": "10 Storage & CSI",
     "type": "discrimination",
-    "front": "Which half of a CSI driver must run privileged on every node, and why?",
-    "back": "The <b>node service</b> — mounting is a node-local, privileged operation. The <b>controller</b> half talks to the storage provider's API and can run anywhere the control plane runs.",
+    "front": "A CSI driver has a node service and a controller service. Where does each run, and which one needs privileged host access?",
+    "back": "The <b>node service</b> runs on each node that can use the driver. It normally needs privileged host access for mount or device operations. The <b>controller service</b> runs on suitable cluster nodes and calls the storage-provider API. It does not have to run on a control-plane node.",
     "extra": "<a href='https://kubernetes-csi.github.io/docs/developing.html'>📖 Developing a CSI driver</a>",
     "tags": [
       "10-storage-csi",
@@ -2233,7 +2233,7 @@
     "unit": "11 HA, etcd & recovery",
     "type": "plain_phrase_to_name",
     "answer": "write-ahead log",
-    "front": "\"The durably synchronised record of committed entries that protects consensus, which snapshots then compact.\"",
+    "front": "\"The durably synchronised record of Raft entries and hard state, including entries that are not yet committed, which snapshots later compact.\"",
     "back": "The <b>write-ahead log</b> (WAL). Snapshots compact state; they are not a substitute for the supported snapshot procedure when capturing a backup.",
     "tags": [
       "11-ha-etcd-recovery",
@@ -2272,7 +2272,7 @@
     "unit": "11 HA, etcd & recovery",
     "type": "discrimination",
     "front": "etcdctl snapshot vs copying the data directory vs <code>kubectl get -o yaml</code> — which captures etcd state?",
-    "back": "Only a verified <b>etcdctl snapshot</b>. A live filesystem copy is not a consistent snapshot. A kubectl export is a useful supplement, but it misses ordering, ownership, and objects you forgot to enumerate.",
+    "back": "A verified <code>etcdctl snapshot save</code> is the supported point-in-time capture from a live member. etcd can also restore a copied <code>member/snap/db</code> file, but that file can miss newer WAL entries and lacks the integrity hash. Do not copy a live data directory. A <code>kubectl get -o yaml</code> export is only a supplement because it omits cluster state and metadata.",
     "tags": [
       "11-ha-etcd-recovery",
       "understanding",
@@ -2353,7 +2353,7 @@
     "unit": "12 Scale, APF & evidence",
     "type": "name_to_definition",
     "front": "Why do informers exist, in API-load terms?",
-    "back": "They share list and watch caches, so many controllers ride one watch stream instead of polling separately. The economics matter. A client that relists repeatedly, reconnects in a loop, or asks for very large objects multiplies load on the API server and etcd. That is how one small badly written controller degrades a whole cluster.",
+    "back": "A SharedInformer lets handlers in the same process share one list, watch, and cache for a resource. Controllers in separate processes normally use separate streams. Repeated relists, reconnect loops, and very large objects still multiply API-server and etcd load.",
     "tags": [
       "12-scale-apf-evidence",
       "understanding"
@@ -2366,7 +2366,7 @@
     "type": "plain_phrase_to_name",
     "answer": "seat",
     "front": "\"The unit of API-server concurrency a request occupies while it is executing.\"",
-    "back": "A <b>seat</b>. A limited priority level has a fixed number of them, which is how one flow is stopped from consuming the whole server.",
+    "back": "A <b>seat</b>. A request can occupy one or more seats. A limited priority level has a nominal concurrency limit. Its instantaneous limit can change through configured borrowing and lending.",
     "tags": [
       "12-scale-apf-evidence",
       "recall"
@@ -2405,7 +2405,7 @@
     "unit": "12 Scale, APF & evidence",
     "type": "cloze",
     "front": "The diagnostic spine: desired object → admission/storage → {{c1::watch/cache}} → controller queue → {{c2::scheduler queue/binding}} → kubelet, CRI, CNI, CSI → {{c3::EndpointSlice}} → Service/DNS/data plane → application.",
-    "back": "Memorise it and you always have a next question. Every unit of this course is one segment, and every failure lands on exactly one.",
+    "back": "Memorise it so you always have a next question. Each unit covers one segment. Start with the segment closest to the symptom, but expect one failure to affect several adjacent segments.",
     "tags": [
       "12-scale-apf-evidence",
       "recall",
@@ -2418,7 +2418,7 @@
     "unit": "12 Scale, APF & evidence",
     "type": "discrimination",
     "front": "Events vs audit log — when does each one help?",
-    "back": "<b>Events</b> explain selected transitions a component chose to report; they are lossy and expire.<br><b>Audit</b> records API requests and their stages, including who made them.<br>\"Why did this object change?\" is often events; \"who changed it?\" is always audit.",
+    "back": "<b>Events</b> explain selected transitions that a component chose to report. They are lossy and expire.<br><b>Audit</b> can record API requests, stages, and identities when it is enabled and its policy includes the request.<br>Use events for reported behavior. Use retained audit records to identify an API caller. Without such a record, the identity may be unavailable.",
     "tags": [
       "12-scale-apf-evidence",
       "understanding",
@@ -2484,7 +2484,7 @@
     "type": "definition_to_name",
     "answer": "audit log",
     "front": "You need to know who deleted a specific object and when. Which signal records the request, its stages, and the identity behind it?",
-    "back": "The <b>audit log</b>. Events would not have retained it, and may never have recorded it at all.",
+    "back": "The <b>audit log</b>, if auditing was enabled and its policy and backend retained the deletion request. Events are not a reliable deletion history. Without an audit record, Kubernetes may not retain the caller identity.",
     "extra": "<a href='https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/'>📖 Auditing</a>",
     "tags": [
       "12-scale-apf-evidence",
@@ -2521,7 +2521,7 @@
     "unit": "14 Configuration, QoS & eviction",
     "type": "name_to_definition",
     "front": "A ConfigMap or Secret changed. Why might a running process still use the old value?",
-    "back": "Environment values are fixed at process start. Projected files refresh eventually, but the process may cache or never reread them. A Deployment only rolls when its Pod template changes.",
+    "back": "Environment values are fixed at process start. Normal projected files refresh eventually, but <code>subPath</code> mounts do not receive those updates. The process can also cache a file or never reread it. A Deployment rolls only when its Pod template changes.",
     "tags": [
       "14-configuration-qos-eviction",
       "understanding"
@@ -2570,7 +2570,7 @@
     "unit": "16 NUMA-aware node resources",
     "type": "name_to_definition",
     "front": "Explain the Topology Manager hint protocol.",
-    "back": "CPU, memory and device managers emit NUMA affinity hints. Topology Manager merges them under its policy, then the managers enact the chosen affinity or strict node admission rejects the Pod.",
+    "back": "CPU Manager, Memory Manager and Device Manager each emit NUMA affinity hints. Topology Manager merges them under its policy.<br>Under <b>restricted</b> or <b>single-numa-node</b>, a missing coherent placement fails node admission. Under <b>best-effort</b> the Pod still admits without the preferred alignment. Under <b>none</b> there is no alignment step.",
     "tags": [
       "16-numa-aware-node-resources",
       "understanding"
@@ -2582,7 +2582,7 @@
     "unit": "16 NUMA-aware node resources",
     "type": "discrimination",
     "front": "Why is Guaranteed QoS not the same as isolated low-latency execution?",
-    "back": "Guaranteed QoS classifies requests and limits. Isolation additionally depends on CPU Manager cpusets, CFS throttling, NUMA locality, topology policy, reserved CPUs, IRQ placement and system-daemon interference.",
+    "back": "Guaranteed QoS classifies requests and limits. Isolation also depends on CPU Manager cpusets, CFS throttling, NUMA locality, topology policy, reserved CPUs, IRQ placement and system-daemon interference.",
     "tags": [
       "16-numa-aware-node-resources",
       "understanding",
@@ -2608,7 +2608,7 @@
     "unit": "17 Devices & Dynamic Resource Allocation",
     "type": "name_to_definition",
     "front": "A DRA-backed Pod is Pending. Which state separates the likely owners?",
-    "back": "Inspect ResourceClaim allocation and events, DeviceClass selectors, ResourceSlice inventory and reachable nodes, then scheduler allocation and DRA driver readiness/preparation evidence.",
+    "back": "Status on the <b>Pod</b>, the <b>ResourceClaim</b> and the <b>ResourceSlice</b>.<br>Unallocated claims point at selectors, inventory and the scheduler. Allocated but unprepared claims point at the DRA driver and kubelet on the chosen node. That status cut separates the owners; the Pod alone does not.",
     "tags": [
       "17-devices-dynamic-resource-allocation",
       "understanding"
@@ -2657,7 +2657,7 @@
     "unit": "19 Coordination & deferred commitment",
     "type": "discrimination",
     "front": "Which transitions do scheduling gates, readiness gates, finalizers and Leases each delay?",
-    "back": "Scheduling gates delay placement; readiness gates delay Ready and endpoint participation; finalizers delay physical API deletion; Leases delay competing ownership or leadership.",
+    "back": "Scheduling gates hold a Pod out of active scheduling. Readiness gates hold Ready and endpoint participation. Finalizers hold final deletion after the deletionTimestamp is set. A Lease names the current leader under optimistic concurrency and expires for failover.<br>Four mechanisms, four different transitions — none substitutes for another.",
     "tags": [
       "19-coordination-deferred-commitment",
       "understanding",
@@ -2732,7 +2732,7 @@
     "unit": "07 Kubelet, CRI & Pods",
     "type": "discrimination",
     "front": "What exactly does a startup probe gate?",
-    "back": "The <b>liveness and readiness probes of the same container</b> — nothing else.<br>The container keeps running throughout. Other containers are unaffected. Probe results take effect only after the configured failure threshold.",
+    "back": "A startup probe gates the <b>liveness and readiness probes of the same container</b> until it succeeds. Other containers are unaffected. Success ends the gate immediately. If failures reach <code>failureThreshold</code>, kubelet kills the container and applies its restart policy.",
     "tags": [
       "07-kubelet-cri-pods",
       "understanding",
@@ -2758,7 +2758,7 @@
     "unit": "07 Kubelet, CRI & Pods",
     "type": "discrimination",
     "front": "During termination, is SIGTERM always the signal your container receives?",
-    "back": "<b>No.</b> The runtime sends the <b>configured stop signal</b>, which an image can set via <code>STOPSIGNAL</code>.<br>A PreStop hook runs before it. Endpoint removal propagates concurrently, so a bounded delay narrows the race but cannot prove propagation — the application still has to drain.",
+    "back": "<b>No.</b> The runtime sends the <b>configured stop signal</b>. An image can set it with <code>STOPSIGNAL</code>.<br>A PreStop hook runs before it. Endpoint removal propagates concurrently, so a bounded delay narrows the race but cannot prove propagation — the application still has to drain.",
     "tags": [
       "07-kubelet-cri-pods",
       "understanding",
@@ -2874,7 +2874,7 @@
     "lesson": "u9l2",
     "unit": "09 DNS & CoreDNS",
     "type": "name_to_definition",
-    "front": "Four checks that split a cluster DNS problem into its layer",
+    "front": "Which four checks separate a cluster DNS failure by layer?",
     "back": "<ol><li>Read the Pod's <code>/etc/resolv.conf</code> — client policy.</li><li><code>dig</code> against the kube-dns Service — Service routing.</li><li><code>dig</code> against a CoreDNS Pod IP — is CoreDNS answering at all.</li><li>Read the <code>coredns</code> ConfigMap and CoreDNS logs — configuration and stale watches.</li></ol>",
     "tags": [
       "09-dns-coredns",
@@ -2926,7 +2926,7 @@
     "unit": "10 Storage & CSI",
     "type": "name_to_definition",
     "front": "Beyond size and class, what else does the claim/volume contract carry?",
-    "back": "<b>Access mode</b> on the PVC — RWO, ROX, RWX, RWOP — and <b>reclaim policy</b> on the PV, Retain or Delete.<br>Both are part of the contract, not optional detail, and both change what happens to the data when the claim goes away.",
+    "back": "<b>Access mode</b> on the PVC — RWO, ROX, RWX, or RWOP — controls how the volume can be mounted.<br><b>Reclaim policy</b> on the PV — Retain or Delete — controls what Kubernetes does with the released storage after PVC deletion. They govern different lifecycle stages.",
     "tags": [
       "10-storage-csi",
       "understanding"
@@ -2938,7 +2938,7 @@
     "unit": "11 HA, etcd & recovery",
     "type": "name_to_definition",
     "front": "The operator path for etcd backup and restore",
-    "back": "<code>etcdctl snapshot save</code> with the endpoint and certs. Verify with <code>snapshot status</code>. Restore with <code>snapshot restore</code> into a <b>new data directory</b>, then point the etcd static Pod at that directory and start it.<br>Never restore over the live directory. On a multi-member cluster restore each member consistently, so Raft membership is rebuilt rather than overwritten.",
+    "back": "Use <code>etcdctl snapshot save</code> with one endpoint and its credentials. Check the file with <code>etcdutl snapshot status</code>. Restore each member with <code>etcdutl snapshot restore</code> into a <b>new data directory</b>, using consistent membership arguments to form a new logical cluster.<br>etcd 3.6 removed <code>status</code> and <code>restore</code> from <code>etcdctl</code>. On etcd 3.5 and earlier, <code>etcdctl</code> still accepts both.<br>For kubeadm stacked etcd, update the static Pod data path or mount as needed. Externally managed etcd has its own startup procedure. Never restore over the live directory.",
     "tags": [
       "11-ha-etcd-recovery",
       "understanding"
@@ -2994,6 +2994,745 @@
       "12-scale-apf-evidence",
       "understanding",
       "discrimination"
+    ]
+  },
+  {
+    "id": "u21l1::clusterrole-with-rolebinding",
+    "lesson": "u21l1",
+    "unit": "21 Identity, RBAC & node trust",
+    "type": "discrimination",
+    "front": "A ClusterRole granting read on Pods is referenced by a <b>RoleBinding</b> in one namespace. What is the effective scope?",
+    "back": "<b>Only that namespace.</b> The ClusterRole supplies reusable rules; the RoleBinding supplies the boundary.<br>The same ClusterRole bound with a ClusterRoleBinding would grant cluster-wide. Scope comes from the binding, not the role.",
+    "tags": [
+      "21-identity-rbac-node-trust",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u21l1::permissions-additive",
+    "lesson": "u21l1",
+    "unit": "21 Identity, RBAC & node trust",
+    "type": "discrimination",
+    "front": "“This ServiceAccount has no privileged Role.” Why is that not proof of least privilege?",
+    "back": "Permissions are <b>additive</b> — effective access is the union of every applicable grant.<br>You must consider all RoleBindings and ClusterRoleBindings that reach it, its group memberships, and anything able to impersonate it. RBAC has no deny rule to cancel a grant.",
+    "tags": [
+      "21-identity-rbac-node-trust",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u21l1::escalation-paths",
+    "lesson": "u21l1",
+    "unit": "21 Identity, RBAC & node trust",
+    "type": "name_to_definition",
+    "front": "Three RBAC escalation paths worth auditing",
+    "back": "<ul><li><b>Bind rights</b> — the right to bind roles you do not already hold. Create on bindings is not enough without <code>bind</code> or the permissions themselves.</li><li><b>Impersonation</b> — borrows another identity outright.</li><li><b>Aggregation</b> — a ClusterRole absorbs rules from others as labels change.</li></ul>Audit the reachable permission graph, not one Role.",
+    "tags": [
+      "21-identity-rbac-node-trust",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u21l2::node-trust-order",
+    "lesson": "u21l2",
+    "unit": "21 Identity, RBAC & node trust",
+    "type": "name_to_definition",
+    "front": "How a joining kubelet earns its identity",
+    "back": "<ol><li>Authenticates with a temporary bootstrap token.</li><li>Submits a CSR.</li><li>Receives a client certificate.</li></ol>Its identity is <code>system:node:&lt;nodeName&gt;</code> in the <code>system:nodes</code> group. The Node object existing is not the start of trust — the credential is.",
+    "tags": [
+      "21-identity-rbac-node-trust",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u21l2::node-authz-vs-restriction",
+    "lesson": "u21l2",
+    "unit": "21 Identity, RBAC & node trust",
+    "type": "discrimination",
+    "front": "Node authorization and NodeRestriction — why both?",
+    "back": "<b>Node authorization</b> limits which API operations a kubelet may request at all.<br><b>NodeRestriction</b> admission constrains the mutations that pass authorization, so a kubelet cannot modify another node's objects.<br>Authorization decides whether you may ask; admission decides whether what you asked is acceptable.",
+    "tags": [
+      "21-identity-rbac-node-trust",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u21l2::notready-cert-errors",
+    "lesson": "u21l2",
+    "unit": "21 Identity, RBAC & node trust",
+    "type": "discrimination",
+    "front": "A node joined but stays NotReady, with certificate errors in the kubelet log. What kind of problem is this?",
+    "back": "An <b>identity</b> problem, not scheduling. The kubelet must authenticate before it can update Node status or renew its Lease.<br>A join command that returned success does not prove the certificate handoff completed.",
+    "tags": [
+      "21-identity-rbac-node-trust",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u22l1::top-pipeline",
+    "lesson": "u22l1",
+    "unit": "22 Metrics, logs & interactive debugging",
+    "type": "discrimination",
+    "front": "<code>kubectl top</code> returns no data. Which chain do you check?",
+    "back": "The one narrow pipeline it reads: <b>kubelet summary → metrics-server → aggregated metrics API → consumer</b>.<br>Check metrics-server is running, its APIService is registered and available, and it can reach the kubelet. Prometheus is a separate path — its health proves nothing here.",
+    "tags": [
+      "22-metrics-logs-interactive-debugging",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u22l1::three-metric-kinds",
+    "lesson": "u22l1",
+    "unit": "22 Metrics, logs & interactive debugging",
+    "type": "name_to_definition",
+    "front": "Resource, component and application metrics",
+    "back": "<b>Resource</b>: CPU/memory for Pods and Nodes, recent and small.<br><b>Component</b>: Kubernetes internals and health.<br><b>Application</b>: whatever the workload emits.<br>Collection and retention differ, so which one you need decides where to look — and whether the question is still answerable later.",
+    "tags": [
+      "22-metrics-logs-interactive-debugging",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u22l2::preserve-evidence-order",
+    "lesson": "u22l2",
+    "unit": "22 Metrics, logs & interactive debugging",
+    "type": "discrimination",
+    "front": "CrashLoopBackOff: what order preserves the most evidence?",
+    "back": "Most perishable first: <b>status, conditions and events</b> → <b>current and previous logs</b> → <b>termination state and exit code</b> → exec or an ephemeral debug container → node journals and crictl.<br>Restart early and you destroy the failure evidence you were about to read.",
+    "tags": [
+      "22-metrics-logs-interactive-debugging",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u22l2::distroless-debug",
+    "lesson": "u22l2",
+    "unit": "22 Metrics, logs & interactive debugging",
+    "type": "discrimination",
+    "front": "A failing container has no shell. What is the evidence-preserving path?",
+    "back": "Describe it and read events. Read current and <code>--previous</code> logs. Read the termination reason and exit code.<br>Then attach an <b>ephemeral debug container</b>, or run a debug copy with tools. Exec is not a prerequisite for any of that.",
+    "tags": [
+      "22-metrics-logs-interactive-debugging",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u22l2::when-crictl",
+    "lesson": "u22l2",
+    "unit": "22 Metrics, logs & interactive debugging",
+    "type": "discrimination",
+    "front": "When is <code>crictl</code> the right tool rather than kubectl?",
+    "back": "When the <b>kubelet or API path is unavailable</b>, so kubectl can tell you nothing. crictl talks directly to the CRI endpoint.<br>It is node and runtime evidence — not a replacement for kubectl while the API is healthy.",
+    "tags": [
+      "22-metrics-logs-interactive-debugging",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u23l1::helm-success-proves",
+    "lesson": "u23l1",
+    "unit": "23 Declarative delivery & field ownership",
+    "type": "discrimination",
+    "front": "Helm reports a successful release but the Pods are unhealthy. What did success prove?",
+    "back": "That the objects were <b>rendered and accepted</b>. Without wait flags, nothing more.<br>Even with wait, it is a one-shot readiness check at install time, not continuous reconciliation. Object status and events own what the workload is doing now.",
+    "tags": [
+      "23-declarative-delivery-field-ownership",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u23l1::review-order",
+    "lesson": "u23l1",
+    "unit": "23 Declarative delivery & field ownership",
+    "type": "name_to_definition",
+    "front": "Reviewing a declarative change safely",
+    "back": "Render the objects and read <b>them</b> — that is the payload the API receives. Then apply. Then verify reconciliation separately through status and events.<br>Reviewing a values file is not reviewing a change: the template between them can do anything.",
+    "tags": [
+      "23-declarative-delivery-field-ownership",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u23l2::progress-deadline",
+    "lesson": "u23l2",
+    "unit": "23 Declarative delivery & field ownership",
+    "type": "discrimination",
+    "front": "A Deployment exceeds <code>progressDeadlineSeconds</code>. What happens?",
+    "back": "It sets <b>Progressing=False</b> with reason <b>ProgressDeadlineExceeded</b>. That is all.<br>It does not roll back, does not stop retrying, and does not remediate. The deadline is status evidence, not a policy — treating it as automatic recovery is how a stalled rollout stays stalled overnight.",
+    "tags": [
+      "23-declarative-delivery-field-ownership",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u23l2::ssa-conflict",
+    "lesson": "u23l2",
+    "unit": "23 Declarative delivery & field ownership",
+    "type": "discrimination",
+    "front": "Server-Side Apply returns a field conflict. What is the safest reading?",
+    "back": "<b>Another manager owns that field, and the API is telling you who.</b> Read <code>managedFields</code> and decide deliberately.<br>Force transfers ownership — right when ownership is genuinely moving, wrong when a controller will simply set the value back. It is not a generic retry.",
+    "tags": [
+      "23-declarative-delivery-field-ownership",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u23l2::stalled-rollout-evidence",
+    "lesson": "u23l2",
+    "unit": "23 Declarative delivery & field ownership",
+    "type": "name_to_definition",
+    "front": "Minimum evidence for a stalled rollout",
+    "back": "<ul><li>Deployment conditions and current revision</li><li>Desired / current / available counts on both ReplicaSets</li><li>Pod readiness and events</li><li>maxSurge and maxUnavailable arithmetic</li><li>managedFields or admission errors if updates were rejected</li></ul>",
+    "tags": [
+      "23-declarative-delivery-field-ownership",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u24l1::forbidden-not-pending",
+    "lesson": "u24l1",
+    "unit": "24 Namespace governance & live resizing",
+    "type": "discrimination",
+    "front": "A Pod creation returns <code>Forbidden: exceeded quota</code>. Where do you look?",
+    "back": "At the <b>rejected API request</b> — not the scheduler. Quota is enforced at admission, so the object was never stored.<br>There is no Pod to describe and nothing Pending. Forbidden and Pending are different boundaries.",
+    "tags": [
+      "24-namespace-governance-live-resizing",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u24l1::limitrange-breaks-quota",
+    "lesson": "u24l1",
+    "unit": "24 Namespace governance & live resizing",
+    "type": "discrimination",
+    "front": "Why can adding a LimitRange make previously valid Pods fail quota?",
+    "back": "The LimitRange <b>injects default requests or limits</b>, and quota evaluates the object <i>as admitted</i>, not as submitted.<br>Those defaults count against the budget. The submitted YAML is unchanged — what changed is what the namespace says it means.",
+    "tags": [
+      "24-namespace-governance-live-resizing",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u24l1::what-quota-counts",
+    "lesson": "u24l1",
+    "unit": "24 Namespace governance & live resizing",
+    "type": "name_to_definition",
+    "front": "What a ResourceQuota can and cannot constrain",
+    "back": "<b>Can</b>: declared API resources — requests, limits — and object counts.<br><b>Cannot</b>: actual runtime utilisation, which is a metrics and cgroup concern admission cannot see.<br>A namespace can sit at 100% of quota while its Pods are idle.",
+    "tags": [
+      "24-namespace-governance-live-resizing",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u24l2::resize-deferred",
+    "lesson": "u24l2",
+    "unit": "24 Namespace governance & live resizing",
+    "type": "discrimination",
+    "front": "An in-place resize is accepted but status says <b>deferred</b>. What does that mean?",
+    "back": "Desired and actuated resources are separate. The API stored your request; the kubelet has <b>not</b> applied it — typically for lack of node capacity right now.<br>An accepted patch is never proof the cgroup changed. Read the resize status, not the spec.",
+    "tags": [
+      "24-namespace-governance-live-resizing",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u24l2::resize-qos",
+    "lesson": "u24l2",
+    "unit": "24 Namespace governance & live resizing",
+    "type": "discrimination",
+    "front": "Does an in-place resize change a Pod's QoS class?",
+    "back": "<b>No.</b> The class is fixed for the Pod's lifetime, which keeps its scheduling and eviction semantics stable.<br>A different class requires a replacement Pod. Resizing is not a route to Guaranteed.",
+    "tags": [
+      "24-namespace-governance-live-resizing",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u25l1::etp-local-tradeoff",
+    "lesson": "u25l1",
+    "unit": "25 Service exposure & endpoint locality",
+    "type": "discrimination",
+    "front": "What is the real trade of <code>externalTrafficPolicy: Local</code>?",
+    "back": "It preserves the client source address and avoids an extra hop — and it <b>changes endpoint eligibility</b>: only node-local endpoints are used.<br>A node with no local endpoint will not serve the traffic at all. It is a behaviour change, not a performance hint.",
+    "tags": [
+      "25-service-exposure-endpoint-locality",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u25l1::lb-address-proves",
+    "lesson": "u25l1",
+    "unit": "25 Service exposure & endpoint locality",
+    "type": "name_to_definition",
+    "front": "A LoadBalancer shows an ingress address. What is still unproven?",
+    "back": "Backend health, correct Service ports, non-empty and ready EndpointSlices, endpoint eligibility under traffic policy, and the Pod's own listener and policy.<br>Provisioning succeeded. That is the only claim the address makes.",
+    "tags": [
+      "25-service-exposure-endpoint-locality",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u25l2::membership-vs-eligibility",
+    "lesson": "u25l2",
+    "unit": "25 Service exposure & endpoint locality",
+    "type": "discrimination",
+    "front": "A Service has EndpointSlices but serves no traffic. What is still unknown?",
+    "back": "Membership is not eligibility. Check the <b>ready / serving / terminating</b> conditions, the IP family and port, and whether traffic policy or locality excludes every endpoint on the receiving node.<br>Presence in a slice says an address exists, not that anything will use it.",
+    "tags": [
+      "25-service-exposure-endpoint-locality",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u25l2::strict-vs-preferred",
+    "lesson": "u25l2",
+    "unit": "25 Service exposure & endpoint locality",
+    "type": "discrimination",
+    "front": "Strict locality versus preferred locality — why does the distinction matter?",
+    "back": "<b>Strict</b> (internal traffic policy Local) is a requirement: no node-local endpoint means no traffic.<br><b>Preferred</b> (topology-aware routing, traffic distribution) is a hint and falls back.<br>Only one of them can be the reason nothing is served, so treat requirements and hints differently in failure analysis.",
+    "tags": [
+      "25-service-exposure-endpoint-locality",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u26l1::same-uid-restart",
+    "lesson": "u26l1",
+    "unit": "26 Sidecars, Jobs & restart ownership",
+    "type": "discrimination",
+    "front": "A container is OOMKilled and starts again with the <b>same Pod UID</b>. Who restarted it?",
+    "back": "The <b>kubelet</b>, restarting the container in the existing sandbox under the Pod's restart policy.<br>No controller was involved and the Pod object never changed — which is why the Deployment shows nothing.",
+    "tags": [
+      "26-sidecars-jobs-restart-ownership",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u26l1::uid-discriminator",
+    "lesson": "u26l1",
+    "unit": "26 Sidecars, Jobs & restart ownership",
+    "type": "cloze",
+    "front": "Same Pod UID with a higher {{c1::restartCount}} means a kubelet container restart; a {{c2::new UID}} means a controller created a replacement Pod.",
+    "back": "ownerReferences and events then name which controller did it. Two fields separate the two cases without guesswork.",
+    "tags": [
+      "26-sidecars-jobs-restart-ownership",
+      "recall",
+      "cloze"
+    ]
+  },
+  {
+    "id": "u26l1::native-sidecar-job",
+    "lesson": "u26l1",
+    "unit": "26 Sidecars, Jobs & restart ownership",
+    "type": "discrimination",
+    "front": "Why can a Job with a <b>native</b> sidecar finish?",
+    "back": "A native sidecar is an init container with <code>restartPolicy: Always</code>. It starts first, runs alongside the main containers, and the kubelet <b>stops it once they finish</b>.<br>That removes the classic never-exiting sidecar problem, where a proxy kept a Job running forever.",
+    "tags": [
+      "26-sidecars-jobs-restart-ownership",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u26l2::job-result-protocol",
+    "lesson": "u26l2",
+    "unit": "26 Sidecars, Jobs & restart ownership",
+    "type": "name_to_definition",
+    "front": "The independent knobs in a Job's result protocol",
+    "back": "<b>Indexed completion</b> — a stable index per unit of work.<br><b>backoffLimitPerIndex</b> — retries bounded per index.<br><b>podFailurePolicy</b> — classify outcomes, so a permanent exit code need not retry. Requires <code>restartPolicy: Never</code> on the template.<br><b>successPolicy</b> — declare success before every index finishes.<br><b>activeDeadlineSeconds</b> — cap total active time.",
+    "tags": [
+      "26-sidecars-jobs-restart-ownership",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u26l2::global-backoff-awkward",
+    "lesson": "u26l2",
+    "unit": "26 Sidecars, Jobs & restart ownership",
+    "type": "discrimination",
+    "front": "Why is a single global <code>backoffLimit</code> awkward for a large indexed Job?",
+    "back": "A few permanently broken indexes can exhaust a global budget and stop work that would have succeeded.<br>Per-index accounting lets healthy indexes finish and <b>names</b> the failed ones. The Job still ends Failed if any index is permanently failed, but you keep completed work and a named failure set instead of one shared retry budget wiping unfinished indexes mid-run.",
+    "tags": [
+      "26-sidecars-jobs-restart-ownership",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u27l1::psa-warn",
+    "lesson": "u27l1",
+    "unit": "27 Pod security & runtime isolation",
+    "type": "discrimination",
+    "front": "A namespace is labelled Pod Security <b>warn</b>. What happens to a violating Pod?",
+    "back": "It is <b>created</b>, and the client gets a warning message.<br>Only <code>enforce</code> rejects. <code>audit</code> records to the audit log. Two of the three modes still admit the Pod.",
+    "tags": [
+      "27-pod-security-runtime-isolation",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u27l1::restricted-not-a-claim",
+    "lesson": "u27l1",
+    "unit": "27 Pod security & runtime isolation",
+    "type": "name_to_definition",
+    "front": "Why “it passed Restricted admission” is not a security claim",
+    "back": "The standards are a bounded baseline, not all policy. Admission evaluated a <b>spec</b>, not a running process.<br>The runtime, RuntimeClass and kernel must actually enforce the mechanisms — and network, identity, image provenance and secret handling were never looked at.",
+    "tags": [
+      "27-pod-security-runtime-isolation",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u27l1::privilege-reducers",
+    "lesson": "u27l1",
+    "unit": "27 Pod security & runtime isolation",
+    "type": "name_to_definition",
+    "front": "securityContext settings that genuinely reduce runtime privilege",
+    "back": "Run as non-root; drop capabilities rather than add them; a seccomp profile; a read-only root filesystem; disallow privilege escalation.<br>These shape the process and runtime boundary. A label, annotation or controller revision carries no isolation property.",
+    "tags": [
+      "27-pod-security-runtime-isolation",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u27l2::runtimeclass-is-a-selector",
+    "lesson": "u27l2",
+    "unit": "27 Pod security & runtime isolation",
+    "type": "discrimination",
+    "front": "A Pod specifies a RuntimeClass for a sandboxed runtime. What must also be true?",
+    "back": "The named <b>handler must be configured in the node's runtime</b> on eligible nodes. RuntimeClass is a selector and a contract; the implementation lives on the node.<br>It can also add scheduling constraints and Pod overhead. Unconfigured, the Pod simply cannot run there.",
+    "tags": [
+      "27-pod-security-runtime-isolation",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u27l2::user-namespaces",
+    "lesson": "u27l2",
+    "unit": "27 Pod security & runtime isolation",
+    "type": "discrimination",
+    "front": "What security property do Pod user namespaces primarily add?",
+    "back": "They <b>remap container user IDs</b>, so root inside the container is an unprivileged identity on the host.<br>That changes the kernel's identity mapping at the container boundary — a stronger property than a spec field, because it does not depend on the workload behaving.",
+    "tags": [
+      "27-pod-security-runtime-isolation",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u13l1::kubeadm-exits",
+    "lesson": "u13l1",
+    "unit": "13 Cluster bootstrap & lifecycle",
+    "type": "discrimination",
+    "front": "After <code>kubeadm init</code> completes, what keeps the control plane running?",
+    "back": "The <b>kubelet</b>, realising the static Pod manifests kubeadm wrote. kubeadm writes PKI, kubeconfigs, manifests and bootstrap configuration, then <b>exits</b>.<br>There is no kubeadm daemon supervising the cluster afterwards.",
+    "tags": [
+      "13-cluster-bootstrap-lifecycle",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u13l1::static-pod-mirror",
+    "lesson": "u13l1",
+    "unit": "13 Cluster bootstrap & lifecycle",
+    "type": "discrimination",
+    "front": "A control-plane container is missing after a reboot. What is the highest-value first check?",
+    "back": "The <b>static Pod manifest on disk and the kubelet</b> — not the API.<br>If the kubelet cannot read or realise the manifest, the API object you see may be a stale <b>mirror Pod</b>: a reflection, not a running process.",
+    "tags": [
+      "13-cluster-bootstrap-lifecycle",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u13l2::skew-boundaries",
+    "lesson": "u13l2",
+    "unit": "13 Cluster bootstrap & lifecycle",
+    "type": "name_to_definition",
+    "front": "Which separately versioned boundaries must you check during a Kubernetes upgrade?",
+    "back": "Control-plane components, kubelets, kube-proxy, the container runtime, the network plugin, and the API versions you still store — each has its own skew contract.<br>Treating the cluster as a single version is what turns an upgrade into an outage.",
+    "tags": [
+      "13-cluster-bootstrap-lifecycle",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u13l2::drain-is-not-upgrade",
+    "lesson": "u13l2",
+    "unit": "13 Cluster bootstrap & lifecycle",
+    "type": "discrimination",
+    "front": "Does draining a node upgrade it?",
+    "back": "<b>No.</b> Drain cordons the node and attempts orderly eviction under its flags and policy. It normally respects PodDisruptionBudgets. DaemonSet and mirror Pods remain. Pods with local data need an explicit flag. You must still change the node configuration and binaries.<br>Conservative worker order: drain → change → <b>verify the returning node</b> → restore scheduling.",
+    "tags": [
+      "13-cluster-bootstrap-lifecycle",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u14l1::configmap-consequences",
+    "lesson": "u14l1",
+    "unit": "14 Configuration, QoS & eviction",
+    "type": "discrimination",
+    "front": "A ConfigMap changes. What happens automatically?",
+    "back": "<b>Kubernetes refreshes normal ConfigMap volume projections eventually. A <code>subPath</code> mount does not refresh.</b><br>Environment values stay fixed for the process. Kubernetes does not restart the container or roll a Deployment only because the referenced ConfigMap changed. An application or controller can reload or roll workloads if configured to do so.",
+    "tags": [
+      "14-configuration-qos-eviction",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u14l2::qos-is-derived",
+    "lesson": "u14l2",
+    "unit": "14 Configuration, QoS & eviction",
+    "type": "discrimination",
+    "front": "Is QoS class a field you set?",
+    "back": "<b>No — it is derived</b> from the CPU and memory requests and limits across <i>all</i> containers in the Pod.<br>One under-specified sidecar drops the whole Pod from Guaranteed to Burstable. If you expected Guaranteed and did not get it, check every container.",
+    "tags": [
+      "14-configuration-qos-eviction",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u15l1::accepted-not-served",
+    "lesson": "u15l1",
+    "unit": "15 Ingress, Gateway API & policy",
+    "type": "discrimination",
+    "front": "A valid HTTPRoute exists but nothing serves it. What has API acceptance proven?",
+    "back": "Only that the object was <b>stored</b>. A controller must still observe it and configure a proxy.<br>Read the route's <b>status parents and conditions</b> — that is where acceptance and resolution are reported. Existence is not attachment.",
+    "tags": [
+      "15-ingress-gateway-api-policy",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u15l1::gateway-ownership",
+    "lesson": "u15l1",
+    "unit": "15 Ingress, Gateway API & policy",
+    "type": "name_to_definition",
+    "front": "What Gateway API adds over Ingress",
+    "back": "<b>Ownership separation.</b> A platform team owns GatewayClass and Gateway — the infrastructure and its listeners. Application teams own Routes and attach them explicitly, with status reported on both sides.<br>Ingress puts both concerns in one object, usually mediated by annotations.",
+    "tags": [
+      "15-ingress-gateway-api-policy",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u16l1::feasible-not-local",
+    "lesson": "u16l1",
+    "unit": "16 NUMA-aware node resources",
+    "type": "discrimination",
+    "front": "The scheduler found capacity, but node admission rejected the Pod on topology. Contradiction?",
+    "back": "<b>No.</b> The scheduler sums <i>aggregate</i> capacity; it does not prove a coherent NUMA placement.<br>Topology Manager is node-local and can refuse what looked feasible. Both components answered correctly — they answered different questions.",
+    "tags": [
+      "16-numa-aware-node-resources",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u16l1::exclusive-cpus",
+    "lesson": "u16l1",
+    "unit": "16 NUMA-aware node resources",
+    "type": "discrimination",
+    "front": "Which container gets exclusive CPUs under the static CPU Manager policy?",
+    "back": "One in a <b>Guaranteed</b> Pod requesting a <b>whole number</b> of CPUs.<br>Ask for a fraction and you stay in the shared pool, however important the workload. It is an exact rule, not a priority.",
+    "tags": [
+      "16-numa-aware-node-resources",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u16l2::limit-is-not-isolation",
+    "lesson": "u16l2",
+    "unit": "16 NUMA-aware node resources",
+    "type": "discrimination",
+    "front": "Is a CPU limit CPU isolation?",
+    "back": "<b>No.</b> A CFS quota caps how much time you get; a <b>cpuset</b> controls where you run. Different mechanisms, different axes.<br>Predictable latency also needs reserved system CPUs, NUMA-local memory and devices, IRQ placement, huge pages, and a runtime that preserves the intended cgroup layout.",
+    "tags": [
+      "16-numa-aware-node-resources",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u17l1::plugin-vs-dra",
+    "lesson": "u17l1",
+    "unit": "17 Devices & Dynamic Resource Allocation",
+    "type": "discrimination",
+    "front": "Device plugin versus DRA — the architectural discriminator",
+    "back": "<b>Device plugin</b> advertises scalar extended resources through the kubelet. You request a count.<br><b>DRA</b> publishes structured devices through API objects — ResourceSlices, DeviceClasses, ResourceClaims — so you can filter them, share them, and manage their lifecycle.<br>Both still need node-side preparation.",
+    "tags": [
+      "17-devices-dynamic-resource-allocation",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u17l1::dra-handshake",
+    "lesson": "u17l1",
+    "unit": "17 Devices & Dynamic Resource Allocation",
+    "type": "name_to_definition",
+    "front": "The DRA allocation handshake, in order",
+    "back": "Driver publishes inventory → scheduler allocates a matching device <i>and</i> selects a reachable node → kubelet and driver prepare the device on that node.<br>Availability precedes allocation; preparation happens only after node selection.",
+    "tags": [
+      "17-devices-dynamic-resource-allocation",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u17l2::claim-template-vs-named",
+    "lesson": "u17l2",
+    "unit": "17 Devices & Dynamic Resource Allocation",
+    "type": "discrimination",
+    "front": "When is a ResourceClaimTemplate preferable to a named ResourceClaim?",
+    "back": "When the claim should live and die with the workload — the template is a <b>factory</b>, generating a claim per Pod and cleaning it up with the Pod.<br>A directly named claim can be <b>shared</b> between Pods or outlive any one of them. Choose by lifetime and sharing.",
+    "tags": [
+      "17-devices-dynamic-resource-allocation",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u18l1::aggregated-vs-crd",
+    "lesson": "u18l1",
+    "unit": "18 Advanced API machinery & policy",
+    "type": "discrimination",
+    "front": "When does an aggregated API beat a CRD?",
+    "back": "Rarely, and only deliberately. CRDs already provide CRUD, watch and schema on the generic server. Status and scale are available when you enable them on the CRD.<br><b>Aggregation</b> earns its operational cost only for behaviour the generic server cannot supply — custom storage, unusual subresources, or computed responses.",
+    "tags": [
+      "18-advanced-api-machinery-policy",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u18l1::watch-bookmark-410",
+    "lesson": "u18l1",
+    "unit": "18 Advanced API machinery & policy",
+    "type": "cloze",
+    "front": "A watch {{c1::BOOKMARK}} carries no object change — it advances the resource version so you can resume; an HTTP {{c2::410 Gone}} means the history expired and you must rebuild state.",
+    "back": "Bookmarks are an optimisation and optional. After a 410 there is no way to infer what you missed, so relist rather than guess.",
+    "tags": [
+      "18-advanced-api-machinery-policy",
+      "recall",
+      "cloze"
+    ]
+  },
+  {
+    "id": "u18l2::vap-vs-webhook",
+    "lesson": "u18l2",
+    "unit": "18 Advanced API machinery & policy",
+    "type": "discrimination",
+    "front": "Why can a ValidatingAdmissionPolicy be operationally safer than a webhook?",
+    "back": "It evaluates <b>CEL in process</b> — no Service, no DNS, no TLS trust, no response deadline on the API hot path.<br>It is not free: validation only (it cannot mutate), and matching scope, expression cost and failure policy are still deliberate decisions.",
+    "tags": [
+      "18-advanced-api-machinery-policy",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u19l1::leader-election-guarantee",
+    "lesson": "u19l1",
+    "unit": "19 Coordination & deferred commitment",
+    "type": "discrimination",
+    "front": "What can leader election guarantee — and what can it not?",
+    "back": "<b>Can</b>: one current Lease holder under API consistency, and failover once renewal stops and the duration expires.<br><b>Cannot</b>: exactly-once external side effects. A deposed leader may still be mid-operation outside the cluster, so fencing or idempotency is a separate requirement.",
+    "tags": [
+      "19-coordination-deferred-commitment",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u19l2::scheduling-gated",
+    "lesson": "u19l2",
+    "unit": "19 Coordination & deferred commitment",
+    "type": "discrimination",
+    "front": "A Pod is Pending with reason <code>SchedulingGated</code>. What do you investigate?",
+    "back": "Not a scheduling-capacity failure — the scheduler is deliberately skipping the Pod.<br>Read the named gates in the spec. Find which controller or admission rule added them. Identify the external prerequisite each gate waits on. Ask why that owner has not removed them.<br>Gates can be removed after creation but not newly added.",
+    "tags": [
+      "19-coordination-deferred-commitment",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u20l1::nearest-authority",
+    "lesson": "u20l1",
+    "unit": "20 CKA troubleshooting spine",
+    "type": "discrimination",
+    "front": "Where do you start diagnosing when the API server itself is not answering?",
+    "back": "<b>Below Kubernetes.</b> If an API load balancer exists, confirm what it thinks. Then static Pod manifests, the kubelet service, the runtime, certificates, sockets and host resources.<br>kubectl cannot diagnose the API server that makes kubectl work. Above that line, use object status, events and component health.",
+    "tags": [
+      "20-cka-troubleshooting-spine",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u20l1::notready-90s",
+    "lesson": "u20l1",
+    "unit": "20 CKA troubleshooting spine",
+    "type": "name_to_definition",
+    "front": "A ninety-second NotReady diagnosis",
+    "back": "Inspect conditions, taints and the node <b>Lease</b> → check host reachability and the <b>clock</b> → check the kubelet, including certificate and config errors → check the runtime and network plugin → <b>preserve evidence before restarting</b>.<br>The clock is the step people skip; skew produces certificate failures that look like something else.",
+    "tags": [
+      "20-cka-troubleshooting-spine",
+      "understanding"
+    ]
+  },
+  {
+    "id": "u20l2::phase-implies",
+    "lesson": "u20l2",
+    "unit": "20 CKA troubleshooting spine",
+    "type": "discrimination",
+    "front": "What do Pod phase and common container waiting reasons each point at?",
+    "back": "<b>Pending</b> — admission, quota, scheduling or claims.<br><b>ContainerCreating</b> (waiting reason on a Pending or Running Pod) — image, sandbox, network or mounts.<br><b>CrashLoopBackOff</b> (waiting reason) — a process or probe failing repeatedly under the restart policy.<br><b>Running but not Ready</b> — readiness, a dependency, or endpoint selection.<br>Phase names the Pod. Waiting reasons name the attempt. Events name what was tried. Do not call waiting reasons phases.",
+    "tags": [
+      "20-cka-troubleshooting-spine",
+      "understanding",
+      "discrimination"
+    ]
+  },
+  {
+    "id": "u20l2::the-algorithm",
+    "lesson": "u20l2",
+    "unit": "20 CKA troubleshooting spine",
+    "type": "name_to_definition",
+    "front": "The compact troubleshooting algorithm",
+    "back": "<ol><li>State the transition you expected and what you observe.</li><li>Identify the component that owns that transition.</li><li>Read status, events and logs <b>at that boundary</b>.</li><li>Compare with one adjacent healthy layer.</li><li>Change one thing, and verify.</li></ol>Every unit in the course is a way of answering step two quickly.",
+    "tags": [
+      "20-cka-troubleshooting-spine",
+      "understanding"
     ]
   }
 ]

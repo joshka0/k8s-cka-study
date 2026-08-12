@@ -24,10 +24,20 @@ from typing import Any
 
 DECK_DIR = Path(__file__).resolve().parent
 CARDS_PATH = DECK_DIR / "lesson-cards.json"
-CONTENT_PATHS = [
-    DECK_DIR.parent / "assets" / "content.js",
-    DECK_DIR.parent / "assets" / "advanced-content.js",
-]
+def _content_paths() -> list[Path]:
+    """Every course content file, discovered rather than listed.
+
+    New units arrive as new assets/*content*.js files. Hard-coding the list
+    meant a whole tranche of units silently had no cards and no validation.
+    content.js is loaded first so base units keep their numbering.
+    """
+    assets = DECK_DIR.parent / "assets"
+    found = sorted(assets.glob("*content*.js"))
+    base = assets / "content.js"
+    return ([base] if base.exists() else []) + [p for p in found if p != base]
+
+
+CONTENT_PATHS = _content_paths()
 OUTPUT_PATH = DECK_DIR / "kubernetes-beyond-yaml-lessons.apkg"
 PARENT_DECK_NAME = "Kubernetes Beyond YAML — Lessons"
 
@@ -159,15 +169,24 @@ def load_units() -> tuple[dict[str, str], dict[str, str]]:
         raise ContractError(f"course content not found: {exc.filename}") from exc
 
     units: dict[str, str] = {}
+    # Content files differ in whether `title` sits on its own line, so match
+    # any whitespace rather than requiring a newline.
     pattern = re.compile(
-        r"id:\s*'(u\d+)',\s*n:\s*(\d+),\s*ref:\s*'m\d+',\s*\n\s*title:\s*'([^']+)'"
+        r"id:\s*'(u\d+)',\s*n:\s*(\d+),\s*ref:\s*'m\d+',\s*title:\s*'([^']+)'"
     )
     for unit_id, number, title in pattern.findall(source):
         units[unit_id] = f"{int(number):02d} {title}"
-    expected_ids = {f"u{number}" for number in range(1, 21)}
+    # Units grow over time, so assert shape rather than a fixed count: the ids
+    # must be contiguous from u1 with no gaps. Hard-coding 20 meant a new
+    # content file failed the build instead of extending the deck.
+    if not units:
+        raise ContractError("parsed no units from the course content")
+    numbers = sorted(int(uid[1:]) for uid in units)
+    expected_ids = {f"u{n}" for n in range(1, numbers[-1] + 1)}
     if set(units) != expected_ids:
+        missing = sorted(expected_ids - set(units))
         raise ContractError(
-            f"expected units u1 through u20; parsed {', '.join(sorted(units))}"
+            f"units must be contiguous from u1; missing {', '.join(missing)}"
         )
 
     lessons: dict[str, str] = {}
