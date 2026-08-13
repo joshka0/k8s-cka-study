@@ -312,8 +312,16 @@ function showPath() {
   kids.push(el('div', { cls: 'hero' }, [
     el('div', { cls: 'eyebrow', text: 'Senior platform / SRE preparation' }),
     el('h1', { text: COURSE.subtitle }),
-    el('p', { text: '27 units built from 33 transcript-backed talks, supplemental video research, and current upstream documentation. Short lessons, answered out loud, with source links at every technical boundary.' }),
-    el('p', { text: Object.keys(MODULE_VIDEOS).length + ' units have a narrated module video. Every script was technically reviewed against Kubernetes v1.36 by a different model family than the one that wrote it, and the corrections from those reviews are applied.' }),
+    // Counts come from the data, never from a literal. This block used to open
+    // "27 units built from…" beside a live count of units with video, so the
+    // two disagreed the moment a unit was added — the same coupling the module
+    // narration had, in the one place every visitor reads first.
+    el('p', { text: COURSE.units.length + ' units that follow one request from kubectl to a packet. '
+      + 'Each unit is a handful of short lessons you answer, not read, '
+      + 'with a source link at every technical boundary.' }),
+    el('p', { text: 'Every unit adds a narrated video, a classroom recording, and a deck of '
+      + 'spaced-repetition cards. Everything was checked against Kubernetes v1.36 by an '
+      + 'independent technical review, and those corrections are applied.' }),
     el('div', { cls: 'hero-actions' }, [
       next ? el('button', { cls: 'btn', on: { click: () => startLesson(next.id) } },
         [document.createTextNode(doneLessons ? 'Continue · ' + next.title : 'Start unit 1')]) : null,
