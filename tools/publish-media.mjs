@@ -44,9 +44,12 @@ const KINDS = {
   audio: {
     dir: path.join(ROOT, 'experiments'),
     // One combined track per unit, beside a cache/ of per-segment synthesis
-    // that must not be published.
+    // that must not be published. Both the base track and its extended
+    // variant match: the directory and file names differ only by the
+    // `-extended` infix, so one rule covers them and a third variant later
+    // needs no new code.
     list: (dir) => fs.readdirSync(dir)
-      .filter((d) => /^u\d{2}-listen-in-class-audio$/.test(d))
+      .filter((d) => /^u\d{2}-listen-in-class(-extended)?-audio$/.test(d))
       .map((d) => path.join(d, `${d.replace(/-audio$/, '')}.mp3`))
       .filter((rel) => fs.existsSync(path.join(dir, rel))),
     key: (f) => `audio/${path.basename(f)}`,

@@ -11,6 +11,8 @@ window.MODULE_VIDEOS = {
     "seconds": 360,
     "audio": "https://videos.katig.dev/audio/u01-listen-in-class.mp3?v=b020246d",
     "audioSeconds": 665,
+    "audioExtended": "https://videos.katig.dev/audio/u01-listen-in-class-extended.mp3?v=5be32ae1",
+    "audioExtendedSeconds": 880,
     "deck": "deck/by-module/u01-the-control-plane-map.apkg",
     "beats": [
       "Five actors",
@@ -30,6 +32,8 @@ window.MODULE_VIDEOS = {
     "seconds": 325,
     "audio": "https://videos.katig.dev/audio/u02-listen-in-class.mp3?v=3d8842e3",
     "audioSeconds": 731,
+    "audioExtended": "https://videos.katig.dev/audio/u02-listen-in-class-extended.mp3?v=9fb0d44a",
+    "audioExtendedSeconds": 943,
     "deck": "deck/by-module/u02-the-api-request-path.apkg",
     "beats": [
       "Who, then may they",
@@ -50,6 +54,8 @@ window.MODULE_VIDEOS = {
     "seconds": 294,
     "audio": "https://videos.katig.dev/audio/u03-listen-in-class.mp3?v=997d53f9",
     "audioSeconds": 711,
+    "audioExtended": "https://videos.katig.dev/audio/u03-listen-in-class-extended.mp3?v=13043239",
+    "audioExtendedSeconds": 919,
     "deck": "deck/by-module/u03-reconciliation-watches.apkg",
     "beats": [
       "Observe, compare, act",
@@ -72,6 +78,8 @@ window.MODULE_VIDEOS = {
     "seconds": 350,
     "audio": "https://videos.katig.dev/audio/u04-listen-in-class.mp3?v=12cb01e2",
     "audioSeconds": 765,
+    "audioExtended": "https://videos.katig.dev/audio/u04-listen-in-class-extended.mp3?v=1d1143e9",
+    "audioExtendedSeconds": 946,
     "deck": "deck/by-module/u04-workloads-disruption.apkg",
     "beats": [
       "Pick by invariant",
@@ -94,6 +102,8 @@ window.MODULE_VIDEOS = {
     "seconds": 337,
     "audio": "https://videos.katig.dev/audio/u05-listen-in-class.mp3?v=4825641f",
     "audioSeconds": 715,
+    "audioExtended": "https://videos.katig.dev/audio/u05-listen-in-class-extended.mp3?v=6e695fa4",
+    "audioExtendedSeconds": 895,
     "deck": "deck/by-module/u05-crds-operators.apkg",
     "beats": [
       "Four words people blur",
@@ -117,6 +127,8 @@ window.MODULE_VIDEOS = {
     "seconds": 280,
     "audio": "https://videos.katig.dev/audio/u06-listen-in-class.mp3?v=1d83ed8f",
     "audioSeconds": 671,
+    "audioExtended": "https://videos.katig.dev/audio/u06-listen-in-class-extended.mp3?v=4dc6c03b",
+    "audioExtendedSeconds": 857,
     "deck": "deck/by-module/u06-scheduling-under-pressure.apkg",
     "beats": [
       "Two cycles, not one",
@@ -138,6 +150,8 @@ window.MODULE_VIDEOS = {
     "seconds": 273,
     "audio": "https://videos.katig.dev/audio/u07-listen-in-class.mp3?v=90c0bca2",
     "audioSeconds": 716,
+    "audioExtended": "https://videos.katig.dev/audio/u07-listen-in-class-extended.mp3?v=46e6ed4c",
+    "audioExtendedSeconds": 949,
     "deck": "deck/by-module/u07-kubelet-cri-pods.apkg",
     "beats": [
       "A loop, not an inbox",
@@ -160,6 +174,8 @@ window.MODULE_VIDEOS = {
     "seconds": 267,
     "audio": "https://videos.katig.dev/audio/u08-listen-in-class.mp3?v=f5987fe2",
     "audioSeconds": 845,
+    "audioExtended": "https://videos.katig.dev/audio/u08-listen-in-class-extended.mp3?v=0f1205a6",
+    "audioExtendedSeconds": 1046,
     "deck": "deck/by-module/u08-networking-the-data-plane.apkg",
     "beats": [
       "Three owners, not one network",
@@ -183,6 +199,8 @@ window.MODULE_VIDEOS = {
     "seconds": 249,
     "audio": "https://videos.katig.dev/audio/u09-listen-in-class.mp3?v=c4380698",
     "audioSeconds": 667,
+    "audioExtended": "https://videos.katig.dev/audio/u09-listen-in-class-extended.mp3?v=36471301",
+    "audioExtendedSeconds": 859,
     "deck": "deck/by-module/u09-dns-coredns.apkg",
     "beats": [
       "The query that actually leaves",
@@ -205,6 +223,8 @@ window.MODULE_VIDEOS = {
     "seconds": 223,
     "audio": "https://videos.katig.dev/audio/u10-listen-in-class.mp3?v=fdc3e0b8",
     "audioSeconds": 679,
+    "audioExtended": "https://videos.katig.dev/audio/u10-listen-in-class-extended.mp3?v=e8af67c2",
+    "audioExtendedSeconds": 862,
     "deck": "deck/by-module/u10-storage-csi.apkg",
     "beats": [
       "Claim, class, volume",
@@ -226,6 +246,8 @@ window.MODULE_VIDEOS = {
     "seconds": 235,
     "audio": "https://videos.katig.dev/audio/u11-listen-in-class.mp3?v=ba20e2cf",
     "audioSeconds": 658,
+    "audioExtended": "https://videos.katig.dev/audio/u11-listen-in-class-extended.mp3?v=213762ad",
+    "audioExtendedSeconds": 826,
     "deck": "deck/by-module/u11-ha-etcd-recovery.apkg",
     "beats": [
       "Two different availability models",
@@ -248,6 +270,8 @@ window.MODULE_VIDEOS = {
     "seconds": 263,
     "audio": "https://videos.katig.dev/audio/u12-listen-in-class.mp3?v=89f0a98b",
     "audioSeconds": 596,
+    "audioExtended": "https://videos.katig.dev/audio/u12-listen-in-class-extended.mp3?v=744a875e",
+    "audioExtendedSeconds": 813,
     "deck": "deck/by-module/u12-scale-apf-evidence.apkg",
     "beats": [
       "Concurrency has to be allocated",
@@ -269,6 +293,8 @@ window.MODULE_VIDEOS = {
     "seconds": 199,
     "audio": "https://videos.katig.dev/audio/u13-listen-in-class.mp3?v=ceadcc9c",
     "audioSeconds": 472,
+    "audioExtended": "https://videos.katig.dev/audio/u13-listen-in-class-extended.mp3?v=76f6626e",
+    "audioExtendedSeconds": 655,
     "deck": "deck/by-module/u13-cluster-bootstrap-lifecycle.apkg",
     "beats": [
       "It composes, it does not manage",
@@ -289,6 +315,8 @@ window.MODULE_VIDEOS = {
     "seconds": 184,
     "audio": "https://videos.katig.dev/audio/u14-listen-in-class.mp3?v=95399790",
     "audioSeconds": 648,
+    "audioExtended": "https://videos.katig.dev/audio/u14-listen-in-class-extended.mp3?v=8054a75e",
+    "audioExtendedSeconds": 825,
     "deck": "deck/by-module/u14-configuration-qos-eviction.apkg",
     "beats": [
       "Delivery has semantics",
@@ -308,6 +336,8 @@ window.MODULE_VIDEOS = {
     "seconds": 178,
     "audio": "https://videos.katig.dev/audio/u15-listen-in-class.mp3?v=a79bb675",
     "audioSeconds": 546,
+    "audioExtended": "https://videos.katig.dev/audio/u15-listen-in-class-extended.mp3?v=44066db8",
+    "audioExtendedSeconds": 702,
     "deck": "deck/by-module/u15-ingress-gateway-api-policy.apkg",
     "beats": [
       "The object is not the proxy",
@@ -327,6 +357,8 @@ window.MODULE_VIDEOS = {
     "seconds": 200,
     "audio": "https://videos.katig.dev/audio/u16-listen-in-class.mp3?v=bb5b0f4d",
     "audioSeconds": 554,
+    "audioExtended": "https://videos.katig.dev/audio/u16-listen-in-class-extended.mp3?v=06763436",
+    "audioExtendedSeconds": 730,
     "deck": "deck/by-module/u16-numa-aware-node-resources.apkg",
     "beats": [
       "Aggregate capacity is not locality",
@@ -347,6 +379,8 @@ window.MODULE_VIDEOS = {
     "seconds": 195,
     "audio": "https://videos.katig.dev/audio/u17-listen-in-class.mp3?v=69b27032",
     "audioSeconds": 527,
+    "audioExtended": "https://videos.katig.dev/audio/u17-listen-in-class-extended.mp3?v=99a0765f",
+    "audioExtendedSeconds": 694,
     "deck": "deck/by-module/u17-devices-dynamic-resource-allocation.apkg",
     "beats": [
       "A count, or a description",
@@ -367,6 +401,8 @@ window.MODULE_VIDEOS = {
     "seconds": 187,
     "audio": "https://videos.katig.dev/audio/u18-listen-in-class.mp3?v=3278bfc0",
     "audioSeconds": 514,
+    "audioExtended": "https://videos.katig.dev/audio/u18-listen-in-class-extended.mp3?v=279ed745",
+    "audioExtendedSeconds": 653,
     "deck": "deck/by-module/u18-advanced-api-machinery-policy.apkg",
     "beats": [
       "Claiming a path",
@@ -386,6 +422,8 @@ window.MODULE_VIDEOS = {
     "seconds": 186,
     "audio": "https://videos.katig.dev/audio/u19-listen-in-class.mp3?v=18cc0215",
     "audioSeconds": 542,
+    "audioExtended": "https://videos.katig.dev/audio/u19-listen-in-class-extended.mp3?v=f2ce12ac",
+    "audioExtendedSeconds": 697,
     "deck": "deck/by-module/u19-coordination-deferred-commitment.apkg",
     "beats": [
       "Leadership is a conditional write",
@@ -406,6 +444,8 @@ window.MODULE_VIDEOS = {
     "seconds": 195,
     "audio": "https://videos.katig.dev/audio/u20-listen-in-class.mp3?v=70c11402",
     "audioSeconds": 605,
+    "audioExtended": "https://videos.katig.dev/audio/u20-listen-in-class-extended.mp3?v=ea142728",
+    "audioExtendedSeconds": 780,
     "deck": "deck/by-module/u20-cka-troubleshooting-spine.apkg",
     "beats": [
       "Start where something still answers",
@@ -426,6 +466,8 @@ window.MODULE_VIDEOS = {
     "seconds": 159,
     "audio": "https://videos.katig.dev/audio/u21-listen-in-class.mp3?v=c8cf09b6",
     "audioSeconds": 757,
+    "audioExtended": "https://videos.katig.dev/audio/u21-listen-in-class-extended.mp3?v=6ad34323",
+    "audioExtendedSeconds": 1007,
     "deck": "deck/by-module/u21-identity-rbac-node-trust.apkg",
     "beats": [
       "Scope is half the grant",
@@ -444,6 +486,8 @@ window.MODULE_VIDEOS = {
     "seconds": 150,
     "audio": "https://videos.katig.dev/audio/u22-listen-in-class.mp3?v=93ac7bf9",
     "audioSeconds": 467,
+    "audioExtended": "https://videos.katig.dev/audio/u22-listen-in-class-extended.mp3?v=3184bfd8",
+    "audioExtendedSeconds": 597,
     "deck": "deck/by-module/u22-metrics-logs-interactive-debugging.apkg",
     "beats": [
       "One narrow pipeline",
@@ -462,6 +506,8 @@ window.MODULE_VIDEOS = {
     "seconds": 175,
     "audio": "https://videos.katig.dev/audio/u23-listen-in-class.mp3?v=252c2910",
     "audioSeconds": 489,
+    "audioExtended": "https://videos.katig.dev/audio/u23-listen-in-class-extended.mp3?v=7e5f525b",
+    "audioExtendedSeconds": 629,
     "deck": "deck/by-module/u23-declarative-delivery-field-ownership.apkg",
     "beats": [
       "Two state machines",
@@ -481,6 +527,8 @@ window.MODULE_VIDEOS = {
     "seconds": 173,
     "audio": "https://videos.katig.dev/audio/u24-listen-in-class.mp3?v=17260cce",
     "audioSeconds": 495,
+    "audioExtended": "https://videos.katig.dev/audio/u24-listen-in-class-extended.mp3?v=b9268baa",
+    "audioExtendedSeconds": 657,
     "deck": "deck/by-module/u24-namespace-governance-live-resizing.apkg",
     "beats": [
       "One object, or the whole namespace",
@@ -500,6 +548,8 @@ window.MODULE_VIDEOS = {
     "seconds": 161,
     "audio": "https://videos.katig.dev/audio/u25-listen-in-class.mp3?v=83cdf370",
     "audioSeconds": 446,
+    "audioExtended": "https://videos.katig.dev/audio/u25-listen-in-class-extended.mp3?v=bb675509",
+    "audioExtendedSeconds": 565,
     "deck": "deck/by-module/u25-service-exposure-endpoint-locality.apkg",
     "beats": [
       "Each type adds a layer",
@@ -518,6 +568,8 @@ window.MODULE_VIDEOS = {
     "seconds": 167,
     "audio": "https://videos.katig.dev/audio/u26-listen-in-class.mp3?v=7dd08e8c",
     "audioSeconds": 424,
+    "audioExtended": "https://videos.katig.dev/audio/u26-listen-in-class-extended.mp3?v=1fded16c",
+    "audioExtendedSeconds": 567,
     "deck": "deck/by-module/u26-sidecars-jobs-restart-ownership.apkg",
     "beats": [
       "Three owners, three objects",
@@ -536,6 +588,8 @@ window.MODULE_VIDEOS = {
     "seconds": 174,
     "audio": "https://videos.katig.dev/audio/u27-listen-in-class.mp3?v=a44eb7c5",
     "audioSeconds": 500,
+    "audioExtended": "https://videos.katig.dev/audio/u27-listen-in-class-extended.mp3?v=2c2dc4e7",
+    "audioExtendedSeconds": 638,
     "deck": "deck/by-module/u27-pod-security-runtime-isolation.apkg",
     "beats": [
       "Three modes, one blocks",

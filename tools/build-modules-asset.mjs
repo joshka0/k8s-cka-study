@@ -37,23 +37,30 @@ function contentHash(file) {
   return createHash('md5').update(readFileSync(file)).digest('hex').slice(0, 8);
 }
 
-/* The "listen in class" track for a unit, when one has been produced.
+/* The "listen in class" tracks for a unit, when they have been produced.
+ *
+ * Two variants share one shape: the base lecture, and an extended cut that
+ * adds retrieval practice — the teacher asks a student to recall a term
+ * before the question that reuses it. Same material, more reinforcement, so
+ * they are variants of one thing rather than two separate lessons.
  *
  * These live beside a cache/ of per-segment synthesis that must never be
- * published, so the combined file is addressed by name rather than by
- * scanning the directory. Served from the same bucket as video, under audio/,
- * and hashed for the same reason: the filename does not change between runs. */
+ * published, so each file is addressed by name rather than by scanning the
+ * directory. Hashed for the same reason video is: the filename does not
+ * change between runs, and the bucket serves an immutable year-long cache. */
 function audioFor(pad) {
-  const rel = path.join(`u${pad}-listen-in-class-audio`, `u${pad}-listen-in-class.mp3`);
-  const full = path.join(AUDIO_DIR, rel);
-  if (!existsSync(full)) return null;
-  const name = path.basename(rel);
-  return {
-    audio: VIDEO_BASE_URL
-      ? `${VIDEO_BASE_URL}/audio/${name}?v=${contentHash(full)}`
-      : `experiments/${rel}`,
-    audioSeconds: Math.round(mp3Seconds(full)),
-  };
+  const out = {};
+  for (const [key, infix] of [['audio', ''], ['audioExtended', '-extended']]) {
+    const stem = `u${pad}-listen-in-class${infix}`;
+    const rel = path.join(`${stem}-audio`, `${stem}.mp3`);
+    const full = path.join(AUDIO_DIR, rel);
+    if (!existsSync(full)) continue;
+    out[key] = VIDEO_BASE_URL
+      ? `${VIDEO_BASE_URL}/audio/${stem}.mp3?v=${contentHash(full)}`
+      : `experiments/${rel}`;
+    out[`${key}Seconds`] = Math.round(mp3Seconds(full));
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 /* The single-unit Anki deck, when one has been built.

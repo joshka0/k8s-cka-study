@@ -371,7 +371,9 @@ function showPath() {
             el('span', { cls: 'dot', text: heard ? '✓' : '♪' }),
             el('span', {}, [
               el('span', { text: 'Listen in class · ' + vid.title }),
-              el('small', { text: mmss(vid.audioSeconds || 0) + ' · lecture audio' + (heard ? ' · heard' : '') })
+              el('small', { text: mmss(vid.audioSeconds || 0) + ' · lecture audio'
+                + (vid.audioExtended ? ' · extended cut ' + mmss(vid.audioExtendedSeconds || 0) : '')
+                + (heard ? ' · heard' : '') })
             ])
           ])
         ]));
@@ -446,13 +448,26 @@ function showModule(unitId, mode) {
   });
 
   // Same award shape as the video: once per unit, on completion.
+  // The classroom track has two cuts of the same lesson: the base lecture, and
+  // an extended one that adds retrieval practice — the teacher asks a student
+  // to recall a term before the question that reuses it. They are variants of
+  // one thing, so they share a completion key: finishing either marks the
+  // unit heard, and listening to both cannot be farmed for double XP.
+  const TRACKS = [
+    { mode: 'listen', src: vid.audio, seconds: vid.audioSeconds, label: '\u266a Listen in class' },
+    { mode: 'listen-extended', src: vid.audioExtended, seconds: vid.audioExtendedSeconds,
+      label: '\u266a Listen \u00b7 extended' }
+  ].filter(function (t) { return !!t.src; });
+
+  const track = TRACKS.find(function (t) { return t.mode === mode; }) || null;
+
   // metadata, not none: with no preload the bar shows no duration and looks
   // broken until the first tap. Metadata is a few KB for an 11-minute file.
-  const audio = vid.audio ? el('audio', {
+  const audio = track ? el('audio', {
     cls: 'module-audio',
     controls: true,
     preload: 'metadata',
-    src: vid.audio
+    src: track.src
   }, []) : null;
   if (audio) {
     audio.addEventListener('ended', () => {
@@ -466,7 +481,7 @@ function showModule(unitId, mode) {
     });
   }
 
-  const listening = mode === 'listen' && !!audio;
+  const listening = !!audio;
 
   render([
     el('div', { cls: 'module-view' }, [
@@ -476,16 +491,17 @@ function showModule(unitId, mode) {
       el('h1', { text: vid.title }),
       el('p', { cls: 'module-sub', text: vid.subtitle }),
       listening ? audio : video,
-      audio ? el('div', { cls: 'module-switch' }, [
+      TRACKS.length ? el('div', { cls: 'module-switch' }, [
         el('button', {
           cls: 'btn ghost' + (listening ? '' : ' on'),
           on: { click: () => showModule(unitId) }
-        }, [document.createTextNode('▶ Watch · ' + mmss(vid.seconds))]),
-        el('button', {
-          cls: 'btn ghost' + (listening ? ' on' : ''),
-          on: { click: () => showModule(unitId, 'listen') }
-        }, [document.createTextNode('♪ Listen in class · ' + mmss(vid.audioSeconds || 0))])
-      ]) : null,
+        }, [document.createTextNode('\u25b6 Watch \u00b7 ' + mmss(vid.seconds))])
+      ].concat(TRACKS.map(function (t) {
+        return el('button', {
+          cls: 'btn ghost' + (mode === t.mode ? ' on' : ''),
+          on: { click: () => showModule(unitId, t.mode) }
+        }, [document.createTextNode(t.label + ' \u00b7 ' + mmss(t.seconds || 0))]);
+      }))) : null,
       el('h3', { cls: 'module-parts-head', text: 'What it covers' }),
       el('ol', { cls: 'module-parts' }, vid.beats.map(b => el('li', { text: b }))),
       el('div', { cls: 'module-actions' }, [
