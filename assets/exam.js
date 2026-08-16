@@ -5,6 +5,10 @@
 
      1 Attempt   context, task, constraints. Nothing else. You solve it in a
                  terminal, in your head, or on paper.
+     1b Walk     optional, and only for the questions window.EXAM_WALKTHROUGHS
+                 covers. A guided reading of the same scenario: evidence, one
+                 decision at a time, a wrong pick teaches and lets you pick
+                 again. It replaces nothing — it precedes the grade stage.
      2 Grade     the verify items appear as point-weighted checkboxes, with the
                  scoring notes beside them. You tick what your end state
                  actually achieved; the page adds the points up.
@@ -21,6 +25,21 @@
 const QUESTIONS = window.EXAM_QUESTIONS || [];
 const BY_ID = {};
 QUESTIONS.forEach(q => { BY_ID[q.id] = q; });
+
+/* The walkthrough bank is a separate, optional file: it may be absent, and it
+   covers only some ids. Everything downstream asks walkthroughOf(), which
+   answers null for both cases, so the surface simply offers no guided path. */
+const WALKS = (window.EXAM_WALKTHROUGHS && typeof window.EXAM_WALKTHROUGHS === 'object')
+  ? window.EXAM_WALKTHROUGHS : {};
+
+function walkthroughOf(id) {
+  const w = WALKS[id];
+  if (!w || typeof w !== 'object') return null;
+  const steps = w.steps;
+  if (!steps || !steps.length) return null;
+  const usable = steps.every(s => s && s.options && s.options.length);
+  return usable ? w : null;
+}
 
 /* ---------- progress store ----------
 
@@ -63,9 +82,23 @@ const doneKey = id => '@exam' + id;
 // renderable by the lesson engine.
 const srsKey = id => '@exam' + id + '#0';
 
-function attemptOf(id) {
+/* One done-record per question. It carries the graded attempt, and — since the
+   guided walkthrough can be finished before any attempt is scored — it may
+   carry a `walk` field on its own, with no score in it yet. So the attempt
+   reader asks for a scored record, not merely a record. */
+function recordOf(id) {
   const rec = (state().done || {})[doneKey(id)];
   return (rec && typeof rec === 'object') ? rec : null;
+}
+
+function attemptOf(id) {
+  const rec = recordOf(id);
+  return (rec && typeof rec.pct === 'number') ? rec : null;
+}
+
+function walkOf(id) {
+  const rec = recordOf(id);
+  return (rec && rec.walk && typeof rec.walk === 'object') ? rec.walk : null;
 }
 
 function srsOf(id) {
@@ -75,10 +108,14 @@ function srsOf(id) {
 function status(id) {
   const attempt = attemptOf(id);
   const srs = srsOf(id);
+  const walk = walkOf(id);
   const days = srs ? srs.due - today() : null;
   return {
     attempt: attempt,
     srs: srs,
+    walk: walk,
+    guided: !!walkthroughOf(id),
+    walked: !!(walk && walk.done),
     attempted: !!attempt,
     passed: !!attempt && attempt.pct >= PASS * 100,
     dueNow: !!srs && srs.due <= today(),
@@ -96,15 +133,36 @@ function record(q, score) {
   update(s => {
     if (!s.done) s.done = {};
     if (!s.srs) s.srs = {};
-    const prev = (s.done[doneKey(q.id)] && typeof s.done[doneKey(q.id)] === 'object')
+    const rec = (s.done[doneKey(q.id)] && typeof s.done[doneKey(q.id)] === 'object')
       ? s.done[doneKey(q.id)] : null;
-    s.done[doneKey(q.id)] = {
+    // A record holding only a finished walkthrough is not a previous attempt:
+    // it must not consume the first-attempt XP, nor seed best/n.
+    const prev = (rec && typeof rec.pct === 'number') ? rec : null;
+    const entry = {
       best: Math.max(pct, prev ? (prev.best || 0) : 0),
       score: score, max: max, pct: pct, at: now, n: (prev ? (prev.n || 0) : 0) + 1
     };
+    if (rec && rec.walk) entry.walk = rec.walk;
+    s.done[doneKey(q.id)] = entry;
     const box = ok ? Math.min(((s.srs[srsKey(q.id)] || {}).box || 0) + 1, BOXES.length - 1) : 0;
     s.srs[srsKey(q.id)] = { box: box, due: today() + BOXES[box], t: now };
     if (!prev) s.xp = (s.xp || 0) + XP_FIRST;
+  });
+}
+
+/* A finished walkthrough is not a score, so it touches neither the points nor
+   the review schedule. It is written onto the same done-record as one extra
+   field, beside whatever the graded attempt already stored there. */
+function recordWalk(id, wrong) {
+  const now = Date.now();
+  update(s => {
+    if (!s.done) s.done = {};
+    const rec = (s.done[doneKey(id)] && typeof s.done[doneKey(id)] === 'object')
+      ? s.done[doneKey(id)] : null;
+    const prev = (rec && rec.walk && typeof rec.walk === 'object') ? rec.walk : null;
+    const walk = { done: true, wrong: wrong, at: now, n: (prev ? (prev.n || 0) : 0) + 1 };
+    if (rec) rec.walk = walk;
+    else s.done[doneKey(id)] = { walk: walk };
   });
 }
 
@@ -195,6 +253,102 @@ function sectionCard(kicker, kids, cls) {
     [el('div', { cls: 'kicker', text: kicker })].concat(kids));
 }
 
+/* ---------- the guided walkthrough, as a state machine ----------
+
+   Kept free of the DOM so the whole path — pick, wrong, teach, pick again,
+   right, advance, closing — is exercisable on its own. The renderer below
+   only reads this object and calls its three verbs.                        */
+
+function createWalk(id) {
+  const data = walkthroughOf(id);
+  if (!data) return null;
+
+  const w = {
+    id: id,
+    data: data,
+    i: 0,               // current step
+    picked: null,       // selected but unconfirmed option
+    revealed: null,     // { opt, verdict, feedback } — the confirmed option
+    tried: [],          // options already rejected on this step
+    wrong: data.steps.map(() => 0),
+    closing: false      // past the last step: the closing note is on screen
+  };
+
+  w.step = () => w.data.steps[w.i];
+  w.steps = () => w.data.steps.length;
+  w.settled = () => !!(w.revealed && w.revealed.verdict === 'right');
+  w.totalWrong = () => w.wrong.reduce((a, b) => a + b, 0);
+
+  /* Selecting is free until the step is settled; a rejected option cannot be
+     picked twice, exactly as a locked lesson choice cannot. */
+  w.select = n => {
+    if (w.closing || w.settled()) return false;
+    const opts = w.step().options;
+    if (!(n >= 0 && n < opts.length)) return false;
+    if (w.tried.indexOf(n) >= 0) return false;
+    w.picked = n;
+    return true;
+  };
+
+  w.confirm = () => {
+    if (w.closing || w.settled() || w.picked === null) return null;
+    const opt = w.step().options[w.picked];
+    const verdict = opt.verdict === 'right' ? 'right' : opt.verdict === 'partial' ? 'partial' : 'wrong';
+    w.revealed = { opt: w.picked, verdict: verdict, feedback: opt.feedback || null };
+    if (verdict !== 'right') {
+      w.wrong[w.i] += 1;
+      if (w.tried.indexOf(w.picked) < 0) w.tried.push(w.picked);
+      w.picked = null;     // the teach text stays up; the next pick is open
+    }
+    return w.revealed;
+  };
+
+  /* Only a right answer moves on. Past the last step the walkthrough is not
+     over — it holds on the closing note, which is what hands off to grading. */
+  w.advance = () => {
+    if (!w.settled()) return false;
+    if (w.i + 1 < w.steps()) {
+      w.i += 1;
+      w.picked = null; w.revealed = null; w.tried = [];
+      return true;
+    }
+    w.closing = true;
+    w.picked = null; w.revealed = null; w.tried = [];
+    return true;
+  };
+
+  return w;
+}
+
+/* ---------- evidence ---------- */
+
+/* Evidence is verbatim: command output, a manifest, a line of narration. The
+   first two are printed as text, never as rich markup — they are the artefact
+   the learner is reading, and nothing in them should render. */
+function evidenceBlock(ev) {
+  if (!ev || !ev.text) return null;
+  const type = ev.type === 'terminal' || ev.type === 'file' ? ev.type : 'note';
+  if (type === 'note') {
+    return el('div', { cls: 'exam-ev-note' }, [
+      ev.title ? el('h4', { text: ev.title }) : null
+    ].concat(String(ev.text).split('\n').filter(l => l.trim())
+      .map(line => el('div', { cls: 'line', html: rich(line) }))));
+  }
+  return el('div', { cls: 'exam-ev ' + type }, [
+    el('div', { cls: 'exam-ev-head' }, [
+      el('span', { cls: 'dot' }),
+      el('span', { cls: 'name', text: ev.title || (type === 'terminal' ? 'terminal' : 'file') })
+    ]),
+    el('pre', { cls: 'exam-ev-body', text: String(ev.text) })
+  ]);
+}
+
+function evidenceList(list) {
+  if (!list || !list.length) return null;
+  const kids = list.map(evidenceBlock).filter(Boolean);
+  return kids.length ? el('div', { cls: 'exam-ev-list' }, kids) : null;
+}
+
 /* ---------- one question, four stages ---------- */
 
 let active = null;   // { q, stage, ticked, host, opts, scored }
@@ -223,6 +377,7 @@ function draw(v) {
     el('div', { cls: 'exam-chips' }, [
       chip(q.points + ' points'),
       chip('~' + q.minutes + ' min'),
+      st.guided ? chip('guided walkthrough') : null,
       st.attempted ? chip('last ' + st.attempt.score + '/' + st.attempt.max + ' · ' + st.attempt.pct + '%',
         st.passed ? 'good' : 'warn') : null,
       st.dueLabel ? chip(st.dueLabel, st.dueNow ? 'warn' : '') : null
@@ -246,12 +401,27 @@ function draw(v) {
     host.appendChild(el('button', {
       cls: 'btn wide exam-primary', on: { click: () => { v.stage = 'grade'; draw(v); } }
     }, [document.createTextNode('Grade it')]));
+    // The guided path is offered beside grading, never instead of it: it reads
+    // the same scenario one decision at a time, then hands over to the rubric.
+    if (st.guided) {
+      host.appendChild(el('button', {
+        cls: 'btn ghost wide exam-secondary',
+        on: { click: () => { v.walk = createWalk(q.id); v.stage = 'walk'; draw(v); } }
+      }, [document.createTextNode(st.walked ? 'Walk through it again' : 'Walk through it')]));
+    }
     if (st.attempted) {
       host.appendChild(el('button', {
         cls: 'btn ghost wide exam-secondary',
         on: { click: () => { v.stage = 'debrief'; v.reviewOnly = true; v.scored = null; draw(v); } }
       }, [document.createTextNode('Read the debrief again')]));
     }
+    finishDraw(v);
+    return;
+  }
+
+  /* stage 1b — walkthrough */
+  if (v.stage === 'walk' && v.walk) {
+    drawWalk(v);
     finishDraw(v);
     return;
   }
@@ -356,7 +526,10 @@ function draw(v) {
   host.appendChild(el('div', { cls: 'exam-actions' }, [
     el('button', {
       cls: 'btn ghost',
-      on: { click: () => { v.stage = 'attempt'; v.ticked = {}; v.scored = null; v.reviewOnly = false; draw(v); } }
+      on: { click: () => {
+        v.stage = 'attempt'; v.ticked = {}; v.scored = null; v.reviewOnly = false; v.walk = null;
+        draw(v);
+      } }
     }, [document.createTextNode('Attempt again')]),
     unit ? el('a', { cls: 'btn ghost', href: 'reference.html#' + unit.ref },
       [document.createTextNode('Guidebook →')]) : null,
@@ -369,8 +542,107 @@ function draw(v) {
   finishDraw(v);
 }
 
+/* One step of the guided walkthrough, or the closing note that ends it.
+   Picking, checking and advancing all redraw through here; only a stage
+   change scrolls, so the page does not jump under a pick. */
+function drawWalk(v) {
+  const q = v.q;
+  const w = v.walk;
+  const host = v.host;
+  const again = () => { v.keepScroll = true; draw(v); };
+
+  if (w.closing) {
+    const wrong = w.totalWrong();
+    host.appendChild(sectionCard('Walkthrough complete', [
+      w.data.closing ? proseBlock(w.data.closing, 'exam-closing') : null,
+      el('div', { cls: 'exam-walk-tally', text: wrong === 0
+        ? 'Every decision first time.'
+        : wrong + ' wrong pick' + (wrong === 1 ? '' : 's') + ' along the way.' })
+    ].filter(Boolean), 'walk'));
+    host.appendChild(el('p', { cls: 'exam-hint', text: 'The rubric is next. '
+      + 'Grade the end state you would have produced, not the walkthrough.' }));
+    host.appendChild(el('button', {
+      cls: 'btn wide exam-primary',
+      on: { click: () => { v.stage = 'grade'; v.walk = null; draw(v); } }
+    }, [document.createTextNode('Grade it')]));
+    host.appendChild(el('button', {
+      cls: 'btn ghost wide exam-secondary',
+      on: { click: () => { v.stage = 'attempt'; v.walk = null; draw(v); } }
+    }, [document.createTextNode('Back to the question')]));
+    v.pick = null;
+    return;
+  }
+
+  const step = w.step();
+  const settled = w.settled();
+  const kids = [];
+
+  const ev = evidenceList(step.evidence);
+  if (ev) kids.push(ev);
+  if (step.prompt) kids.push(el('div', { cls: 'prompt', html: rich(step.prompt) }));
+
+  const wrap = el('div', { cls: 'opts' });
+  step.options.forEach((o, i) => {
+    const rejected = w.tried.indexOf(i) >= 0;
+    const shown = !!(w.revealed && w.revealed.opt === i);
+    let cls = 'opt exam-opt';
+    if (shown) cls += ' ' + w.revealed.verdict;
+    else if (rejected) cls += ' wrong';
+    if (rejected || settled) cls += ' locked';
+    const b = el('button', {
+      cls: cls, type: 'button', 'aria-pressed': String(w.picked === i),
+      on: { click: () => { if (w.select(i)) again(); } }
+    }, [
+      el('span', { cls: 'key', text: String(i + 1) }),
+      el('span', { html: rich(o.label) })
+    ]);
+    wrap.appendChild(b);
+  });
+  kids.push(wrap);
+
+  if (w.revealed) {
+    const fb = w.revealed.feedback || {};
+    const fbEv = evidenceList(fb.evidence);
+    kids.push(el('div', { cls: 'exam-teach ' + w.revealed.verdict }, [
+      el('div', { cls: 'kicker', text: w.revealed.verdict === 'right' ? 'Right'
+        : w.revealed.verdict === 'partial' ? 'Partly right' : 'Not this one' }),
+      fbEv,
+      fb.teach ? proseBlock(fb.teach, 'exam-teach-body') : null,
+      w.revealed.verdict === 'right' ? null
+        : el('div', { cls: 'exam-teach-again', text: 'Pick again.' })
+    ].filter(Boolean)));
+  }
+
+  host.appendChild(sectionCard('Walkthrough · step ' + (w.i + 1) + ' of ' + w.steps(),
+    kids, 'walk'));
+
+  const last = w.i + 1 >= w.steps();
+  if (settled) {
+    host.appendChild(el('button', {
+      cls: 'btn wide exam-primary',
+      on: { click: () => {
+        w.advance();
+        if (w.closing) recordWalk(q.id, w.totalWrong());
+        draw(v);
+      } }
+    }, [document.createTextNode(last ? 'Finish the walkthrough' : 'Next step')]));
+  } else {
+    host.appendChild(el('button', {
+      cls: 'btn wide exam-primary', disabled: w.picked === null,
+      on: { click: () => { if (w.confirm()) again(); } }
+    }, [document.createTextNode('Check')]));
+  }
+  host.appendChild(el('button', {
+    cls: 'btn ghost wide exam-secondary',
+    on: { click: () => { v.stage = 'attempt'; v.walk = null; draw(v); } }
+  }, [document.createTextNode('Leave the walkthrough')]));
+
+  v.pick = n => { if (w.select(n)) again(); };
+}
+
 function finishDraw(v) {
   if (v.opts.onStage) v.opts.onStage(v.stage);
+  if (v.keepScroll) { v.keepScroll = false; return; }
   window.scrollTo(0, 0);
 }
 
@@ -389,7 +661,8 @@ function leave(v) {
 function open(id, host, opts) {
   const q = BY_ID[id];
   if (!q) return false;
-  const v = { q: q, stage: 'attempt', ticked: {}, scored: null, host: host, opts: opts || {} };
+  const v = { q: q, stage: 'attempt', ticked: {}, scored: null, walk: null,
+    host: host, opts: opts || {} };
   active = v;
   draw(v);
   return true;
@@ -408,17 +681,29 @@ document.addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
 
   if (e.key === 'Escape') {
+    // Inside the walkthrough Esc steps back to the question card rather than
+    // out of the question: leaving the surface entirely is one Esc further.
+    if (active.stage === 'walk') {
+      e.preventDefault();
+      active.stage = 'attempt'; active.walk = null; draw(active);
+      return;
+    }
     if (active.opts.onBack) { e.preventDefault(); leave(active); }
     return;
   }
   if (e.key === 'Enter') {
     const btn = active.host.querySelector('.exam-primary');
-    if (btn) { e.preventDefault(); btn.click(); }
+    if (btn && !btn.disabled) { e.preventDefault(); btn.click(); }
     return;
   }
-  if (/^[1-9]$/.test(e.key) && active.stage === 'grade' && active.toggle) {
-    e.preventDefault();
-    active.toggle(parseInt(e.key, 10) - 1);
+  if (/^[1-9]$/.test(e.key)) {
+    if (active.stage === 'grade' && active.toggle) {
+      e.preventDefault();
+      active.toggle(parseInt(e.key, 10) - 1);
+    } else if (active.stage === 'walk' && active.pick) {
+      e.preventDefault();
+      active.pick(parseInt(e.key, 10) - 1);
+    }
   }
 });
 
@@ -434,7 +719,14 @@ function questionNode(q, onOpen, bare) {
     el('span', {}, [
       el('span', { text: (bare ? '' : 'Exam scenario · ') + q.title }),
       el('small', { text: q.points + ' points · ~' + q.minutes + ' min · ' + statusText(q.id) })
-    ])
+    ]),
+    // Says the scenario has a guided reading before you attempt it. Filled in
+    // once that walkthrough has been finished at least once.
+    st.guided ? el('span', {
+      cls: 'exam-guided' + (st.walked ? ' on' : ''),
+      title: st.walked ? 'Guided walkthrough finished' : 'Has a guided walkthrough',
+      text: 'guided'
+    }) : null
   ]);
 }
 
@@ -519,7 +811,13 @@ window.EXAM = {
   statusText: statusText,
   unitNodes: unitNodes,
   open: open,
-  count: QUESTIONS.length
+  count: QUESTIONS.length,
+  // The guided path, for the surfaces that ask about it — and, headless, for
+  // the tests: createWalk is the whole stage machine with no DOM attached.
+  hasWalkthrough: id => !!walkthroughOf(id),
+  createWalk: createWalk,
+  recordWalk: recordWalk,
+  walkStatus: walkOf
 };
 
 /* exam.html marks its own mount point; index.html has none, and drives this

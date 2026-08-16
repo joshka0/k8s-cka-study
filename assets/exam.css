@@ -35,6 +35,70 @@
 .exam-primary { margin-bottom: 10px; }
 .exam-secondary { margin-bottom: 10px; }
 
+/* ---------- guided walkthrough ----------
+
+   One step is evidence, a prompt, and the site's standard choice buttons.
+   The evidence is the artefact you would have on screen in the exam, so a
+   terminal reads as a terminal in both themes — that panel is a screen, not
+   a page, and inverting it with the theme would break the illusion.        */
+
+.exam-card.walk { border-left: 5px solid var(--blue); border-radius: 0 var(--radius) var(--radius) 0; }
+.exam-card.walk .prompt { margin: 16px 0 16px; font-size: clamp(1.05rem, 2.6vw, 1.28rem); }
+
+.exam-ev-list { display: grid; gap: 12px; }
+.exam-ev {
+  overflow: hidden; border-radius: 12px;
+  border: 1px solid #0b1220; background: #0b1220;
+  box-shadow: 0 6px 18px #0b122026;
+}
+.exam-ev-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; background: #172033; color: #b9c6de;
+  font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+}
+.exam-ev-head .dot {
+  width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: #56d364;
+}
+.exam-ev.file .exam-ev-head .dot { background: var(--blue); }
+.exam-ev-head .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exam-ev-body {
+  margin: 0; padding: 13px 15px; overflow-x: auto;
+  color: #e6edf7; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .84rem; line-height: 1.55; white-space: pre; tab-size: 2;
+}
+.exam-ev.file .exam-ev-body { color: #d8e4f6; }
+
+/* A note is narration, not an artefact: plain prose, no chrome. */
+.exam-ev-note { padding: 2px 0; color: var(--muted); font-size: .94rem; }
+.exam-ev-note h4 {
+  margin: 0 0 4px; color: var(--ink);
+  font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+}
+.exam-ev-note .line { margin: 4px 0; line-height: 1.55; }
+
+/* Partial is the verdict the lesson engine has no name for: right idea,
+   wrong end state. Amber, between the two the site already uses. */
+.opt.partial { border-color: var(--amber); background: var(--amber-bg); }
+
+.exam-teach {
+  margin-top: 14px; padding: 14px 16px;
+  border-left: 5px solid var(--line); border-radius: 0 12px 12px 0;
+  background: var(--paper); font-size: .94rem;
+}
+.exam-teach .kicker { margin-bottom: 8px; }
+.exam-teach .exam-ev-list { margin-bottom: 10px; }
+.exam-teach-body .line { margin: 5px 0; line-height: 1.55; }
+.exam-teach-again { margin-top: 10px; color: var(--muted); font-size: .86rem; font-weight: 750; }
+.exam-teach.right { border-left-color: var(--good); background: var(--good-bg); }
+.exam-teach.right .kicker { color: var(--good); }
+.exam-teach.partial { border-left-color: var(--amber); background: var(--amber-bg); }
+.exam-teach.partial .kicker { color: var(--amber); }
+.exam-teach.wrong { border-left-color: var(--bad); background: var(--bad-bg); }
+.exam-teach.wrong .kicker { color: var(--bad); }
+
+.exam-closing .line { margin: 5px 0; line-height: 1.6; }
+.exam-walk-tally { margin-top: 12px; color: var(--muted); font-size: .88rem; font-weight: 750; }
+
 /* ---------- self-grade ---------- */
 
 /* The scoring notes are the gates. Nothing enforces them, so they are given
@@ -137,6 +201,16 @@
 .node.exam.partial { border-color: var(--amber); }
 .node.exam.done { border-color: var(--good-line); background: var(--good-bg); }
 .node.exam.done .dot { background: var(--good); }
+
+/* The guided marker rides on the right of the node, quiet until the
+   walkthrough has actually been finished. */
+.exam-guided {
+  margin-left: auto; padding: 3px 9px; flex: 0 0 auto;
+  border: 1px solid var(--blue); border-radius: 999px;
+  color: var(--blue); font-size: .66rem; font-weight: 800;
+  letter-spacing: .1em; text-transform: uppercase;
+}
+.exam-guided.on { background: var(--blue); color: #fff; }
 
 .exam-tiles { grid-template-columns: repeat(4, 1fr); margin: 20px 0 26px; }
 
