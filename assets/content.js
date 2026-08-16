@@ -281,7 +281,8 @@ window.COURSE.units.push(
       items: [
         { t: 'teach',
           h: 'Concurrency is part of the API contract',
-          p: '<code>resourceVersion</code> gives updates optimistic concurrency, and server-side apply records field ownership in managed fields. Both exist because more than one actor legitimately writes to the same object — and both are routinely defeated by a blind retry.' },
+          p: '<code>resourceVersion</code> gives updates optimistic concurrency, and server-side apply records field ownership in managed fields. Both exist because more than one actor legitimately writes to the same object — and both are routinely defeated by a blind retry. The version string belongs to the server: pass it back unmodified, and only order two decimal values that came from the same API group and resource type.',
+          src: ['Resource versions', 'https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-versions'] },
 
         { t: 'mcq',
           q: 'Your controller\'s update fails with a conflict. What is the safe response?',
@@ -336,8 +337,9 @@ window.COURSE.units.push(
       items: [
         { t: 'teach',
           h: 'List, watch, cache, queue, reconcile',
-          p: 'A controller lists to establish current state and a collection resource version, watches for later changes, caches objects, enqueues a stable key, and reconciles by reading the latest state. If the watch history expires, it relists and resumes.',
+          p: 'A controller lists to establish current state and a collection resource version, watches for later changes, caches objects, enqueues a stable key, and reconciles by reading the latest state. Expired history arrives as <code>410 Gone</code>: the client drops its cache, runs a fresh get or list, and restarts the watch from the resource version that call returned. <code>BOOKMARK</code> events carry the client forward without an object change, so the window expires less often.',
           flow: ['List + resourceVersion', 'Watch changes', 'Cache objects', 'Queue namespace/name key', 'Reconcile latest state'],
+          src: ['Efficient detection of changes', 'https://kubernetes.io/docs/reference/using-api/api-concepts/#efficient-detection-of-changes'],
           clip: ['kss081c8EqY', 152, 'The control loop: observe, compare, act'] },
 
         { t: 'order',
@@ -459,6 +461,17 @@ window.COURSE.units.push(
           p: 'A Deployment manages ReplicaSets of replaceable Pods with controlled rollouts. A StatefulSet adds stable ordinal identity, ordered lifecycle and per-Pod claims. A DaemonSet targets eligible nodes. A Job targets successful completion. The discriminator is always which invariant your application actually needs.',
           clip: ['gjk82Y2vyro', 600, 'The controllers inside kube-controller-manager'] },
 
+        { t: 'teach',
+          h: 'A rolling update is arithmetic you choose',
+          p: 'On a RollingUpdate Deployment, <code>maxSurge</code> bounds how far above the replica count the controller may go and <code>maxUnavailable</code> bounds how far below. Both default to 25%. A percentage <code>maxUnavailable</code> rounds down; a percentage <code>maxSurge</code> rounds up. The two cannot both be 0 — something has to move for a Pod to be replaced. Recreate removes the old-revision Pods before it creates new ones during a template upgrade, which is a rollout guarantee, not an at-most-N guarantee after a manual delete.',
+          flow: ['template change', 'new ReplicaSet', 'surge up to +maxSurge', 'wait for Ready', 'scale old down within maxUnavailable'],
+          src: ['Deployment max surge', 'https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#max-surge'] },
+
+        { t: 'teach',
+          h: 'A CronJob decides what a late tick does',
+          p: 'A CronJob writes Jobs on a five-field schedule. <code>concurrencyPolicy</code> says what happens when the next tick arrives while the previous run is still active: Allow, the default, lets runs overlap; Forbid skips the new run and leaves the live one alone; Replace cancels the live Job and starts a fresh one. <code>startingDeadlineSeconds</code> and the history limits are separate knobs, and <code>suspend</code> stops new runs without deleting the object.',
+          src: ['CronJob', 'https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/'] },
+
         { t: 'mcq',
           q: 'What does a StatefulSet <em>not</em> give you?',
           o: [
@@ -578,8 +591,9 @@ window.COURSE.units.push(
       items: [
         { t: 'teach',
           h: 'CRD, CR, controller, operator',
-          p: 'A CRD registers a resource and its schema. A CR is one stored object of that kind. A controller reconciles those objects. An operator packages a controller together with domain-specific lifecycle knowledge, RBAC, installation and upgrades. Interviewers use this quartet to check whether you have built one or only used one.',
+          p: 'A CRD registers a resource and its schema. A CR is one stored object of that kind. A controller reconciles those objects. An operator packages a controller together with domain-specific lifecycle knowledge, RBAC, installation and upgrades. Interviewers use this quartet to check whether you have built one or only used one. At <code>apiextensions.k8s.io/v1</code> the schema is not optional: the API server rejects a version with no <code>openAPIV3Schema</code>, because it needs a structural schema to validate and prune your objects. Exactly one version is the storage version, and the kind is only servable once the CRD reports <code>Established</code>.',
           flow: ['CRD registers GVK', 'API validates CR', 'Controller observes', 'Children / external state', 'Status reports'],
+          src: ['CustomResourceDefinitions', 'https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/'],
           clip: ['mTC3UZ8bHJc', 70, 'Manual deployment versus the operator pattern'] },
 
         { t: 'mcq',
@@ -854,8 +868,9 @@ window.COURSE.units.push(
       items: [
         { t: 'teach',
           h: 'The kubelet is a sync loop, not a command receiver',
-          p: 'Nobody tells the kubelet to start a Pod. It watches for Pods assigned to its node and drives them toward their desired state. It coordinates runtime, network, storage, secrets, probes and status reporting.',
+          p: 'Nobody tells the kubelet to start a Pod. It watches for Pods assigned to its node and drives them toward their desired state. It coordinates runtime, network, storage, secrets, probes and status reporting. Init containers are the one hard gate in that sequence: each must exit successfully before the next one starts, and no application container starts until every one of them has. A failed init container is restarted until it succeeds, unless the Pod <code>restartPolicy</code> is Never, which fails the whole Pod.',
           flow: ['Bound Pod', 'Sandbox network + required volumes converge', 'Init containers in order', 'Application containers', 'Probes + readiness'],
+          src: ['Init Containers', 'https://kubernetes.io/docs/concepts/workloads/pods/init-containers/'],
           clip: ['PLCt3lSoXOw', 254, 'Kubelet picks up the Pod and containerd builds the sandbox'] },
 
         { t: 'multi',
@@ -999,6 +1014,16 @@ window.COURSE.units.push(
           p: 'A network implementation configures Pod reachability; CNI is the executable contract commonly used for attachment. The EndpointSlice controller records selector-matched backends and their conditions. kube-proxy, or a replacement data plane, turns Service addresses into backend traffic. These are separate responsibilities and failure boundaries.',
           flow: ['DNS / Service VIP', 'Node data-plane lookup', 'Select EndpointSlice backend', 'Route to Pod IP', 'Policy + listener'],
           clip: ['PLCt3lSoXOw', 434, 'EndpointSlice controller feeds kube-proxy'] },
+
+        { t: 'teach',
+          h: 'NodePort opens the same port on every node',
+          p: 'A NodePort Service keeps its ClusterIP and adds a port that every node proxies into the Service. The control plane allocates it from <code>--service-node-port-range</code>, 30000–32767 by default, and reports it in <code>.spec.ports[].nodePort</code>; you may set that field yourself to a free port in range. <code>targetPort</code> is still the container port traffic lands on. <code>externalTrafficPolicy: Local</code> preserves the client address but makes nodes with no local ready endpoint drop the request, so it breaks "reachable on any node".',
+          src: ['Service type NodePort', 'https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'] },
+
+        { t: 'teach',
+          h: 'Stickiness is a Service field, not a proxy accident',
+          p: 'Set <code>.spec.sessionAffinity</code> to <code>ClientIP</code> and later connections from one client address go to the same backend Pod, for <code>sessionAffinityConfig.clientIP.timeoutSeconds</code> — three hours by default. The default is <code>None</code>, which gives no affinity at all. Affinity is about which backend a client keeps; it says nothing about which node serves the traffic.',
+          src: ['Session affinity', 'https://kubernetes.io/docs/reference/networking/virtual-ips/#session-affinity'] },
 
         { t: 'mcq',
           q: 'For a selector Service, what puts a Pod\'s IP into an EndpointSlice?',
@@ -1216,6 +1241,11 @@ window.COURSE.units.push(
           flow: ['Application resolver', 'search + ndots', 'kube-dns Service', 'CoreDNS plugins', 'cluster answer / upstream'],
           clip: ['lAUmdIGP_fE', 247, 'Reading resolv.conf inside a Pod'] },
 
+        { t: 'teach',
+          h: '<code>Default</code> is not the default policy',
+          p: 'Four values decide which resolver the kubelet writes. Omit <code>dnsPolicy</code> and you get <code>ClusterFirst</code>. <code>Default</code> is a named choice that copies the node\'s own resolver. <code>ClusterFirstWithHostNet</code> is what a <code>hostNetwork</code> Pod needs to keep cluster DNS. <code>None</code> ignores the cluster settings entirely and requires <code>dnsConfig.nameservers</code>. Under any policy but None, <code>dnsConfig</code> entries merge with what the kubelet already wrote — they do not replace cluster DNS.',
+          src: ['Pod DNS policy', 'https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy'] },
+
         { t: 'mcq',
           q: 'Why can a high <code>ndots</code> value make external names slow?',
           o: [
@@ -1328,6 +1358,12 @@ window.COURSE.units.push(
           p: 'A PVC is a namespaced request for storage. A StorageClass describes how to provision it and when to bind. A PV represents the actual provisioned capacity and its lifecycle. Getting these three straight is the entry ticket to every storage question that follows.',
           flow: ['PVC', 'StorageClass + provisioner', 'PV binding', 'VolumeAttachment', 'CSI stage / publish'],
           clip: ['0swOh5C3OVM', 1080, 'StorageClass provisions PVs dynamically'] },
+
+        { t: 'teach',
+          h: 'The reclaim policy decides what a deleted claim leaves behind',
+          p: 'Delete, the usual policy on a dynamic class, removes the PV and its backing storage with the claim. Retain keeps the PV: its phase becomes <code>Released</code> and its <code>claimRef</code> still names the deleted claim, so no other PVC can bind until an administrator clears that reference or recreates the volume. Released is not Available, and a Retain volume that nothing ever bound to is a different state again.',
+          flow: ['Bound PV + PVC', 'PVC deleted', 'reclaim policy applies', 'Retain → Released, claimRef kept', 'admin reclaims manually'],
+          src: ['Persistent volume Retain', 'https://kubernetes.io/docs/concepts/storage/persistent-volumes/#retain'] },
 
         { t: 'mcq',
           q: 'Which object is the namespaced <em>request</em> for storage?',

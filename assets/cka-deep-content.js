@@ -101,6 +101,9 @@ window.COURSE.units.push(
       { t: 'teach', h: 'A Deployment rollout has capacity constraints and field owners',
         p: 'A Pod-template change creates a ReplicaSet. <code>maxSurge</code> and <code>maxUnavailable</code> bound the transition; readiness controls availability. <code>progressDeadlineSeconds</code> reports stalled progress but does not automatically roll back. Server-Side Apply records per-field ownership in <code>managedFields</code> and conflicts protect another manager’s intent.',
         src: ['Deployments', 'https://kubernetes.io/docs/concepts/workloads/controllers/deployment/'] },
+      { t: 'teach', h: 'Ownership is recorded per manager, per field',
+        p: 'A server-side apply records the name you pass as field manager and the operation Apply, and it owns exactly the paths your document carries — so send the fields you intend to own and nothing else. <code>kubectl edit</code>, <code>kubectl scale</code> and a client-side <code>kubectl apply</code> record the operation Update instead. Update never fails on conflict, and when it changes a field’s value, ownership of that field moves to the Update manager. A later Apply that still carries the field then conflicts with that Update manager, unless you drop the field from your document or pass <code>--force-conflicts</code>.',
+        src: ['Server-Side Apply', 'https://kubernetes.io/docs/reference/using-api/server-side-apply/'] },
       { t: 'mcq', q: 'What happens when a Deployment exceeds <code>progressDeadlineSeconds</code>?',
         o: ['Kubernetes always rolls it back', 'The Deployment reports ProgressDeadlineExceeded; an operator or higher-level controller must act', 'All old Pods are force deleted', 'The API rejects future updates'], a: 1,
         why: 'The deadline is status evidence, not an automatic remediation policy.' },
@@ -160,6 +163,9 @@ window.COURSE.units.push(
         p: 'NodePort allocates a port on nodes on top of ClusterIP. LoadBalancer asks an implementation to provision or attach external reachability, normally still using Service semantics underneath. <code>externalTrafficPolicy: Local</code> preserves source address and avoids cross-node forwarding, but nodes without local ready endpoints cannot serve that traffic.',
         flow: ['external client', 'load balancer or node port', 'Service virtual IP / proxy', 'eligible EndpointSlice endpoint', 'Pod targetPort'],
         src: ['Services', 'https://kubernetes.io/docs/concepts/services-networking/service/'] },
+      { t: 'teach', h: 'Two fields spell Local, in opposite directions',
+        p: '<code>internalTrafficPolicy</code> governs traffic that starts in a Pod in this cluster, the counterpart to <code>externalTrafficPolicy</code> for traffic arriving from outside. Set it to <code>Local</code> and kube-proxy uses only node-local endpoints, so a caller on a node with no local ready endpoint sees the Service as having zero endpoints. It is not a hint.',
+        src: ['Service internal traffic policy', 'https://kubernetes.io/docs/concepts/services-networking/service-traffic-policy/'] },
       { t: 'mcq', q: 'What is the key tradeoff of <code>externalTrafficPolicy: Local</code>?',
         o: ['It disables EndpointSlices', 'It can preserve client source IP and localize forwarding, but traffic sent to a node without a local endpoint may be dropped', 'It forces dual stack', 'It bypasses readiness'], a: 1,
         why: 'Local changes endpoint eligibility at the receiving node; it is not merely a performance hint.' },
@@ -172,7 +178,7 @@ window.COURSE.units.push(
     ]},
     { id: 'u25l2', title: 'Membership, readiness and locality differ', items: [
       { t: 'teach', h: 'EndpointSlice conditions encode more than “present”',
-        p: 'Selectors determine membership, controllers publish EndpointSlices, and endpoint conditions distinguish ready, serving and terminating state. Strict internal traffic policy can require node-local endpoints; topology-aware routing and traffic distribution express preferences that may fall back.',
+        p: 'Selectors determine membership, controllers publish EndpointSlices, and endpoint conditions distinguish ready, serving and terminating state. For an ordinary Service, an endpoint is ready only when it is serving and not terminating; <code>publishNotReadyAddresses: true</code> forces ready to true regardless. Proxies normally skip terminating endpoints, but may use ones that are both serving and terminating when every remaining endpoint is terminating. Strict internal traffic policy can require node-local endpoints; topology-aware routing and traffic distribution express preferences that may fall back.',
         src: ['EndpointSlices', 'https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/'] },
       { t: 'multi', q: 'A Service has EndpointSlices but returns no traffic. Which facts still need proof?',
         o: ['Endpoints are ready or otherwise eligible', 'Address family matches the client/data plane', 'Traffic policy permits those endpoints from this node', 'targetPort is served by the process', 'The Service object has a creation timestamp'], a: [0,1,2,3],
@@ -228,7 +234,7 @@ window.COURSE.units.push(
   lessons: [
     { id: 'u27l1', title: 'Policy admission versus runtime enforcement', items: [
       { t: 'teach', h: 'Pod Security Admission evaluates a Pod spec; the runtime enforces it',
-        p: 'Namespace labels select Pod Security Standard levels and modes: enforce rejects, audit records, and warn tells the client. A securityContext requests runtime settings such as UID/GID, capabilities, seccomp and filesystem behavior. Admission acceptance does not prove the runtime or kernel applied every requested mechanism.',
+        p: 'Namespace labels select Pod Security Standard levels and modes: enforce rejects, audit records, and warn tells the client. Enforce is applied to the resulting Pod objects only, not to the workload resource, so a violating Deployment is accepted while its ReplicaSet reports <code>FailedCreate</code> and no Pod object ever exists to describe — read the ReplicaSet events. Audit and warn are also applied to workload resources, which is how you catch the violation earlier. A securityContext requests runtime settings such as UID/GID, capabilities, seccomp and filesystem behavior. Admission acceptance does not prove the runtime or kernel applied every requested mechanism.',
         flow: ['namespace PSA labels', 'Pod admission evaluation', 'stored securityContext', 'kubelet + CRI translate config', 'runtime + kernel enforce'],
         src: ['Pod Security Admission', 'https://kubernetes.io/docs/concepts/security/pod-security-admission/'] },
       { t: 'mcq', q: 'What does PSA <code>warn</code> do?',

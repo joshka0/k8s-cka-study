@@ -27,7 +27,8 @@ window.COURSE.units.push(
     ]},
     { id: 'u13l2', title: 'Upgrade, HA and configuration packaging', items: [
       { t: 'teach', h: 'Upgrade one compatibility boundary at a time',
-        p: 'Control-plane components, kubelets, kube-proxy, CRI, CNI and stored APIs have separate skew contracts. Drain protects workloads; it does not upgrade a node. In HA, repeat a controlled sequence per control-plane node and verify quorum and API health between steps.' },
+        p: 'Control-plane components, kubelets, kube-proxy, CRI, CNI and stored APIs have separate skew contracts. Drain protects workloads; it does not upgrade a node. In HA, repeat a controlled sequence per control-plane node and verify quorum and API health between steps. Certificates ride on that schedule: kubeadm leaf certificates default to one year and the CAs to ten, a control-plane <code>kubeadm upgrade</code> renews the leaves unless renewal is disabled, and <code>kubeadm certs check-expiration</code> reports what is left. The report also lists externally managed certificates and marks them; kubeadm will not renew those. The rotating kubelet client certificate (<code>kubelet.conf</code>) is the one the report omits.',
+        src: ['Certificate management with kubeadm', 'https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/'] },
       { t: 'order', q: 'Order a conservative worker-node upgrade.',
         o: ['Cordon and drain', 'Upgrade kubeadm and run the node upgrade phase', 'Upgrade kubelet and kubectl packages', 'Restart kubelet and verify node health', 'Uncordon'],
         why: 'Evacuate first, change node configuration and binaries, verify the returning node, then restore scheduling.',
@@ -49,7 +50,8 @@ window.COURSE.units.push(
   lessons: [
     { id: 'u14l1', title: 'Configuration is data with delivery semantics', items: [
       { t: 'teach', h: 'An API update does not imply a process reload',
-        p: 'ConfigMaps and Secrets can become environment values or projected files. Environment values are fixed at process start. Mounted projections update eventually, but applications must watch or reload them. A Deployment rolls only when its Pod template changes.' },
+        p: 'ConfigMaps and Secrets can become environment values or projected files. Environment values are fixed at process start. Mounted projections update eventually, but applications must watch or reload them. A Deployment rolls only when its Pod template changes. Two exceptions decide whether a rotated value can ever arrive: a volume mounted with <code>subPath</code> receives no automated updates, so that file stays frozen until the Pod is replaced; and <code>immutable: true</code> on a ConfigMap or Secret blocks every change to its data and cannot be unset, so rotation means delete and recreate.',
+        src: ['Secrets', 'https://kubernetes.io/docs/concepts/configuration/secret/'] },
       { t: 'multi', q: 'A ConfigMap changes. Which consequences are automatic?',
         o: ['Existing environment variables change', 'A projected volume is eventually refreshed', 'The Deployment always creates a new ReplicaSet', 'An application may still need an explicit reload'], a: [1,3],
         why: 'Projection and consumption are separate. No Pod-template change means no rollout, and a file update does not mean the application rereads it.',
@@ -89,6 +91,9 @@ window.COURSE.units.push(
       { t: 'teach', h: 'Route APIs describe intent; controllers build the data plane',
         p: 'Ingress is a compact HTTP routing API. Gateway API separates infrastructure ownership from route ownership through GatewayClass, Gateway and Route resources. In both cases a controller must observe the objects and configure a proxy or load balancer.',
         flow: ['Client + external address', 'Gateway / Ingress listener', 'Route match', 'Service', 'EndpointSlice', 'ready Pod'] },
+      { t: 'teach', h: 'The path type is half of the match',
+        p: 'Every Ingress path needs an explicit <code>pathType</code> or validation fails. <code>Exact</code> matches the whole path, case sensitive. <code>Prefix</code> matches element by element after splitting on <code>/</code>, so <code>/v1</code> covers <code>/v1</code> and <code>/v1/users</code> but not <code>/v1beta1</code> — it is not a string prefix. <code>ImplementationSpecific</code> hands the decision to the controller. Omitting <code>ingressClassName</code> lets admission apply the default IngressClass; with more than one class marked default, admission instead rejects the Ingress.',
+        src: ['Ingress path types', 'https://kubernetes.io/docs/concepts/services-networking/ingress/#path-types'] },
       { t: 'mcq', q: 'A valid HTTPRoute exists but no listener serves it. What is unproven?',
         o: ['That etcd stored it', 'That a compatible controller accepted the parent reference and programmed a data plane', 'That CoreDNS exists', 'That the scheduler can bind Pods'], a: 1,
         why: 'Status parents and conditions reveal acceptance and resolution. API acceptance alone never proves a controller implemented the request.',
@@ -124,7 +129,8 @@ window.COURSE.units.push(
   lessons: [
     { id: 'u16l1', title: 'Hint providers and local admission', items: [
       { t: 'teach', h: 'Cluster feasibility is not hardware locality',
-        p: 'The scheduler can find aggregate CPU, memory and device capacity without proving a coherent NUMA placement. On the selected node, CPU Manager, Memory Manager and Device Manager provide topology hints; Topology Manager merges them and may admit or reject the Pod.',
+        p: 'The scheduler can find aggregate CPU, memory and device capacity without proving a coherent NUMA placement. On the selected node, CPU Manager, Memory Manager and Device Manager provide topology hints; Topology Manager merges them and may admit or reject the Pod. The policy decides how strict that merge is: <code>none</code> does not align, <code>best-effort</code> admits even when the merged hint is not preferred, <code>restricted</code> refuses that Pod at admission, and <code>single-numa-node</code> also demands one NUMA node. A refused Pod ends in Terminated with an admission failure and the scheduler does not retry it, so a controller has to create a replacement.',
+        src: ['Topology Manager', 'https://kubernetes.io/docs/tasks/administer-cluster/topology-manager/'],
         clip: ['KU_EtejzXp0', 483, 'Topology Manager gathers hints during kubelet Pod admission'] },
       { t: 'mcq', q: 'Which workload is eligible for exclusive CPUs under the static CPU Manager policy?',
         o: ['Any Pod with a CPU limit', 'A Guaranteed container requesting a positive integer number of CPUs', 'A BestEffort Pod', 'Any high-priority Pod'], a: 1,
@@ -161,7 +167,8 @@ window.COURSE.units.push(
   lessons: [
     { id: 'u17l1', title: 'From scalar devices to claims', items: [
       { t: 'teach', h: 'DRA makes devices first-class scheduling state',
-        p: 'Device plugins advertise vendor extended resources as scalar node capacity. DRA drivers publish ResourceSlices; DeviceClasses categorize devices; ResourceClaims express requirements; the scheduler allocates a matching device and selects a reachable node.',
+        p: 'Device plugins advertise vendor extended resources as scalar node capacity. DRA drivers publish ResourceSlices; DeviceClasses categorize devices; ResourceClaims express requirements; the scheduler allocates a matching device and selects a reachable node. A Pod declares each claim under <code>spec.resourceClaims</code>, and each entry names exactly one of <code>resourceClaimName</code>, for a claim you created and keep alive, or <code>resourceClaimTemplateName</code>, for one generated from a template. Declaring the claim is only half: a container receives the device only when it also lists that entry under <code>resources.claims</code>.',
+        src: ['Allocate devices with DRA', 'https://kubernetes.io/docs/tasks/configure-pod-container/assign-resources/allocate-devices-dra/'],
         clip: ['Op4DNDTij1U', 213, 'ResourceSlices and ResourceClaims replace string-and-count device requests'] },
       { t: 'mcq', q: 'What is the core difference between a DeviceClass and a ResourceClaim?',
         o: ['Both are allocated devices', 'A DeviceClass describes a category; a ResourceClaim requests and records an allocation from one', 'DeviceClass is namespaced; ResourceClaim is cluster-scoped', 'Claims only work for storage'], a: 1,
@@ -213,7 +220,8 @@ window.COURSE.units.push(
     ]},
     { id: 'u18l2', title: 'CEL admission and authorization review', items: [
       { t: 'teach', h: 'Use an in-process policy when you do not need a network call',
-        p: 'ValidatingAdmissionPolicy holds CEL logic; a binding scopes it and chooses enforcement actions; an optional parameter resource supplies data. SubjectAccessReview asks the authorizer about a subject, TokenReview asks authenticators about a token, and impersonation changes request identity only after a separate permission check.',
+        p: 'ValidatingAdmissionPolicy holds CEL logic; a binding scopes it and chooses enforcement actions; an optional parameter resource supplies data. SubjectAccessReview asks the authorizer about a subject, TokenReview asks authenticators about a token, and impersonation changes request identity only after a separate permission check. That check is the <code>impersonate</code> verb on <code>users</code>, <code>groups</code> or <code>serviceaccounts</code> in the core API group. Impersonating a user or group is not namespace scoped, so it takes a ClusterRole and a ClusterRoleBinding, and <code>resourceNames</code> is the only thing that limits which names a subject may assume.',
+        src: ['User impersonation', 'https://kubernetes.io/docs/reference/access-authn-authz/user-impersonation/'],
         clip: ['7NO8HXzjLAk', 498, 'Policy, binding and parameter resources'] },
       { t: 'mcq', q: 'Why can ValidatingAdmissionPolicy be safer operationally than a webhook?',
         o: ['It can mutate objects', 'It runs CEL in-process and removes a Service, DNS, TLS and network timeout dependency', 'It bypasses authorization', 'It cannot fail closed'], a: 1,
@@ -272,6 +280,10 @@ window.COURSE.units.push(
     { id: 'u20l1', title: 'Control plane and node', items: [
       { t: 'teach', h: 'Start at the nearest authority still answering',
         p: 'If the API responds, use object status, events and component endpoints. If it does not, move below Kubernetes: load balancer, static Pod manifests, kubelet service, runtime, certificates, sockets and host resources. <code>kubectl</code> cannot diagnose the API that makes kubectl possible.' },
+      { t: 'teach', h: 'NotReady runs on a documented clock, not one round number',
+        p: 'The node controller checks every node on <code>--node-monitor-period</code>, 5 seconds by default. When a node stops renewing its Lease and reporting status, the controller sets the Ready condition to Unknown and adds the matching <code>NoExecute</code> taint. Only then does the eviction clock start: by default the controller waits five minutes between marking a node Unknown and its first API-initiated eviction request, and it evicts at <code>--node-eviction-rate</code>, 0.1 nodes per second. Quote the chain and the flag names, not a single memorized number — every step is configurable.',
+        flow: ['kubelet renews Lease', 'monitor period 5s', 'Ready Unknown + NoExecute taint', 'first eviction request ~5 min', 'rate-limited by --node-eviction-rate'],
+        src: ['Nodes', 'https://kubernetes.io/docs/concepts/architecture/nodes/'] },
       { t: 'order', q: 'Order diagnosis when one control-plane node is unhealthy.',
         o: ['Prove load-balancer/API reachability from the client', 'Compare healthy and unhealthy API endpoints', 'Inspect kubelet service and static Pod manifests on the node', 'Inspect runtime containers and component logs', 'Verify certificates, etcd reachability and host pressure'],
         why: 'Begin outside, locate the failing boundary, then descend into the node. Avoid restarting everything before preserving evidence.' },
