@@ -1,0 +1,209 @@
+welcome back
+let us now take a look on how to solve
+the question number eight in the
+certified kubernetes administrator
+keller.sh exam simulation
+so this is the question number eight
+um task rate is two percentage
+so we'll use this command to switch the
+context and to turn both to terminals
+now let us read through the question
+says SSH NT the master node with the
+given command and check how the master
+components and cubelet
+qvp server
+Cube scheduler Cube controller manager
+and hcd are started or installed
+on the masternode
+also find out the name of the DNS
+application and how it started or
+installed and the masternode
+write your findings into this file and
+the file should be structured like this
+and choices of type are so they have
+given the allowed choices for the type
+um let's approach this um
+in two different terminals first we're
+going to use one terminal for recording
+or observation
+let's create the file first where we'll
+be
+storing your observation
+click creating a file let's use the
+suggested template
+so we'll keep this access
+whereas on the other terminals which we
+have kept open
+now we will
+um SSH into this cluster one Master One
+it's done
+um so to start with
+um we know that
+the control plane components would be
+usually running in the cube system
+namespace so we'll start
+um
+with that
+keep the whole get all
+will list all the resources including
+pods Daemon sets
+what not everything keep it will get all
+in
+to keep system namespace
+um
+so if we execute this command this is
+going to
+spit out a lot of information that would
+be an information overload for us so
+a page full of information
+uh we are going to
+you know iteratively go through this one
+after the other for each component so
+instead of this we will pipe this into
+to grab
+and focus on one component at the time
+so let's go from the backwards right so
+for all the other components they have
+requested to
+record only the type information whereas
+with the DNS we know they they've given
+you know type as well as the name
+so let's crap
+um
+for DNS
+in the cube cuddle
+get all the command and Cube system
+namespace
+so we have launching results so we have
+from from the name we can clearly say
+it's it's called DNS
+um is the DNS
+that we are using in this
+um masternode and there's a service of
+type Plus or IB don't need that
+um it's basically a deployment yeah a
+replica set is also there
+but as well as this question is
+concerned the choices of type allowed
+are either it's not installed or process
+static port or pod
+um the best option for this
+um
+I
+I suppose it should be part because it's
+the deployment it's not replica set
+uh
+which service which is given in the
+choice so for DNS we'll say
+it is of type
+part
+and the name we know that is coordinates
+one of the list now we'll reuse the same
+command
+this time we'll
+filter for hcd
+we have only one matching result and it
+clearly says it is a part and you know
+if it is just a part then we should be
+seeing only the hcd
+um in the Pod name but since ha we have
+the suffix cluster name so fix it
+appended at the end
+um it is an indication that it is it is
+a static part
+um so
+let us confirm that as well so the
+default directory uh would be where we
+will be storing the static pod manifest
+would be HC kubernetes manifest
+and let us see if there is a
+configuration for etcd here we do it's
+cd.yaml
+so this is a static part so we'll copy
+this
+go back to this terminal
+and paste this is a static port
+now we have to look for the cube control
+wolf manager
+same command as a barrel
+Cube
+controller manager
+and it's just one pod and it's you could
+clearly see that the name is suffixed
+with the cluster name or the node name
+keep controller manager so we have the
+Manifest here
+so this is a static Port as well
+and now let us look at the cube
+scheduler
+same as the one that we have used before
+um
+that
+and let us look in the default manifest
+for the static parts
+yeah
+so this is a static board as well
+um qbaby is over
+Cube API
+stop there
+um
+it looks like a static pod
+yes it is
+so the cube APA server is also a static
+path now let's
+um
+get to the cubelet so
+cubelet is usually a process
+that runs on the nodes so even if we
+look for cubelet
+it will not get any results as expected
+yes
+um if we wanted to inspect anything here
+for cubelet
+we don't have any results
+so
+let's see
+um
+we had to use the PS aux command and
+then
+let us grip the process cubelet
+yeah so
+this process is basically the cube AP
+server so it does have some matching
+um keywords
+that we searched for which so in our
+case is cubelet
+the second one second process running
+here here is
+the user pin cubelet so this is the
+cubelet
+um process where it is running
+so so it's bootstrapped here
+it's using this config file so it is
+running as a process basically
+so yeah
+so we have this process here
+[Music]
+um
+back to this terminal
+based process
+um so if we take a close observation
+they have
+um also requested to say that it has
+started running or installed
+but in the template they didn't specify
+where to do that
+um let's get
+get all in the key system namespace
+to see if everything is up and running
+at least
+so all of them are running
+so we do not have to capture that
+so everything looks happy and now that's
+all we'll save this file
+and
+verify the content of the file once
+again
+looks good
+um so that's all for this question thank
+you

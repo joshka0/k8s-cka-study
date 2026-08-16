@@ -1,0 +1,73 @@
+Welcome. We'll now see how to solve the question 
+number two in the CKA killer shell simulation.  
+So this is the question number two and 
+the task weight is three percentage.  
+So, we have to execute this on a different 
+cluster. So they're giving the context  
+for us to use. So I'm just copying and 
+executing this command. The question  
+is to create a single pod of image this one 
+('httpd:2.4.41-alpine') in the default namespace.  
+The pod should be named "pod1" and the container 
+should be named "pod1-container". This pod should  
+only be scheduled on a master node. Do not add any 
+new labels on any nodes. Okay, this seems simple.  
+First, we are already using this context, make 
+sure it's done. Otherwise we'll be executing on  
+a different cluster and all the efforts will 
+be gone waste if you're trying to solve this  
+on a totally different cluster. So it's always 
+safe to make sure you are on the right context.  
+Now we have to create a simple pod. So we know 
+that to create a pod, we use kubectl run command  
+and we have to do it in the default namespace. 
+So '-n default' will take care of it. So even if  
+you don't specify this by default, kubernetes 
+will schedule a pod in the default namespace.  
+The pod should be named as 'pod1'. This is the 
+name of the pod. And the image that we should  
+use is 'httpd:2.4.41-alpine' So basically, 
+this should give us the YAML if we can  
+add the '--dry-run=client -o yaml'. Yes. 
+Now we will redirect to a file 2.yaml  
+It is better to name your files based on the 
+question number, so that at a later point in time,  
+when you have to come back or flag the question, 
+you have to come back and redo validate or  
+continue working on it. It would help. So here we 
+created this 2.YAML file. Let's get into the file.  
+So this YAML will all be able to create a static 
+pod. Sorry, not a static pod. Pod with the name  
+'pod1'. It uses this specified image, but we have 
+to use the container name. So we'll come down  
+to the container name section and change it to 
+'pod1-container'. And they said it should be  
+scheduled on the master node and do not add any 
+new labels on the node. We can do it in two ways.  
+One, using labels and selectors and to schedule 
+a pod on a specific node, we can use "nodeName"  
+on the other tab or other terminal. Let's get 
+the "kubectl get nodes" to see the nodes. So this  
+is the control plane node. This is the master 
+node. Let's copy the name of the master node.  
+Come back to this terminal. Let's replace 
+this. So this will schedule the Pod with the  
+specification that they have given and it will 
+schedule it on the "cluster1-master1" node,  
+which is the control plane node. Now, let's 
+create a Pod using the "kubectl create -f" 
+by chaining up the 2.yaml file so the 
+pod is created. Now let's see the pod.  
+Get pod in the default namespace., and 
+the pod name we know should be "pod1".  
+Yeah, it's created 13 seconds before. If you want,  
+see if the pod is scheduled on the 
+node. On the master node. We can  
+use the '-o wide' so we could see 
+it is running on the master node.  
+And let's inspect the container 
+name to make sure it's done right.  
+Pod name is 'pod1' we didn't add any labels. We 
+clearly see it's on the master node. Container  
+name is "pod1-container". That's all. So 
+we have solved the question 2. Thank you.

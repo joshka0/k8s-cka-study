@@ -1,0 +1,119 @@
+Welcome back. Now let's try and solve the question  
+number 4 in the "Certified Kubernetes 
+Administrator" Killer shell simulation.  
+Question number 4, Task weight 4%. First 
+let's use the context and switch to the right  
+context. Now the question is do the following in 
+namespace 'default'. Create a single pod named  
+"ready-if-service-ready". Let's do that, "kubectl 
+run" create a pod named "ready-if-service-ready"  
+should exist in the 'default' namespace using 
+this image which is "nginx:1.16.1-alpine"  
+And then there's a configure a liveness 
+probe which simply runs 'true'.  
+And also configure readiness probe which 
+does check if the URL is reachable.  
+You can use this wget command for this, start 
+the pod and confirm it isn't ready because of  
+the Readiness Probe. All right, so let's do this 
+first., Liveness and Readiness probe, we could not  
+do it right now. Let's grab the YAML configuration 
+using the "--dry-run=client" output as yaml,  
+now write it to 4.yaml, Let's edit the file.  
+Pod name "ready-if-service-ready" exists. right, 
+and the image is this. Now we have to configure  
+the Livenessprobe which simply runs a true 
+command. Let's go to the browser and Liveness  
+and readiness probe. Check for the liveness 
+readiness probe in the Kubernetes documentation.  
+Open up the first result. You can use "CTRL+F" to  
+search in the browser. So now we are 
+going to do the liveness. Here we have,  
+let's copy this bit, come back to the terminal. We 
+don't need any of this. and here we are pasting.  
+So when you copy paste from the browser, 
+anything outside of the terminal, you might  
+see this warning message that it is an unsafe 
+paste. You could just click on the paste button.  
+So they say we have to just execute 
+a command called 'true'. It's not a  
+working command, but yeah, just for the 
+purpose of exam. Fine. So livenessprobe  
+done. Now we have to get the readiness probe. 
+Now let's search for the readiness probe.  
+Same like  
+LivenessProbe. Let's give some indentation. 
+Paste it. Let's fix the indentation. All right,  
+so they say we have to use this command to  
+see if the service is reachable. 
+So, We will invoke the shell,  
+'-c' for command and then we are going to 
+simply paste the command that they have given.  
+Start the pod and confirm it isn't ready because 
+of the ReadinessProbe, because the ReadinessProbe  
+is trying to probe this specific service at 
+port number 80. So if the service is not there,  
+it will not schedule the pod. Now let's create  
+the pod. Even before creating, let's make 
+sure there is no pod with the same name  
+already. 'kubectl get pods' 
+in the default namespace.  
+No pods found. Now let us create it 
+says it's created. Now let's check the  
+pod. Status changed to running., 
+but it's zero of one, so it's not  
+running for some reason. Let's inspect the 
+part by issuing the 'kubectl' kubectl describe  
+so Th events we could clearly see it says 
+readiness probe failed because command  
+this thing has timed out. So it's trying to probe 
+the service at the port number 80 and it's not  
+able to reach and it timed out as a reason it's 
+not able to schedule the pod even though it's  
+running, it's not fully running. So that's this 
+bit. Now there is one more section that says  
+create a second pod named "am-i-ready"? 
+So to create a pod, we use "kubectl run"  
+pod name is this., and we know that we have to do 
+this in the default namespace, of course. And the  
+image that we have to use "nginx:1.16.1-alpine", 
+and they say we have to use the labels ID  
+equals cross server ready. So if we have to use 
+them in the YAML, we'll use the ID colon format.  
+But since we are using in the kubectl command 
+directly, we have to replace it with ID equals.  
+Yeah, I think that's it. They say the 
+already existing service should now have  
+the second pod as an endpoint. So they say 
+there is a service already with this name.  
+Let's inspect that. "kubectl get service" in the 
+default namespace with the "service-am-I-ready"  
+yes, it does. Let's also get the endpoints.  
+For now, it says none and we have not executed 
+this command yet. So we'll execute this command  
+and see if it makes any changes. So it says 
+the pod is created. Now let's check the  
+pods in the default namespace. 
+The pod name is "am-i-ready"  
+It's running. Let's now inspect the 
+service and the endpoint. So previously the  
+"service-am-I-ready" Did not have any endpoint. 
+It was none here, after scheduling the second pod,  
+it should pick up the IP address of the second 
+pod, which we will see by executing "kubectl  
+get pods" in the default namespace. Second pod 
+name is "am-I-ready" and let's use the '-o wide'  
+to print IP address. This is the IP address of 
+the second pod, and this is now the end point  
+for the service with the port number 80. 
+Now the first pod should be in the ready  
+state. Confirm that. Let's check the status 
+of the first pod. First pod name is this one  
+"ready-if-service-ready". Now, earlier it 
+was 0 1. Now it is one of one (1 1), which  
+is a good indication. "kubectl" 
+describe the pod it's running.  
+No new events that is recorded. But yeah, the Pod 
+is in a running state. You can clearly see from  
+under the ready state. So that's 
+it for this question. Thank you.

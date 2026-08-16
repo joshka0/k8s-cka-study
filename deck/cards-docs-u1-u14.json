@@ -1,0 +1,204 @@
+[
+  {
+    "id": "u2l3::docs-resource-version",
+    "lesson": "u2l3",
+    "unit": "02 The API request path",
+    "topic": "Two writers, one object",
+    "type": "name_to_definition",
+    "front": "What is <code>metadata.resourceVersion</code>, and how must a client treat it?",
+    "back": "A server version string used for concurrency and consistency. Pass it back unmodified. Compare order only for decimal values from the same API group and resource type. A stale value on update returns a conflict.",
+    "tags": [
+      "02-the-api-request-path",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-versions'>📖 Resource versions</a>"
+  },
+  {
+    "id": "u3l2::docs-watch-410-gone",
+    "lesson": "u3l2",
+    "unit": "03 Reconciliation & watches",
+    "topic": "When the watch breaks",
+    "type": "name_to_definition",
+    "front": "Your watch fails with status <code>410 Gone</code>. What must the client do before it watches again?",
+    "back": "Clear its local cache. Run a fresh get or list. Restart the watch from the <code>resourceVersion</code> that call returned. A server keeps only a short change history. <code>BOOKMARK</code> events reduce how often this happens.",
+    "tags": [
+      "03-reconciliation-watches",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/reference/using-api/api-concepts/#efficient-detection-of-changes'>📖 Efficient detection of changes</a>"
+  },
+  {
+    "id": "u4l1::docs-cronjob-forbid",
+    "lesson": "u4l1",
+    "unit": "04 Workloads & disruption",
+    "topic": "Completions and parallelism",
+    "type": "definition_to_name",
+    "answer": "Forbid",
+    "front": "Which CronJob concurrency policy skips a new Job when the previous run is still active?",
+    "back": "<b>Forbid</b>. Allow runs overlap. Replace cancels the live Job and starts a new one.",
+    "tags": [
+      "04-workloads-disruption",
+      "recall"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/'>📖 CronJob</a>"
+  },
+  {
+    "id": "u4l1::docs-max-surge-zero",
+    "lesson": "u4l1",
+    "unit": "04 Workloads & disruption",
+    "topic": "How a rollout actually moves",
+    "type": "name_to_definition",
+    "front": "You set <code>maxSurge</code> to 0 on a RollingUpdate Deployment. What else must be true?",
+    "back": "<code>maxUnavailable</code> cannot be 0. At least one of the two must let the controller replace a Pod. During a template upgrade, Recreate waits for old-revision Pods to be removed before it creates new-revision Pods. It does not give an at-most guarantee after manual Pod deletion.",
+    "tags": [
+      "04-workloads-disruption",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#max-surge'>📖 Deployment max surge</a>"
+  },
+  {
+    "id": "u5l1::docs-crd-schema",
+    "lesson": "u5l1",
+    "unit": "05 CRDs & operators",
+    "topic": "The schema is the API",
+    "type": "name_to_definition",
+    "front": "Why does <code>apiextensions.k8s.io/v1</code> reject a CRD that has no OpenAPI schema?",
+    "back": "v1 requires a structural schema. The API server uses it to validate and prune custom objects.",
+    "tags": [
+      "05-crds-operators",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/'>📖 CustomResourceDefinitions</a>"
+  },
+  {
+    "id": "u6l3::docs-preemption-never",
+    "lesson": "u6l3",
+    "unit": "06 Scheduling under pressure",
+    "topic": "Queue order without displacement",
+    "type": "api_to_name",
+    "answer": "Never",
+    "front": "Which <code>PriorityClass</code> <code>preemptionPolicy</code> value stops this Pod from evicting lower-priority Pods?",
+    "back": "<b>Never</b>. The default <code>PreemptLowerPriority</code> lets the scheduler evict lower-priority victims.",
+    "tags": [
+      "06-scheduling-under-pressure",
+      "recall",
+      "code"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/'>📖 Pod Priority and Preemption</a>"
+  },
+  {
+    "id": "u7l1::docs-init-order",
+    "lesson": "u7l1",
+    "unit": "07 Kubelet, CRI & Pods",
+    "topic": "The order on the node",
+    "type": "name_to_definition",
+    "front": "When does the kubelet start app containers if a Pod has several init containers?",
+    "back": "After every init container exits 0, in spec order. A failed init restarts until it succeeds, unless <code>restartPolicy</code> is Never.",
+    "tags": [
+      "07-kubelet-cri-pods",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/workloads/pods/init-containers/'>📖 Init Containers</a>"
+  },
+  {
+    "id": "u8l1::docs-session-affinity",
+    "lesson": "u8l1",
+    "unit": "08 Networking & the data plane",
+    "topic": "When the Service steps out",
+    "type": "definition_to_name",
+    "answer": "ClientIP",
+    "front": "Which Service <code>sessionAffinity</code> value sends a client's later connections to the same backend Pod?",
+    "back": "<b>ClientIP</b>. Connections from one client IP are sent to the same backend Pod for the configured affinity timeout. The default <code>None</code> provides no client affinity.",
+    "tags": [
+      "08-networking-the-data-plane",
+      "recall"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/services-networking/service/#session-stickiness'>📖 Service session stickiness</a>"
+  },
+  {
+    "id": "u9l1::docs-dnspolicy-none",
+    "lesson": "u9l1",
+    "unit": "09 DNS & CoreDNS",
+    "topic": "The query that actually leaves",
+    "type": "name_to_definition",
+    "front": "What does <code>dnsPolicy: None</code> change about a Pod's resolver?",
+    "back": "The Pod ignores cluster DNS settings. You must set <code>dnsConfig.nameservers</code>. Extra nameservers under ClusterFirst merge; they do not replace cluster DNS.",
+    "tags": [
+      "09-dns-coredns",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/'>📖 DNS for Services and Pods</a>"
+  },
+  {
+    "id": "u9l1::docs-clusterfirst-is-default",
+    "lesson": "u9l1",
+    "unit": "09 DNS & CoreDNS",
+    "topic": "The query that actually leaves",
+    "type": "cloze",
+    "front": "If you omit <code>dnsPolicy</code>, the kubelet uses {{c1::ClusterFirst}}, not Default. Default copies the node's resolver.",
+    "back": "Default is a named policy, not the field default. ClusterFirstWithHostNet is the cluster-DNS choice for hostNetwork Pods.",
+    "tags": [
+      "09-dns-coredns",
+      "recall",
+      "cloze"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy'>📖 Pod DNS policy</a>"
+  },
+  {
+    "id": "u10l1::docs-reclaim-retain",
+    "lesson": "u10l1",
+    "unit": "10 Storage & CSI",
+    "topic": "Claim, class, volume",
+    "type": "name_to_definition",
+    "front": "A PVC is deleted. Its PV has reclaim policy Retain. What is the volume's state?",
+    "back": "The PV remains. Phase becomes Released. <code>claimRef</code> still names the old claim, so another PVC cannot bind until an admin clears it.",
+    "tags": [
+      "10-storage-csi",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/storage/persistent-volumes/#retain'>📖 Persistent volume Retain</a>"
+  },
+  {
+    "id": "u13l2::docs-kubeadm-cert-ttl",
+    "lesson": "u13l2",
+    "unit": "13 Cluster bootstrap & lifecycle",
+    "topic": "Safe, not merely successful",
+    "type": "cloze",
+    "front": "kubeadm-managed leaf certificates default to {{c1::1 year}}. A control-plane kubeadm upgrade renews them unless certificate renewal is disabled. CA certificates default to {{c2::10 years}}.",
+    "back": "Check with <code>kubeadm certs check-expiration</code>. You can set other periods in ClusterConfiguration. Externally managed certificates need external renewal; the rotating kubelet client certificate is not in <code>kubeadm certs check-expiration</code>.",
+    "tags": [
+      "13-cluster-bootstrap-lifecycle",
+      "recall",
+      "cloze"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/'>📖 Certificate Management with kubeadm</a>"
+  },
+  {
+    "id": "u14l1::docs-immutable-configmap",
+    "lesson": "u14l1",
+    "unit": "14 Configuration, QoS & eviction",
+    "topic": "Delivery has semantics",
+    "type": "name_to_definition",
+    "front": "What changes after you set <code>immutable: true</code> on a ConfigMap?",
+    "back": "You cannot change <code>data</code> or <code>binaryData</code>, and you cannot unset immutable. Delete and recreate. Watches for an immutable ConfigMap can close, which reduces load on kube-apiserver.",
+    "tags": [
+      "14-configuration-qos-eviction",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/configuration/configmap/#configmap-immutable'>📖 Immutable ConfigMaps</a>"
+  },
+  {
+    "id": "u14l2::docs-qos-guaranteed",
+    "lesson": "u14l2",
+    "unit": "14 Configuration, QoS & eviction",
+    "topic": "QoS is derived, not set",
+    "type": "name_to_definition",
+    "front": "What must be true for <code>status.qosClass</code> to be Guaranteed?",
+    "back": "Every container has CPU and memory request equal to its limit, both greater than zero. Equal pod-level CPU and memory also qualify when that feature is on.",
+    "tags": [
+      "14-configuration-qos-eviction",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/'>📖 Pod Quality of Service Classes</a>"
+  }
+]

@@ -1,0 +1,240 @@
+foreign welcome back let us now see how
+to solve the question number 15 in the
+certified kubernetes administrator
+killer shell exam simulation
+question number 15 task rate is three
+percentage
+first let us use this command to switch
+the context until you will do it on both
+the nodes so
+just to make sure
+okay
+um it says write a command into the
+specified file which shows the latest
+events in the whole cluster ordered by
+the timestamp and use the cube bottle
+for it so this seems straightforward so
+we can use cubicle
+get events to list the number of events
+and what we do now is
+we have to generate the events or we
+have to get the events
+um
+across the whole cluster
+so we have to use Das capital A filter
+for that and we have this sort sort by
+filter
+which we can use to
+sort
+the results
+using anything that we Supply here so we
+this will sort the events by its
+creation timestamp
+so
+so this is the command so what they are
+asking is we have to use write this
+command to this file so we'll simply
+and
+Echo this
+and we'll write this to this file they
+have specified
+let us know
+see the content of the file
+another thing is
+so
+the Alias will not work if you are
+writing the commands into the file so if
+you want to put that to test we can
+simply execute the shell script and it
+came back saying K not found it does not
+they understand the alias
+so just to make sure
+it's better to use the full command
+inside the file
+instead of the alias
+so let's test it now so this one is
+working fine
+so we have solved this part of the
+puzzle the next section says Now kill
+the cube proxy part running on the Node
+cluster 2 Dash worker one and write the
+evens in events this cost into this file
+uh so Q proxy should be running as a pod
+on the control plane or basically on the
+cube system namespace so let's get the
+parts uh also use the lit switch Dash or
+white and in the cube system namespace
+and we are interested in only the cube
+proxy let's filter using the graph
+so we do C2 Q proxy Parts running one on
+the master node or control plane the one
+that's the cluster
+to work one so the instruction here says
+we have to kill the ones that is running
+on cluster 2 Dash work one
+so we can use that using
+we can kill the point using the cube
+cuddle delete part
+name and we have to supply the namespace
+cube system
+it has deleted the part now let us
+execute the previous command
+to see it has really done it
+so we see we still see like 2 Cube proxy
+Parts running uh one on the master and
+the cluster to worker one but if you
+take a closer look
+um this one is you know just five
+seconds hold so
+um the cluster fries to keep the state
+so if the cube proxy skilled it tries to
+schedule the cube proxy port again
+so if it's a new part the name is
+different so we tried to kill the part
+now whatever the events um this action
+has triggered we have to write that
+event into this file
+so we'll use
+the same previous command which we used
+to
+um
+get the events that you've got to look
+at evens uh this time let us Focus only
+on the cube system
+namespace
+and
+let us also sort
+by
+the creation timestamp
+all right
+so
+this is it
+so let's try try to kill the Pod keep
+proxy pod it's scheduled to one it pulls
+the image it created the part
+created a Dame insert set
+and it started
+started the part
+so
+this is the event it has generated let's
+copy this
+and they say we have to write it to this
+file
+on opt
+course
+15 slash
+pod
+underscore kill DOT log
+let's paste what we've copied there
+and let's save this
+since I have typed the command let's
+copy and see I have not made any typo
+ah
+there we go
+that is some problem
+uh container kill log oh so we we have
+to look into the particle log sorry
+can't
+yeah so
+we have
+the events generated when we have tried
+to kill the cube proxy part so that's
+there
+uh heading to the next section so
+finally kill the container decontainer
+of
+Cube proxy part on the Node cluster T
+work one and write the events into this
+um
+let's do that uh Cube will get pods in
+the cube
+proxy namespace sorry Cube Cube system
+namespace
+let's
+also Supply the all white and grab for
+Q proxy
+so we have to choose the pod which is
+running on the cluster 2 worker one so
+this is
+the pod
+so they are asking to kill
+um
+the container
+running within the spot so we have to
+use correct couple
+PS
+okay let us let us now
+SSH into the node
+so we have to connect to the node after
+doing that
+so now execute a couple PS sorry
+LS
+Okay click it'll appear this is the
+command
+um so we know the name is kasg D3 DT in
+the suffixed with ksgdt so it's a q
+proxy is there
+uh just running the KSG DT so this is
+the container
+that the Pod is running thus
+does also run many other
+containers pod for code DNS and view
+which is the container Network I mean
+plugin
+so the task is basically to kill
+this
+container
+so we'll use Quick
+critical
+RM
+followed by
+the container ID
+it says it is running so we have to stop
+it first so we'll issue the critical
+stop followed by the container ID it has
+stopped
+and let us now remove that
+now let's check by critical PS to see if
+it is still there
+so we don't see the container with the
+old name or container ID rather it has
+created a cube proxy 10 seconds ago with
+a different container ID so even if you
+try and kill the container it tries to
+keep its state by scheduling a new new
+container so it just behaves as intended
+so obviously you'd have uh it would have
+generated list of events so
+let's
+use the previous
+and the command that we used earlier
+um defaulted through this
+perfect
+uh I think it starts from here
+57 seconds ago
+so
+container images try to pull container
+image it created the container
+Q proxy it created a part Cube proxy
+with another name
+it started the container Cube proxy
+so these are the events it has generated
+yeah let's copy this
+only the events that
+those are specific to this one
+let's copy this
+and we have to write this to a file
+which is an opt
+a slice
+course
+slash 15 slash container underscore kill
+DOT log
+I will paste whatever we copied
+events that we are copied
+write this so now I have typed all the
+file name it's better to validate by
+copying from the question itself to see
+if it works it does and looks good
+uh perfect so all right that is for
+question number 15 and thanks for your
+time watching and see you again later

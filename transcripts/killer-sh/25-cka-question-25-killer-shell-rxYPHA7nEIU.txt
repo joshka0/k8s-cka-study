@@ -1,0 +1,325 @@
+foreign
+welcome back let us now see how to solve
+the question number 25 in the certified
+kubernetes administrator Keller shell
+exam simulation
+question number 25 task weight is eight
+percentage
+as usual uh we'll make use of this
+command
+to
+switch to the right context
+on all the terminals that we use
+and the question says make a backup of
+hcd running on cluster 3 Dash Master one
+and save it on the master node at the
+given location
+then create a part of your kind in the
+cluster
+finally restore the backup confirm the
+cluster is still working and that the
+created part is no longer with this
+so the challenge is basically to emulate
+a kind of a maintenance mode
+where we have to take the hcd database
+backup
+and then schedule a pod of any kind
+and then restore the backup
+so uh the snapshot of the back that we
+have taken some time back uh the
+expectation
+um
+is that you know when we are validating
+uh the cluster after restoring the
+backup we should not see the part that
+we have scheduled
+which means basically the part is not
+part of the backup snapshot
+so we can achieve this uh by making use
+of the hcd cutl command because that's
+what we use to interact interact with
+the hcd
+so let us make use of
+the kubernetes documentation to see
+at City snapshot commands
+let us use this link
+all right
+we can copy this command
+go back to terminal on a different
+uh
+terminal and then we'll create a file
+called 25.yaml we'll paste the command
+that we copied from the documentation
+let's make it out single command
+right so
+so the
+the attributes or switch used seems to
+be holding the right value because uh we
+are using that CD Kettle API 3 hcd
+catalystic command that we have to use
+to interact with
+um it City
+and the endpoints so it does use two
+endpoints on the localhost 2379 and 2380
+Port this seems right to me and csart
+so these are the default directories
+where we have the third files in just in
+case
+if these are changed we would be able to
+validate them as well so we use the
+snapshot save command sub command to
+take a database backup so it should be
+stored in this directory yes
+this directory name
+first let us see if there is there are
+any Bots I've got a little get parts
+nothing running in the default namespace
+let's check in the cube system namespace
+we have a couple of them running let's
+do
+account
+we have 12 Parts running in the cube
+system namespace
+control plane namespace
+sorry Cube system namespace on the
+control plane node or the master node
+um so
+to take this backup we have to connect
+to
+this
+masternode
+now
+um
+we will inspect the hcd file to see
+but with the attributes that we are
+using for this command still
+is valid so in order the files
+are available in at City kubernetes
+manifest folder and its CD is a file
+name
+uh let us grip
+for the keyword that says file
+because all these research points so it
+will have a file
+appended there
+so the third file so it's a it's the
+Late City kubernetes pki
+and directory and hcd in server.crt it's
+a server file
+is this one here it's the equipment
+speaker hcd server
+and let's see the CF file this this is
+the C file
+so it's pretty much the same directory
+and CD kubernetes speaker hcd and
+ca.cert
+uh so this is the csart and
+it looks good and now we have to
+validate the server key
+so this is the key file and it looks
+good
+as well so this command looks good for
+us now so let's copy
+click complete Command
+and
+if we execute it it would create a
+snapshot of that CD database
+um
+let's do that
+so it's done
+let's verify if just create a file
+created a file in this directory it does
+all right so backup taken
+uh now the question says then create a
+part of your coin
+in the cluster so let's create a part
+icularly run we'll create a test font
+uh in the default namespace we'll use
+the image
+nginx
+so Cadence there is no any
+specification of the Pod name
+image to use nothing as such so we're
+just creating
+uh things on our own so keep it a run a
+board named testing that uses the image
+nginx so all we need to make sure is
+this part should be running for some
+time
+um let us use uh
+command attribute
+and say
+sleep for one day
+it's not as created let's get the pod
+so we have one part named test which is
+running
+in the default namespace
+so in the cube could sorry in the cube
+system namespace
+we have already done done that we see 12
+Watts running so nothing changed
+um okay now the question says we have to
+restore uh from the backup that we just
+have taken and confirmed that cluster is
+still working and the created part is no
+longer with us
+so on on a production scenario
+what we do is when we are going to take
+a backup or when we are going to restore
+from a backup we will completely drain
+the nodes
+to make sure things are working fine and
+then once the restore is done
+it should
+execute or schedule the pods deployments
+and all the resources which is
+um part of the snapshot or the backup
+so in order to do that
+we can
+we can do one thing
+we now
+okay let's let's now restore try and
+restore so that's that's on a real
+production scenario but since this is a
+test environment let's proceed to
+restore assets
+so we should all make use of the same
+command at City Kettle so now this time
+with the snapshot
+restore
+instead of snapshot save
+so let's search for the command
+all right we don't have the full command
+but we can pretty much make use of the
+same thing and that we used before
+let's make changes to our existing
+command which we have in this file
+thank you
+[Music]
+um
+let me copy the file
+so copy the command
+um so
+so instead of hcd snapshots name save
+we're going to use it CD snapshot
+restore from this file
+and the data directory
+would be
+let's see what is the do I mean we do
+have a default data directory where hcet
+refers to but we can still
+check that in the configuration which is
+a net City kubernetes manifest scd.yamo
+that script for
+data directory so it's valid
+Etsy
+so we can pretty much give anything but
+um let's say we are going to store
+[Music]
+um this
+make us a fake CD it's the backup one
+data directory
+um
+so rest of them reminds the same well
+I'm gonna copy this command
+and execute this
+it's done
+uh let's see in the war lib
+let's see a warlip
+am I using the right thing
+or levity
+so I'll let that City back up so let's
+see
+War lip hcd backup one so this
+I have the data directory here
+so
+what happens now is
+um now we have to
+instruct the hcd to make use of the
+newly created
+file so we have to change the host part
+that
+and we will edit this file
+manifest one so any changes just for
+changes to this file will trigger
+basically we'll terminate the Running
+part and create a new one
+let's let's search
+for volume
+one amounts that we are interested in
+the hcd data
+so volume Mounds we're not touching them
+uh volumes we have we have to modify the
+LCD data so this is the directory we
+have to change
+so we are now dictating that at City
+to
+refer to this host path on on the Node
+and then save the changes so
+it should be restarting
+and the parts so if we do cubicle get
+all
+in the
+so basically it's not allowing me to do
+anything so it's kind of the auto
+completion itself is kind of stuck
+let me check on the
+now let's check on the other terminal
+keep the little bit Parts
+um so it's doing its job so it needs it
+will terminate the existing LCD part and
+it will
+create a new one and
+um it again takes or requires some time
+to warm up
+and let us give the time it needs needed
+usually it takes a couple of minutes
+let's give the time
+so once um so the expectation is that
+once these
+diet city is back up and running
+um if we issue the cube it'll get part
+so the default namespace we should not
+be seeing the test part that we
+scheduled
+so that's expectation
+so now it says no resource found in the
+default name space
+let us do the same in the cube system
+namespace
+connection refused I think it's
+let's do it here but it will get parts
+connection refused I think the
+connection has been reset
+let's use Quick
+foreign
+process
+so only three seconds ago the cube APA
+server came up
+[Music]
+hcd came up so cubic B server is still
+coming up so it's only a few seconds ago
+okay no parts now and the default name
+space let's check the cube
+system namespace so it's running
+um let's see whether it has restored
+everything
+so we still need one more part to come
+up
+earlier we had 12 Parts Running part of
+the cube system
+but now it's 11 but what's
+uh what we need to check is basically on
+the default names pass default namespace
+we should not see the
+a test part that we've created which
+which seems to be a good sign that it's
+already restored and working fine
+all right so this is
+concludes
+yeah this concludes
+um
+survey where we have to kind of take
+backup of the LCD database and restore
+from the snapshot that we have taken
+um thank you for your time

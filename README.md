@@ -44,6 +44,30 @@ Timestamps were derived by fetching the timed caption tracks and locating the
 passage, not estimated. Transcript-backed clips are kept separate from four
 advanced supplemental talks whose caption retrieval was request-blocked.
 
+## Exam practice
+
+`exam.html` holds 15 scored scenarios in exam voice, grouped by unit. Each one
+also hangs off its unit in the lesson path, next to that unit's video.
+
+A scenario reveals itself in stages:
+
+1. **Attempt** — context, task and constraints only. You solve it in your own
+   terminal. Nothing else is on screen.
+2. **Grade** — the scorer's verify items appear as point-weighted checkboxes,
+   with its scoring notes above them. You tick what your end state achieved and
+   the page adds the points up. The gates ("gate the last four points on the
+   CronJob existing") are shown, not enforced. Only you know what the cluster
+   looked like.
+3. **Debrief** — the expected path with its Left/Right branches, the trap, the
+   docs-navigation drill, and the source pages.
+4. **Retain** — the attempt is stored and the scenario joins the same Leitner
+   schedule the lesson items use. 80% of the points counts as recall; below
+   that resets the interval.
+
+Keyboard: `1`–`9` tick a verify item, `Enter` moves to the next stage, `Esc`
+leaves. Every scenario is deep-linkable: `exam.html#q/<id>`, or
+`index.html#x/<id>` inside the path.
+
 ## Spaced review
 
 Every graded item enters a Leitner schedule (same day → 1 → 3 → 7 → 21 days).
@@ -136,6 +160,7 @@ rather than duplicating.
 ## Layout
 
 - `index.html` — the interactive lesson path
+- `exam.html` — the scored exam scenarios, grouped by unit
 - `modules.html` — the twelve-module video/composition index
 - `reference.html` — full prose guidebook, print-friendly
 - `start.sh` — serve the course to your tailnet with shared progress
@@ -144,6 +169,8 @@ rather than duplicating.
 - `assets/content.js` — original 12 units of lesson content
 - `assets/advanced-content.js` — eight-unit CKA completion and advanced-API track
 - `assets/learn.js`, `assets/learn.css` — lesson engine and styling
+- `assets/exam-content.js` — the exam-question bank, built by `tools/build-exam-asset.mjs`
+- `assets/exam.js`, `assets/exam.css` — the staged-reveal exam surface, on both pages
 - `assets/course.css`, `assets/course.js` — guidebook styling and answer reveal
 - `deck/SPEC.md` — vocabulary-deck contract
 - `deck/components.json` — 60-concept stable inventory

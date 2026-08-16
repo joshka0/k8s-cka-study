@@ -1,0 +1,205 @@
+[
+  {
+    "id": "u15l1::docs-ingress-needs-controller",
+    "lesson": "u15l1",
+    "unit": "15 Ingress, Gateway API & policy",
+    "topic": "Accepted, and doing nothing",
+    "type": "name_to_definition",
+    "front": "You create an Ingress, but the cluster has no Ingress controller. What happens to the traffic?",
+    "back": "Nothing routes. Only creating the resource has no effect; a controller must satisfy it. The Ingress API is frozen; the project recommends Gateway.",
+    "tags": [
+      "15-ingress-gateway-api-policy",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/services-networking/ingress/'>📖 Ingress</a>"
+  },
+  {
+    "id": "u16l2::docs-topology-refused",
+    "lesson": "u16l2",
+    "unit": "16 NUMA-aware node resources",
+    "topic": "Scheduled, then refused",
+    "type": "definition_to_name",
+    "answer": "restricted",
+    "front": "Which Topology Manager policy rejects a Pod when the merged hint is not preferred, but can accept a preferred alignment that spans multiple NUMA nodes?",
+    "back": "<b>restricted</b>. The Pod is refused at kubelet admission and ends up Terminated; the scheduler does not retry. <code>single-numa-node</code> is stricter: it additionally requires alignment on one NUMA node.",
+    "tags": [
+      "16-numa-aware-node-resources",
+      "recall"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/tasks/administer-cluster/topology-manager/'>📖 Control Topology Management Policies</a>"
+  },
+  {
+    "id": "u17l1::docs-dra-claim-on-demand",
+    "lesson": "u17l1",
+    "unit": "17 Devices & Dynamic Resource Allocation",
+    "topic": "Template, or a named claim",
+    "type": "name_to_definition",
+    "front": "In a Pod's <code>spec.resourceClaims</code>, what is the difference between <code>resourceClaimTemplateName</code> and <code>resourceClaimName</code>?",
+    "back": "Template generates one ResourceClaim per Pod on demand and deletes it with the Pod. Name references a claim you created beforehand and keep alive yourself.",
+    "tags": [
+      "17-devices-dynamic-resource-allocation",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/'>📖 Dynamic Resource Allocation</a>"
+  },
+  {
+    "id": "u18l2::docs-impersonation-as",
+    "lesson": "u18l2",
+    "unit": "18 Advanced API machinery & policy",
+    "topic": "Ask, without becoming them",
+    "type": "name_to_definition",
+    "front": "What does <code>kubectl --as alice</code> change, and which RBAC verb must you already hold?",
+    "back": "The request authenticates as you, then evaluates authorization as alice. You need the <code>impersonate</code> verb on users.",
+    "tags": [
+      "18-advanced-api-machinery-policy",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/reference/access-authn-authz/user-impersonation/'>📖 User Impersonation</a>"
+  },
+  {
+    "id": "u19l1::docs-lease-node-heartbeat",
+    "lesson": "u19l1",
+    "unit": "19 Coordination & deferred commitment",
+    "topic": "Leadership is a conditional write",
+    "type": "name_to_definition",
+    "front": "In the common case, how does the control plane know a node is still alive?",
+    "back": "The kubelet heartbeats by renewing its node's Lease <code>spec.renewTime</code> in <code>kube-node-lease</code>. Node status updates are separate and less frequent. Leader election reuses the API.",
+    "tags": [
+      "19-coordination-deferred-commitment",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/architecture/leases/'>📖 Leases</a>"
+  },
+  {
+    "id": "u20l2::docs-node-ready-unknown",
+    "lesson": "u20l2",
+    "unit": "20 CKA troubleshooting spine",
+    "topic": "Ninety seconds on a NotReady node",
+    "type": "definition_to_name",
+    "answer": "Unknown",
+    "front": "A node's Lease renewals stop arriving. What does the Ready condition become once the grace period passes?",
+    "back": "<b>Unknown</b>. The node controller checks at --node-monitor-period; the grace period is --node-monitor-grace-period (default 50s). Pod eviction follows taints and the eviction controller.",
+    "tags": [
+      "20-cka-troubleshooting-spine",
+      "recall"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/architecture/nodes/'>📖 Nodes</a><br><a href='https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/'>📖 kube-controller-manager flags</a>"
+  },
+  {
+    "id": "u21l1::docs-node-identity",
+    "lesson": "u21l1",
+    "unit": "21 Identity, RBAC & node trust",
+    "topic": "A node is an authenticated principal",
+    "type": "cloze",
+    "front": "To use the Node authorizer, a kubelet identifies as {{c1::system:node:&lt;nodeName&gt;}} in group {{c2::system:nodes}}.",
+    "back": "When enabled, NodeRestriction limits a node identity to writes for its own Node and Pods bound to it, plus its documented label restrictions. TLS bootstrap issues the credential through a CertificateSigningRequest.",
+    "tags": [
+      "21-identity-rbac-node-trust",
+      "recall",
+      "cloze"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/reference/access-authn-authz/node/'>📖 Using Node Authorization</a>"
+  },
+  {
+    "id": "u22l1::docs-metrics-api",
+    "lesson": "u22l1",
+    "unit": "22 Metrics, logs & interactive debugging",
+    "topic": "One narrow pipeline",
+    "type": "definition_to_name",
+    "answer": "Metrics API",
+    "front": "Which aggregated API behind <code>kubectl top</code> and HPA reports node and Pod CPU and memory only?",
+    "back": "The <b>Metrics API</b> (<code>metrics.k8s.io/v1beta1</code>). metrics-server feeds it from the kubelet's resource metrics; it holds no history and no disk or network figures.",
+    "tags": [
+      "22-metrics-logs-interactive-debugging",
+      "recall",
+      "code"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/'>📖 Resource metrics pipeline</a>"
+  },
+  {
+    "id": "u23l1::docs-ssa-conflict",
+    "lesson": "u23l1",
+    "unit": "23 Declarative delivery & field ownership",
+    "topic": "A conflict names an owner",
+    "type": "name_to_definition",
+    "front": "Server-side apply refuses your change to a field. What information does the error carry, and what must you do?",
+    "back": "It names the field manager that owns the field. Reconcile your YAML with the live object, or force deliberately. update() does not join ownership.",
+    "tags": [
+      "23-declarative-delivery-field-ownership",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/reference/using-api/server-side-apply/'>📖 Server-Side Apply</a>"
+  },
+  {
+    "id": "u24l1::docs-limitrange-default-quota",
+    "lesson": "u24l1",
+    "unit": "24 Namespace governance & live resizing",
+    "topic": "How a default breaks a quota",
+    "type": "name_to_definition",
+    "front": "A ResourceQuota counts CPU requests, and a LimitRange sets default CPU requests and limits. Why do Pods that declare no CPU now consume that quota?",
+    "back": "Admission injects the defaults; every Pod gains CPU requests the quota counts. A violation is 403, not Pending.",
+    "tags": [
+      "24-namespace-governance-live-resizing",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/policy/limit-range/'>📖 Limit Ranges</a>"
+  },
+  {
+    "id": "u24l2::docs-resize-qos-fixed",
+    "lesson": "u24l2",
+    "unit": "24 Namespace governance & live resizing",
+    "topic": "QoS does not move",
+    "type": "name_to_definition",
+    "front": "You resized a container's resources in place. What happens to its QoS class?",
+    "back": "Nothing. The class is fixed at Pod creation. Resize values must respect the original class: Guaranteed stays request equal to limit.",
+    "tags": [
+      "24-namespace-governance-live-resizing",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/tasks/configure-pod-container/resize-container-resources/'>📖 Resize Container Resources</a>"
+  },
+  {
+    "id": "u25l2::docs-endpointslice-conditions",
+    "lesson": "u25l2",
+    "unit": "25 Service exposure & endpoint locality",
+    "topic": "Ready, serving, terminating",
+    "type": "cloze",
+    "front": "For a normal Service without <code>publishNotReadyAddresses</code>, an EndpointSlice endpoint is ready only when it is {{c1::serving}} and not {{c2::terminating}}.",
+    "back": "With <code>publishNotReadyAddresses: true</code>, ready is always true. Proxies normally ignore terminating endpoints, but may use endpoints that are both serving and terminating when every available endpoint is terminating.",
+    "tags": [
+      "25-service-exposure-endpoint-locality",
+      "recall",
+      "cloze"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/'>📖 EndpointSlices</a>"
+  },
+  {
+    "id": "u26l1::docs-job-sidecar-finish",
+    "lesson": "u26l1",
+    "unit": "26 Sidecars, Jobs & restart ownership",
+    "topic": "Why a Job with a sidecar can finish",
+    "type": "name_to_definition",
+    "front": "A Job Pod declares a helper in <code>initContainers</code> with <code>restartPolicy: Always</code>. How does the Job still complete?",
+    "back": "A restartable init sidecar does not block Job completion. After every main container completes successfully, the Job can complete and the kubelet stops sidecars in reverse order.",
+    "tags": [
+      "26-sidecars-jobs-restart-ownership",
+      "understanding"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/'>📖 Sidecar Containers</a>"
+  },
+  {
+    "id": "u27l1::docs-psa-enforce",
+    "lesson": "u27l1",
+    "unit": "27 Pod security & runtime isolation",
+    "topic": "Three modes, one blocks",
+    "type": "definition_to_name",
+    "answer": "enforce",
+    "front": "Which Pod Security admission mode rejects a violating Pod outright, while the other two only record or warn?",
+    "back": "<b>enforce</b>. audit appends to the API audit log; warn adds a response warning. They assess the resulting Pods, not the workload resource's wording.",
+    "tags": [
+      "27-pod-security-runtime-isolation",
+      "recall"
+    ],
+    "extra": "<a href='https://kubernetes.io/docs/concepts/security/pod-security-admission/'>📖 Pod Security Admission</a>"
+  }
+]

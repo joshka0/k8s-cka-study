@@ -1,0 +1,167 @@
+welcome back
+let us now see how to solve the question
+number 18 on the certified kubernetes
+administrator killer shell exam
+simulation
+question number 18 the task rate is 8
+percentage
+let's use this command
+to switch to the right context
+now the question says there seems to be
+an issue with the cubelet not running on
+cluster 3 Dash worker one
+fix it and confirm that the cluster has
+node cluster 3-worker 1 available in
+ready State afterwards
+you should be able to schedule a Pawn on
+cluster 3 Dash worker one afterwards
+so they say there is a problem with the
+cubelet on all of this
+nodes so first let us execute cubecut
+will get nodes
+so we see two nodes are part of this
+cluster so cluster 3 Master 1 which is
+the control plane node is an already
+state
+cluster 3-worker one and node which is
+not ready
+so notice SSH
+into
+the problematic node and see what's
+going on
+so cubelet
+runs as a process within the node so let
+us use the PS command and
+check
+if the cubelet is running as a process
+and
+there is nothing that is running
+at the moment
+so
+let us let us know probe the
+service
+cubelet and check the status of this
+uh
+in fact that says the service
+is not active it's kind of in activating
+or trying to Auto restart it's not
+active for some reason
+and
+it is managed
+maintained
+in this location
+now let's
+um
+try and start the service so
+service
+um
+cubelet let's try to restart
+let's check the status now
+let's restart and try to restart it is
+because it is having a different process
+ID at this time and then the one before
+uh uh but still let's let's not come up
+let's check the status once again
+it's not coming up for some reason
+so it says it's trying to run the
+process under
+user bin user local bin cubelet
+with some
+additional parameters
+and it says it's exist exited and it's
+it's having some problem executing this
+so let's use this start
+command
+to see if there is anything
+so there is no such
+file or directory
+um
+let us know
+look into this config file
+um
+the file name is this one
+so you're just trying to execute this
+exact start but for some reason it does
+we know that it's not able to execute
+because the there's no such file
+with this name in the given location
+and what we can do is we can say various
+cubelet because it's trying to execute
+the cubelet command let's see where it
+is located
+so we see it is located in user bin
+cubelet
+whereas the destroying T execute the
+same from user local bin cubelet so
+there's
+and it's trying to find it under the
+local
+uh subdirectory so this direct this is
+this is an incorrect location
+based on what we have found out so far
+what we can do now is we can
+open the cubeconfig file
+uh try and remove this or correct this
+path in the exec start command
+save this file
+so obviously saving these changes may
+not immediately take effect
+so we need to use the system cutting
+Daemon reload
+it will reload the Daemon and then
+system cuddle
+um
+restart
+which you know now we started the
+redo Reloaded The Daemon restarted the
+cubelet now let's check the service
+service
+cubelet status
+now as you can see it is active and
+running and uh
+yes
+you know
+written some information on the logs
+so this seems to be working
+let's copy this because we needed to
+write the reason into this file
+so let us now come out of this
+let us go back to this terminal and see
+if the node is come to a ready state
+and you see that cluster 3 worker one is
+now in release date
+so let us now write the reason into this
+file
+so let's say VI
+opt
+course 18 reason Dot txt
+so we do not have to elaborate
+um completely but just the essence of
+the problem so we know that incorrect
+path set for cubelet
+as
+so there was a local
+folder here
+corrected the path
+foreign
+this is the path
+and where did we correct this
+we have collected this
+in this
+file
+incorrect path for cubelet
+set
+the correct path
+for cubelet
+set in
+sorry
+set in this file
+and what we have done is corrected the
+path to this one
+so let's see this
+um so now that the node is in a ready
+State and we fixed the problem with the
+cubelet
+so we've solved the question number 18.
+right thanks for your time watching see
+you in the next question

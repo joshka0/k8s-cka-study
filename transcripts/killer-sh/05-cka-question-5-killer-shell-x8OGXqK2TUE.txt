@@ -1,0 +1,58 @@
+Welcome back. Now let's see how to solve 
+the question number five in the "Certified  
+Kubernetes Administrator" killer shell. Question 
+number five, the task weight is one percentage.  
+As usual first, let's switch to the 
+given context by simply executing the  
+command they have given. I will do it in two 
+different terminals. All right, question.  
+There are various pods in all namespaces. 
+Write a command into this file which lists  
+all pods sorted by their AGE and they've 
+given the information as well. Seems pretty  
+straightforward. So to get all the pods, 
+to get the pods, we use "kubectl get pods",  
+and they say get pods in all namespaces. You can 
+use --all-namespaces or -A, alternatively. And  
+this bit, which lists all pods sorted by their 
+AGE. So we have this option that's called sort by  
+and we can give equals, simply copy, 
+paste "metadata. creationTimestamp."  
+Right. So creation timestamps, the older 
+the age, it should be displayed on the top.  
+The lesser the age of the pod, it should be 
+down at the bottom. So seems right to me.  
+Now they want the command itself to be 
+written to this file. So I'll simply say echo  
+this and then write this to the file. Clear the 
+screen. Now I'll open up the file to see if it  
+is there. Now we'll simply execute the file to 
+see if this is listing the pods? Yes, it does.  
+One part of the question is solved. Second 
+part, write a second command into this file  
+which lists all the pods sorted by the field 
+name "metadata.uid". It's basically the same  
+thing. It's "kubectl get pods", all the pods and 
+this time to say "--sort- by" the UID Identifier.  
+And they said like, use "kubectl" sorting 
+for both commands. Ideally, you can do it in  
+many other forms. So here we are leveraging 
+the Kubectl commands. You can also use 'grep'  
+or other utilities to bring the same 
+results. They say we have to make use of the  
+Kubectl commands for both these instances, 
+which we are already doing. Kubectl get pods,  
+all the namespaces sought by metadata UID. 
+Let's execute this command. It's listing it.  
+So it's kind of giving us a mixed result. 
+I mean, we could not see the UID here,  
+but whereas if you look at the age, it's 
+not an order which gives us an indication  
+that it's pulling or bringing the right 
+results. We're going to do the same thing.  
+I'm going to simply echo this command that we 
+used and write it to the file they specified,  
+clear the screen, try and open the file to see 
+if it's there? Yes. Now simply execute the shell  
+script to see if it's running the results. Yes, it 
+does. So that's all for this question. Thank you.

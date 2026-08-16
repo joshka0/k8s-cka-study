@@ -1,0 +1,223 @@
+welcome back
+let us now see how to solve the question
+number 10 in the certified kubernetes
+administrator cka killer.sh exam
+simulation
+this is a question number 10 and the
+task weight is 6 percentage
+as usual we'll use this call command to
+switch context
+and the question goes
+create a new service account
+processor in the namespace project Dash
+hamster
+create a role in role winding
+both named processor as well
+these should allow the new service
+account to only create secrets and
+config maps in the namespace
+so all these are are back topics
+so first we create a service account so
+Cube will create service account
+uh service account named
+processor
+and in the namespace
+let's copy it
+projects uh even before executing the
+command I'll I'll verify if there is any
+service account with this name
+kit essay
+in the namespace
+project hamster
+uh I don't see anything with the name
+processor so we're going to execute this
+verify it again
+it's a processor is created four seconds
+back so the second is created now we
+have to create a role in the role
+binding
+um let's create the role now and here
+we've got a little
+create role and the name of the role is
+processor and it has to be tied to the
+namespace
+um project hamster
+and
+let us also check the help
+um for more options so
+so we have to use the verb that controls
+the operation on the resources so the
+verb we are going to use this create
+because as here it says
+they should allow the service account
+22. create
+secrets and config Maps so the verb is
+create and the resource that we would be
+using
+um
+would be
+secrets and config Maps so
+but there is a Secrets or Secret
+um
+we don't know so you can use the cube
+cuddle API resources command to get that
+bit of information
+usually the first column indicates the
+source names so that's what most of the
+commands use
+it's going to print everything so now we
+are interested in
+the secret
+so it's secrets
+with the asset that's in and let's see
+for config map
+let's config Maps config Maps lowercase
+if resource is going to be secret secret
+and comma
+config Maps
+now we'll check the health once again
+oops uh I think it is created oh it
+didn't
+um let's check the help again
+to see if they allow to resource
+yes they do
+two or so separated by comma they do
+alone so it's
+let's create them
+it says it's created let's verify that
+we could get
+and roll
+in the project hamster name space
+it's created processor processor created
+let's describe this role
+to see what it does
+name is processor and the resource
+resources or config maps and secrets and
+the verbs create so it does look good
+so we upgraded service account we have
+now created the roles um now the one
+that is spending is the role binding
+let's create that and you've got
+to create role binding
+and this is again
+um on the namespace
+project hamster
+and the name
+of the Roll binding should be processor
+as well so we'll give that name
+all use the dash H option to print
+um some help because
+um the Syntax for a regular user account
+and the service account
+differs lastly
+so
+we're not using cluster roles all looks
+good so far
+we are looking for the service account
+and here's the syntax so we have this is
+the syntax that we have to do that we
+had to use
+let us copy this and
+so people create World binding will
+pointing name this processor
+um
+in the namespace it is given so now
+we're going to supply with the service
+account for The Binding uh here it says
+namespace so we are going to deal with
+the project
+hamster
+namespace and the service account is
+going to be the same
+service account is going to be
+uh processor
+uh
+let us just issue it right and print the
+amount to see what it does
+foreign
+so we are going to bind
+um with the role named processor
+um so we have to
+Supply this role equal to processor
+so rule binding
+foreign
+looks good and so I'll just exclude the
+try on option create this it says it's
+created now let's get the cube button
+get
+roll pointing the project
+hamster namespace
+it's created 12 seconds back
+foreign
+[Music]
+let us now describe
+this
+so it's service account processor is in
+the
+project Dash memes sorry project dance
+hamster namespace
+is there looks good now so how do we
+verify this
+uh we can use the cube control auth
+command to
+see can I
+can I can I create a secret
+uh dashes
+as uh so again the
+the syntax differs vastly for regular
+user in the the service account so
+let's take some help
+um we have to use Dash Dash as and then
+you can
+okay let us use documentation
+um Cube couple alt can I
+using the service account
+foreign
+we'll check for service account
+yeah
+so this is what we have to use
+namespace colon
+um
+the service account name so
+um
+so let us do this
+namespace we now project hamster so
+second name is processor
+so
+for some reason it says no
+uh
+foreign
+let's see
+let us use this um
+syntax as well
+said Colin
+so we're just saying
+ow
+we forgot the namespace
+name space is
+project hamster ideally we are supplying
+it here
+so
+it says it is
+able to create secret let's check with
+the different
+namespace so it
+so this service account cannot create
+secret on a default namespace which
+returns no
+um
+let us see if it can also create config
+Maps
+foreign
+let's say
+we can create it on a default name space
+it says no
+um let us also check
+a different resource which is not an
+overscope
+no so this is this is how we validate
+uh
+the role that you have given to a
+service account is working as desired
+um so that's all that's it for this
+question and thank you

@@ -1,0 +1,267 @@
+welcome back
+now let us see how to solve the question
+number 13 in the certified kubernetes
+administrator killer.sh exam simulation
+this is question number 13 and the task
+rate is 4 percentage
+so
+using this command to switch the context
+let's do it on both the terminals
+foreign
+create a part named
+multi-container playground so we use
+Cupertino one to create a part
+and in the default namespace with three
+containers named
+C1 C2 and C3
+um
+let's create one container for now
+using this image a single container pod
+foreign
+[Music]
+have the name of the node where it's
+part is money available
+as environment variable my node name
+right
+first let's grab
+the yaml that manifest
+foreign
+[Music]
+let's open the file that in the yaml now
+these are not necessary
+so
+so they say we need three containers
+um
+fresh container name should be C1
+let's give the name C1
+and
+it should be using the image which looks
+good
+um
+and it should have an environment
+environment variable
+um where it should automatically fetch
+the host name where it is running or
+node the embed it is running and it
+should be available for the containers
+so we need to use kubernetes
+documentation
+say environment variable
+um
+usually
+let's search for this my note name
+it seems there's an example
+of it already
+yes so we have to use this enrollment
+name yeah field path spect.name so this
+should do the trick
+just so this is for the first container
+we are going to do this
+let's check indentation
+I think this looks okay
+so C1 should be of image which looks
+good and have the name of the node okay
+this we have taken care of this one
+it
+now
+let's look at
+um
+second one we need we need another
+container called C2
+and what they say is that
+um it should sorry
+the name should be seated in the image
+that it use should be BusyBox
+okay 1.1 and write down output
+and write the output of the date command
+every second in this file
+you can use
+this specific command for this so we
+have the user commands
+[Music]
+um
+but if there is any command
+otherwise we can also do another thing
+um where Cube
+run
+container name is sorry yeah
+run a pod let's name
+P1 or
+13
+130 13-1
+um image that it should run should be
+busy box
+and it should write command
+and
+and it should write it to
+um
+shared volume
+Okay so
+right on equal to client or yaml
+so we have to use the command
+um it's better to use it to the end
+come on the command
+says
+this
+or otherwise just say this
+thank you
+the only way to do this like spouses
+um using the command
+and and giving
+sh
+ape
+um
+foreign
+inside the Shell
+[Music]
+let's let's do it with the double quotes
+and let's copy the whole command and
+paste it here this should do
+uh I think we have to give some spacing
+okay this should take care of it
+and now the container 3.
+I should have
+name C3
+and it should be running busy box
+like a vowel 131 and constantly send
+the content of the date file from
+the shot volume so you can again we have
+to make use of the command here
+foreign
+and let's copy paste
+this one here
+so this will write to that file
+okay so I think we have created three
+containers
+um the other thing that we have not done
+yet is basically
+the volume we have not created a volume
+and body mounts
+volume
+moves in a pod
+foreign
+let's
+pick this one
+let's search for Mount
+that should do
+or it says search for post path
+foreign
+so let's pick this for while volume
+so
+let's reduce the volume and the path
+that we're going to use
+would be your
+Wall Part
+volume part
+and this is a common one here let's say
+let's keep it as test 40 for now
+because there is no indication like you
+have to use this one
+for this name for your volume
+you know use the same volume mount
+for all the three containers
+so we have to use
+container
+container C1
+it's
+containers C2
+I think
+the indentation is not let's write
+place
+same image command
+so here
+we will paste this one
+yep
+Mount path
+oops
+foreign
+but we'll say you were all
+packed
+or Wall Part
+War
+wall cut
+let's save this and try to
+run this
+line number 38.
+28
+okay indentation
+let's give one more intent
+login
+create it again
+this already exists so let's kill the
+part that already exists okay
+[Music]
+delete pod and let's say in the in the
+yeah multi
+sorry the default namespace quality
+container playground
+so I should have supplied the dash dash
+grace period equals zero to
+um forcefully terminate
+these parts otherwise you have to spend
+some more time extra time waiting for
+this to do its job
+so it says it's created so Cube go to
+get parts
+uh multi-container playground three of
+three is running let's describe this um
+Cube that will describe pod
+multi-container pod
+let's see so the volume
+uh
+that's correct so let's see if that's we
+can turn C1 CT C3
+and C1 using this image which is
+specified there it looks good CT using
+busy box one three one
+C3 looks good and all of them are using
+the respective commands
+um let's inspect a little bit further
+and
+lettuce snaps check keep cattle
+exact
+um
+this multi-container pod
+okay
+yeah what you can do abroad what can we
+do let's see the sorry in the
+container C1
+um
+let us execute the command
+now if we say print in or print
+environment it will it will print the
+environment variables
+so it's printing everything
+uh but what is your favorite interest is
+to see if the my node name is set
+properly with the
+proper node name
+so it says cluster one worker two let's
+um
+get the parts and
+and let's see oh white let's see if that
+is running on the cluster won't work it
+too it is so that seems to have worked
+so enrollment variable is working fine
+let us now
+um
+check the container two
+uh
+so what did you do is it should be
+writing something to this path
+so
+let's say
+um let's say cat
+um your wow a volume pad date DOT log to
+see
+and it seems to be writing logs each and
+every second that seems to be working
+well as expected and container C3
+um
+constantly send the content to the date
+log log file let's check this as well
+it's doing the same thing so I think
+it's all set up properly if it's all
+working fine so that's it for uh the
+question number 30. thank you for
+watching

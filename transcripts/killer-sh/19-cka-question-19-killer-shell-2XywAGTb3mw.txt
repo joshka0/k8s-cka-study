@@ -1,0 +1,388 @@
+welcome back
+let us now see how to solve the question
+number 19 in certified kubernetes
+administrator killer shell exam
+simulation
+question number 19 task rate three
+percentage
+if given a note saying this task can
+only be solved if questions 18 or 20 has
+been successfully implemented
+and the k8s
+c3-cc cluster as a functioning worker
+node
+so since we have already solved the
+question number 18 uh it doesn't have a
+functioning worker node so we are good
+to go otherwise we have to solve either
+equation 18 or 20 in order to
+um
+you know solve equation 19.
+so now let's use this context
+given context
+and they say do the following in a new
+namespace secret so first let's see if
+there's namespace name secret no we
+don't have one so let's create one first
+cubecutable create namespace Secret
+verify that
+let's create a three seconds back
+so create a pod
+let's create a part a cute little run
+part name is secret Dash pod and the
+image that we're going to use is BusyBox
+1.31.1 and they say this should be
+running for
+sometime
+um
+let us use
+um
+the show let's say sleep
+for one day
+and
+now
+let us
+do the dry run
+um looks good
+let us know
+uh
+go through this other questions there is
+an existing secret located in this blah
+blah created and the namespace secret
+and mounted
+so we have to do volume mounting and
+based on the secret and then create a
+new secret in the namespace
+secret called secret to which contains
+blob up okay first let's get this going
+foreign
+19.yaml
+let's open the file
+let us keep this aside
+for some time
+so let's say here they say there is an
+existing secret located in this file so
+let's open the file
+so there's a secret already there
+uh let us let us inspect Define what it
+does
+so
+this is a base64 encoded value so if
+you're not interested in this value
+whatever they do there let's see the
+other parameters AP version V1 data this
+is the data
+um kind of secret
+metadata
+name a secret one so secret name is
+secret one
+and the namespace created in the
+namespace secret so the namespace here
+is wrong uh it says to do so we need to
+modify this
+to Secret
+now let us save this
+let's get if there are any secrets
+um
+in the namespace secret
+we don't have any secrets
+existing in this namespace let's create
+one
+um
+using the file they have specified
+secret is created now validate it
+so it's greeted three seconds marks
+secret one is created
+now to the third section
+create a new secret in the namespace
+secret
+let's create one cubicle create
+secret and the name of the secret is
+secret to
+we have to create
+um so security secret it does have three
+different uh types of secrets so it has
+to be generic sequence a secret so let's
+let's use this one so yeah it is a
+generic secret that we have to use
+um Cube cuddles create secret and it's a
+generic Secret
+and the secret name secret to
+and the namespace that we are going to
+create is a
+Dash I'm in secret
+and let's
+and they say which should contain user
+equal to user one and pause equal to one
+two three four
+um so we have to use the switch from
+literal
+equals
+let's copy this user equal to user one
+and
+and
+another value Pi is equal to one two
+three four
+and these entries should be available
+inside the parts container
+as environment variables
+as app underscore user and a practice
+called pause
+let's do it right in
+and see if it works
+okay it created the secret dragon
+uh is something that we should have
+passed earlier so this is a good example
+of how not to use the dry run so let's
+get secrets to see
+if it is created one if yes let's delete
+that if we've created the secret too
+let's delete the secret to cube cuddle
+delete
+secrets
+the name of the secret is secretary
+okay
+um
+here let's do the title I'm not sure I
+have not used that Ryan
+with the secret creation so it doesn't
+seem to be working as intended let's
+delete that now let us execute the
+command itself without the Trion
+uh let's get the secret created
+now let's see the secrets
+let's describe the secret
+it's a secret too it's in the secret
+namespace
+I'm not sure if the last edit it does
+open an abdominal
+okay
+the editors secret one
+so we could clearly see that user in the
+pass is already there
+um we can simply check the values once
+again
+probably in a
+so we didn't edit anything
+it's just one of the values to see if it
+works so
+we know this is the base64 encoded value
+we'll try to decode
+this it's one two three four so it has
+created the secret s
+requested in the question so now we have
+to go back to the part creation part and
+they say we have to
+uh do two things one is that we have to
+mount
+it read only onto the part Mount this
+secret which is Secret
+secret one into this part
+and so volume mounting will go to the
+kubernetes documentation
+uh mount
+Secret
+in a pod
+let's check
+so
+let us search for Mount
+uh this should do the trick
+we will copy this bit
+to our font creation manifest
+we don't need any of this lines
+we'll paste this
+volume mount
+the name will keep it a secret volume
+we'll set it to read only because that's
+what they have given here
+and at the mount path should be temp
+Dash secret one
+this is the volume mount
+we have to now go back and refer to the
+volume itself
+so this is the volume
+we will specify under here
+so the volume name and the volume Mount
+name should match with the secret volume
+and it's a secret the secret name we
+know it is we have to use the secret one
+so that is that is the name of the
+secret given in this file
+so as far as the volume Mount uh using
+the secret
+is concerned
+we have taken care of it
+well they didn't give the volume name so
+so we're just using some random name as
+secret volume that's fine so now create
+a new secret which we have already done
+creating a new secret in the secret
+namespace
+and the data for the secret it's it's
+done so so what they have specified is
+these entries should be available inside
+the parts container as environment
+variables
+app powers and app user
+so we'll see
+secrets
+environment variable
+they'll use something called value from
+yeah
+this is the environment variable name
+currently from
+so this should
+we can make use of this for
+the container
+so we can use it here
+and now we had to do
+two environment variables
+so
+I don't need another E and B here so
+it should be able to
+work
+perfect now let's change the details
+so first we'll use the app user
+and this is coming from
+the secret secret to
+and the key that we're going to use here
+is the user
+and the second one
+is that app underscore pass
+and the secret reference we're going to
+use the secret to again
+the key
+we are going to use pass
+so this is the part creation part
+that is now try and create the part
+say spot is graded now let's see the
+status of the file
+oh
+and
+I think we didn't specify the right
+namespace
+for the Pod let's see if it's scheduled
+a secret part
+it's in container creating state
+so let's let's edit the file once again
+yes we didn't we didn't specify the
+namespace so it is supposed to be
+created in the
+Secret namespace
+so let's edit this file now let's delete
+the pod
+secret pod uh but now to forcefully
+delete it
+now let us
+um
+yeah Capital create notice now create
+the part
+uh keep a look at Parts in the secret
+namespace
+so
+for some reason
+it is failing
+Cube let's see the logs
+or even let's describe the pod
+and the secret name space
+sacred pod
+container image that's fine that's
+information warning back off
+um restarting failed container
+not much refusal information
+examinated
+let's inspect the locks cube with logs
+for the pod
+secret pod
+and busy box
+okay so I think we missed up something
+with the command
+let's delete the part once again Cube
+cut delete
+hold on
+in the secret namespace
+uh secret pod
+okay
+let's
+uh the Sleep command is wrong
+otherwise
+we can just simply say
+all this in
+one thing called
+sh
+I can see
+sleep
+let's say a little
+rain for ourselves
+the time
+now let's
+create the pod
+says it's created
+check
+let's get the part
+still not in a good state
+not happy about
+let's give one day here I think it
+expects it a single command
+so I'm creating one now
+let's get once now it's running so there
+is a syntax error it's
+um supplying the commands now Edition
+running State let's describe
+uh describe the pod in the secret
+namespace part name is secret part
+uh it is supposed to be secret part in
+the secret namespace
+and
+should use this box image
+and this is the command that is
+executing so they didn't specify the
+command all they said is it should be
+running for some time keep running for
+some time so it should be running for a
+day
+and uh it's amount we are using the temp
+Dash slash secret one
+which is good
+and the volumes we are using the secret
+volumes it's using the secret one
+is given here
+it looks good
+and the container
+container should be using the app user
+and app pass so
+um we can do it in two ways one is
+get the parts in ammo format and see
+if that is anything called app so it is
+given here but how can I validate
+whether
+it's holding the right values so we can
+use
+cute little exact
+ID and
+uh in
+yeah
+cubicle in the namespace secret
+execute
+execute this command
+uh
+in the container
+what is the name of the container Sig
+pod
+secret uh container name is also 640
+yeah
+container in the secret one
+um
+so either we can say print n or
+EnV and then we'll grab
+uh
+four
+app
+so now we could see
+these environment variables are using
+the values that we have supported in the
+secret
+so with this this is the end of the
+question three okay sorry question 19
+thanks for your time watching see in the
+next question thank you

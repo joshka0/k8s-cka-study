@@ -1,0 +1,28 @@
+# Kubernetes Beyond YAML — kubernetes-study.katig.dev
+
+> An interactive, lesson-by-lesson course on Kubernetes architecture for senior engineers.
+> Control loops, scheduling, runtime, networking, storage, availability, and scalability.
+
+## Product
+
+- Site: https://kubernetes-study.katig.dev
+- Offline-first HTML course. Progress stays in the browser. Nothing is uploaded.
+- 27 units, 58 short lessons, 270 steps.
+- Each lesson opens with a concept card, then drills it. A lesson finishes only after every item is answered correctly.
+- Exercise types: choose one, select all, put in order, complete the sentence, say it out loud.
+- Spaced review uses a Leitner schedule. The Review chip appears when items are due.
+- 15 scored exam scenarios reveal in stages: attempt, self-grade against the scorer's items, debrief. They join the same Leitner schedule.
+- Timestamped video clips are tied to source talks. The guidebook is `reference.html`.
+- Keyboard: 1–9 select, Enter checks and continues, Esc leaves the lesson.
+
+## Start here
+
+- Lesson path: https://kubernetes-study.katig.dev/
+- Exam practice: https://kubernetes-study.katig.dev/exam.html
+- Video modules: https://kubernetes-study.katig.dev/modules.html
+- Guidebook: https://kubernetes-study.katig.dev/reference.html
+
+## Maker
+
+- Joshua Katigbak — https://katig.dev/llms.txt
+- GitHub: https://github.com/joshka0/k8s-cka-study

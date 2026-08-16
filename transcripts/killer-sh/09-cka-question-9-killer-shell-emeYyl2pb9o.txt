@@ -1,0 +1,234 @@
+welcome back
+let us now take a look on how to solve
+the question number nine in the
+certified kubernetes administrator
+hello.sh exam simulation
+this is question number nine and the
+task weight is five percentage
+so we'll use this command to switch
+context
+we'll do it on both the terminals since
+we have kept both the terminals open
+the question says SSH into the master
+and that would have been the SSH cluster
+2 Dash Master One
+temporarily stop the cube scheduler this
+means in a way that you can start it
+again afterwards
+create a single pod named manual
+schedule of image
+httpd colon 2.4 Alpine and confirm it's
+created but not scheduled on any node
+now you are the scheduler and have all
+its power manually scheduled that part
+on the Node cluster T Dash Master one
+make sure it's running
+start the cube scheduler again and
+confirm it's running correctly by
+creating a second part named manual Dash
+schedule 2 of image
+httpd colon 2.4 Alpine and check if it's
+running on the cluster 2 Dash worker one
+um
+so the essence of this problem is to
+fiddle around the cube scheduler
+um
+and schedule pause during its presence
+in absence and see how the parts react
+to the situation
+uh let us SSH into the cluster 2 Master
+2 no master one node
+um and let's first inspect the cube
+scheduler there so we know that
+Cube scheduler will be running as pod on
+the cube system namespace
+um let's grab only for keep
+scheduler
+yeah
+it's running and
+so
+it's a fixed with the cluster name which
+is a static pod and we know the static
+part manifest would
+usually reside in
+HC kubernetes manifest
+now this this directory
+Cube schedulers here so
+um
+so when they say we have to
+temporarily stop the cube scheduler
+um if we
+kill or terminate the cube scheduler
+it's going to come back
+or again automatically start again
+because it is amount or as long as the
+file the Manifest file stays here it's
+going to
+the part is going to come up
+automatically
+so the only way that we can temporarily
+stop is
+[Music]
+um
+just deleting the file or moving the
+file so moving the file to a different
+location seems to be a better idea
+because we have to restore the file at
+some point in time to solve the second
+part of the question so what we do now
+is basically move
+the cube scheduler from the current
+location to One Directory backwards and
+Define to interactively listing the file
+is not there
+uh if I do a directory listing
+to see if the cube scheduler is moved
+there yes it is now let us
+check if the Pod cubes scheduler exist
+the part is now terminated
+so what we have achieved now is
+basically we have temporarily stopped
+the cube scheduler and we now know how
+to
+restore the cube scheduler so it's as
+simple as moving the file back to its
+original directory
+um this says create a part named manual
+schedule of image and confirm it's
+created but not scheduled on any node
+um we'll do that so
+we'll use the cubicle
+on
+to create a pod
+and let's use the image
+foreign
+specified here
+and
+execute this it says part
+manual schedule is created let's check
+the status of the font keep going to
+look at
+get pod manual schedule
+so the part itself is created but this
+data indicates it's pending so Cube
+scheduler is the one that schedules the
+pod
+that receives the command to create a
+part but in this case to keep scheduler
+or in the absence of the cube scheduler
+it doesn't know what to do so the state
+is simply
+says it is pending
+right
+so you have completed this
+let's check once again it's still
+pending
+um now you are the scheduler and have
+all its power manually schedule that
+part on the Node
+cluster to master one and make sure it's
+running
+so we are now on cluster 2 Master 1 so
+we have to
+uh make this running so how to make it
+running make the part to run it's
+basically restore
+uh or cube scheduler
+um
+so we're going to move
+the cube
+scheduler
+to its original directory let's check
+that
+it's mode now let's inspect
+the cube scheduler pod and it just came
+up eight seconds back but it's not fully
+running we have to give it some more
+time
+let me suffix this with the watch
+um
+it is
+this filter
+for watch
+okay now the cube schedule is numbing
+running uh let's check the status of
+um the manual schedule part which we
+scheduled some time back that was in
+pending state
+that started running so as as long as
+um
+to keep schedule kicks back
+to its life
+um it picked up
+uh depending parts and place them
+uh in a running state
+so we have completed this one
+so now start the cube scheduler again
+and confirm it's running correctly by
+creating a second part named
+manual schedule 2 of this one and check
+if it's running on the cluster to work
+we want So currently we are on cluster 2
+Master 1 so now the task is basically to
+schedule this
+second pod on a worker node
+so for that we're going to use the cube
+cuddle run
+yeah part name
+and and the image we're going to use is
+Discovery
+over here and we are not going to
+execute the command but
+um we are going to use the
+dash dash dry run
+to
+print the yaml file
+container images says container name is
+Dev
+we're going to write this to apply 9.0
+and letter six open up the file
+so since
+the specification
+is to run this on
+a worker node what we're doing is
+we are using the node selector which is
+node name and explicitly state it should
+run on cluster 2 worker one
+and
+let's get
+there are any parts with the name
+manual schedule 2 no such parts then
+let's create the part
+created
+let's see if this is
+um running on the cluster 2 worker one
+so
+I have added this Dash or space white
+which will also give a bit more
+information on the Node names where it
+is running
+so manual Studio 2 it's ready it's
+running it's running on the cluster 2
+worker one is desired
+um so
+this question is completed and just a
+quick note uh on a real exam or using
+the terminal uh you know or using this
+killer.sh exam simulator
+whenever you
+um SSH into any of the node make sure
+you use the exit command to get out of
+that node otherwise
+uh there is a risk of you know
+performing
+this
+activities
+um or trying to solve
+these questions in a different node
+where you should be you know running
+each question in a different cluster
+altogether so
+exit out and you should be on the Kate
+and abdominal prompt
+that's it for this question
+thank you

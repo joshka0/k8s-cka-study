@@ -1,0 +1,90 @@
+Hi there! Welcome to the video session that 
+illustrates how to access the Killer.sh 
+or Killer Shell. Once you have booked for any 
+of your Kubernetes Certification exam through  
+the Linux Foundation, as of the time this video 
+is being recorded, the Linux Foundation provides  
+3 Kubernetes Certification exams. Steps to access 
+the Exam Simulator remains the same across any of  
+the Kubernetes Certifications, and in our video 
+we'll focus on the CKA. If you register your  
+CKA or "Certified Kubernetes Administrator" 
+Exam through the Linux Foundation, you will  
+be given 2 free Killer Shell Exam Simulator that 
+gives you an experience and Idea of the exam user  
+Interface and the navigations. This enables you 
+to practice and crack the exam with confidence.  
+Note that each of the Killer Shell session will be 
+alive for 36 hours from the time you activate it.  
+And it allows you to take breaks in 
+between such that you can log off  
+your account or shut down your machine and 
+resume from the point where you have left.  
+Just in case. If you have exhausted 
+2 of the available free sessions,  
+you have an option to purchase more. Now let's 
+see how to access the killer shell exam simulator.  
+First you have to purchase any of the 
+certification program from the Linux  
+Foundation, and you have to sign up and create 
+something called as the LF Profile or Linux  
+Foundation Profile. It's basically a form 
+filling process. Once you're done with it,  
+and if you have logged into the Training Linux 
+Foundation, you'll be presented with a button  
+that says My Training Portal. Click on it. Once 
+you click, you'll see something like this. It  
+will give you a list of course, that you have 
+now started, and basically the dashboard view of  
+the course that you have purchased, how many 
+have started, how many you have completed.  
+Scroll down until you see the My Learning section 
+and for the respective course, in this case,  
+Certified Kubernetes Administrator. To the right 
+of it you will see a blue button that says Start.  
+So when you have when you are logging in for 
+the first time, you'll see a Start button here,  
+I have used it, so that's why I'm getting a 
+resume button. Once you click on the Start,  
+it will take you to a screen that looks like 
+this. This is where you basically schedule your  
+examination and this is the page where you 
+come to access the Exam Simulator as well.  
+So basically, this is the exam preparation 
+checklist. So first you have to agree to the  
+Global Candidate Agreement terms that you have 
+to accept and then verify your name. So this  
+would be fetched based on the name, first name and 
+last name that you have given during the initial  
+form submission or the LF Profile creation. It 
+will give you an opportunity to verify if the  
+name looks good. Please make sure the name looks 
+correct, because this is what would be published  
+or printed on your certificate. Once you crack 
+your exam successfully, and then the platform.  
+So currently this is on Ubuntu 20.04 platform. 
+This is subjected to change as this evolves.  
+And this is where you schedule an exam and 
+make a note that currently it allows you have  
+to allow at least 24 hours prior to schedule your 
+examination. To the right here you will be given a  
+link hyperlink that says click here to access 
+the exam simulator. If you click on it,  
+it would take you to the killer shell. 
+And this is how the interface looks like.  
+You have the exam interface so you would be 
+given a remote desktop option. So earlier it  
+was only the terminal, now you have remote 
+Desktop. You will be having access to the  
+terminal as well as they are giving access to 
+the Firefox browser which you can use to navigate  
+through the Kubernetes documentation. And you 
+are allowed to only one tab on the Firefox. You  
+can toggle between the browser and the terminal 
+here. So the question will be presented to the  
+left pane. You can interact with the terminal on 
+your right pane. This is basically how the exam  
+interface, the killer shell exam interface would 
+look like. In the next sections we'll cover how to  
+solve all these questions one after the other 
+and with examples. Thank you for your time.

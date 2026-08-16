@@ -1,0 +1,195 @@
+thank you
+welcome back
+let us now see how to solve the question
+number one in the certified kubernetes
+administrator Keller shell exam
+simulation
+so this is how the exam interface will
+look like so it's a remote desktop
+basically so you have access to the
+terminal emulator Firefox browser so
+these are the ones that we would be
+using heavily
+to solve these questions so let us open
+the terminal emulator
+okay
+it's better to open two
+two tabs
+yep
+and let us also open the Firefox
+browser and open the kubernetes
+documentation
+so while this loads let's go back to the
+terminal and do the initial settings
+um so the exam simulation as well as the
+real exam the Alias for cubicle is
+already set let's test that
+by just typing in K and pressing the
+enter button yes
+it is set now we'll also set a few more
+variables that comes handy to save time
+so let's export
+um
+try run
+equals client output there's ammo
+Let's test this
+run any pod and with image nginx and
+let's see our Dr
+it's working
+and let's set another variable
+now
+uh
+race period equals zero dash dash Force
+uh
+let's run apart keep cutting one pod
+um age equal to nginx
+and
+let that sleep for one day
+price created let's put this to test now
+so cute little
+and
+delete pod
+name is POD
+dollar now will immediately terminated
+okay it's forcefully deleted perfect so
+so far we have not really
+um gone through the questionnaired so we
+are just setting up the environment to
+speed up
+command execution
+so we spend some time for that
+now going back to the question here
+question one task rate is one
+you have access to multiple clusters
+from your main terminal through Cube
+cuddle contacts
+write all those context names into this
+file
+let's solve this part of the challenge
+so we could use cubicle config
+get contacts command to do that so it
+will list all the contacts that we have
+access to
+but if you have or pay close attention
+it says write all those context names
+the files so
+we're not supposed to write everything
+so they are interested in context names
+alone so we can use a dash or filter and
+then Supply the name
+basically that will print the second
+column name
+so this is what we are looking for now
+we have to write this to the specified
+files
+so I'm just redirecting to the files
+specified now let us verify the content
+of the file yes
+so this is done let's clear the screen
+the second part of the question says now
+next write a command to display the
+current context into this shell shell
+script file and the command should use Q
+cuddle
+so we we're supposed to write the
+current context into this file we can
+use the same command as before
+keep cutting and
+config
+Dash
+Dash Dash
+or we can use current context
+um
+to display the current context it does
+now let us
+uh
+so the question itself says
+write the command to display the current
+context into the field so we are not
+supposed to write the output of the
+command but rather we have to write the
+command itself to the file so I'm going
+to Simply prefix this with echo which
+will print out this command then I am
+going to redirect this
+to the specified file
+uh let us open the file
+it does work
+um just to
+make sure that it is working so I'm
+going to execute the shell script
+using sh and the file specified file
+name specified
+this should print the current
+configuration or current context
+it does
+uh and we have used a cube cuddle
+command to achieve this so the second
+part of the question is solved
+uh third part of the question so finally
+write a second command doing the same
+thing into this file but without using
+or without the use of cube cuddle
+um
+so
+we can uh
+use
+the config file which we use to connect
+to these clusters so
+um it should be all the context along
+with the current context is fetched from
+the config file the cubeconfig file
+which we use to connect to this cluster
+so it should be there in that file and
+our approach
+um should be first
+let's open up the file it should be in
+the home directory the user's home
+directory and the dot Cube folder
+uh config is where we have to look for
+so it's printing
+to configuration so as you can see we
+have uh the context name the the
+certificates that we use to connect it
+to those clusters all the contacts are
+given here and we have the current
+context information here
+so we should not use a cubeconfig but we
+can use other commands to fetch the
+current contact information so we'll
+achieve this with the help of grep to
+see
+if we can
+search
+for
+this bit of information so yeah we are
+able to grab it
+um so we don't need um
+the the prefix that says current config
+so we can
+exclude that using set command
+um find
+anything
+that as current config
+on it
+and do not replace
+so that is what we are looking for
+now we have to write this command into
+the specified file and know where we
+have used the cube kettle
+so I am going to prefix this
+in the Echo
+write this command print this into a
+redirect
+it to the specified file now let us open
+the file
+to verify if it does made there yes it
+does now let us execute this file and
+see if you're getting the desired output
+and we are able to
+um
+fetch the current context with that
+using the key button
+so that is it for the first question and
+thank you for your time watching this
+see you again

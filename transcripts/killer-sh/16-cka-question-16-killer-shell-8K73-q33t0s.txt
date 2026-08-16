@@ -1,0 +1,137 @@
+yeah
+welcome back
+let us now see how to solve the question
+number 16 on the kubernetes certified
+kubernetes administrator killer shell
+exam simulation
+as question number 16 task weight is 2
+percentage
+first
+let's copy and execute this command
+on
+for the terminals so you we use the
+right context
+so let's say
+create a new
+namespace CK and master so
+straightforward keyboard Cube that will
+create namespace and name of the
+namespace is key ckmaster so before we
+execute let's see if the namespace
+already exists
+cubicle get namespace
+we don't have the ckm master let us
+execute the command now
+that's validate
+so it is created three seconds back it's
+done
+um write the names of all namespaced
+kubernetes resources like pods secret
+config map into this file
+we can achieve this by using the cube
+cuddle
+API resources command and in order to
+list only the namespaced resources we
+have dash dash names paste
+command which would list only the
+resources which are set
+namespace equals to true
+so this is it so namespaced
+it is all just returning all the
+resources which are set to true
+so it contains everything here
+so if you look closely into the question
+so write the names of all the namespaced
+kubernetes resources so they are
+interested in only the names not the
+full output
+so we can achieve this using Dash our
+name which will list only the names
+we can use the graph password but this
+should do the trick
+so this will write the name of the
+namespaced
+kubernetes resources let us now redirect
+to the file
+so let us open the file to verify the
+content yes it is there looks good
+now
+the third part of the question says find
+the project
+Dash asterisk namespace
+with the highest number of roles defined
+in it and write its name
+and amount of roles into this file
+let's get the namespace
+so we have
+a couple of
+namespace prefixed with the project
+hyphen
+so five different namespaces
+so each namespace should or should not
+have any roles in it so the task is to
+find the namespace which has the highest
+number of roles in it and we have to
+write the namespace name along with its
+uh the number of roles it contains
+what we have to do is we can do it uh
+with the cube cut will get roles
+if we use the dice a switch it's going
+to
+get the rules across all the namespaces
+so let's do this for a quick view
+let's scroll from the top
+so namespace
+to cube public namespaces two roles in
+it to keep system doesn't have couple of
+but right after that let's see it says
+project c14 does have plenty of rules in
+it
+I kept I keep scrolling till the end and
+it's only the project c14 seems to be
+having more number of roles in it
+uh let us confirm same
+reassure the same bike doing
+get roles now let us filter only four
+tips uh for this name space
+and
+and
+let's
+remove the headers
+and now count
+the number of roles it has
+so it does have 300 rolls in it
+um
+let us get the keyboard namespace just
+to see if any others are having more
+so let us see C13
+zero roles in it
+um project
+hamster
+no rules in it
+project snake
+zero rules
+project tiger
+zero rolls once again project
+c14 300 rolls so out of the five
+namespaces and only one has 300 volts in
+it so now that we know
+it's project Dash c14 let's copy this
+or let's write
+into this file
+let me
+switch contacts just to make sure I'm on
+the right cluster
+um
+let me open the file
+create this file so
+the namespace name is Project Dash
+c14
+and the number of roles it has is 300
+that is right let us open the file once
+again
+and
+looks good
+so this is for question number 16.
+thanks for watching
+see you again

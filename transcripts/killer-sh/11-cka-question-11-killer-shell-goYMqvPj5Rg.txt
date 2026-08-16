@@ -1,0 +1,176 @@
+foreign
+let us now see how to solve the question
+number 11 on the kubernetes certified
+or certified kubernetes administrator
+killer darkness is exam simulator
+this is the question number 11 and we'll
+use this command to switch the context
+foreign
+use the namespace project Dash tiger for
+the following
+create a Daemon set named ds-important
+with image httpd colon 2.4 now point and
+labels ID equals DS Dash important and
+uuid equals some random grid value
+the parts it creates should request 10
+Milli core CPU and 10 maybe byte memory
+the parts of the payments that should
+run on all nodes master and worker
+so by default if you create a Daemon
+sent it the purpose of the Daemon set is
+the issue you know to create parts that
+run uh
+at least one part on each nodes in the
+cluster
+so that's that's a challenge that the
+payment sets notes
+so
+so we don't have the traditional Cube
+got a little create Demons of command so
+even if you try it would give an error
+message because it cannot understand
+what the statement said at the moment
+so um you can approach this problem in
+two ways one
+percent you can use the cubecutable
+um create deployment and pass in all the
+specifications as per the question
+whichever you can and then print the
+ammo file and make changes to the yaml
+file
+um uh and you have to replace the
+current deployment to Damon said you
+have to add and remove certain
+parameters
+so
+that would be little cumbersome and uh
+prone to error so it's better to use the
+kubernetes documentation
+for
+payment set
+and use the Manifest from there
+uh we have the statements that
+kubernetes documentation so let's search
+for Daemon set
+we have it here
+[Music]
+um
+yeah
+let us copy this
+manifest
+um we don't need volumes or volumes
+because these are not part of our
+question we'll copy until this uh
+resource uh request section
+let's go back to the terminal and let's
+create a new file ca11.yaml
+uh let's paste the Manifest would be
+copied
+let's start the file from the top
+um
+so the name of the Daemon set
+um is or should be DS Dash important and
+the namespace where we are trying to
+deploy this statements that is in
+Project tiger
+uh labels
+there is a requirement for labels as
+well so
+we will copy the labels given in the
+question
+um so the labels if we are providing the
+labels in the Manifest
+manifest we have to substitute it with
+colon instead of equal design
+let's remove those that we copied from
+this documentation
+and under this pack
+selector this is a smash label so let us
+copy these labels we need this for
+um down here
+um it will paste this
+let's adjust it
+and
+we don't need
+this one but let's keep it so that it
+will help us
+uh to indent it
+and then let's remove The Unwanted
+labels
+suspect says this
+this is the container swag
+so this is tolerations
+so
+for Daemon set it does have
+um this specification this Toleration
+basically
+uh as as discussed before
+um
+the challenge that the diamond set
+solves is basically it deploys uh it
+makes your at least one part is running
+on each
+each of the nodes in the cluster so
+so
+this section basically takes care of
+that
+so it says even even scheduled fraud on
+the master as well as the control plane
+components
+um and then coming to The Container
+section
+so the container name is not given so it
+doesn't matter but
+it's better to say
+give the same name as the Daemon set and
+the image that we use here is DS Dash
+sorry http
+colon 2.4 Alpine
+and so so there is no need for the
+limits here
+so it just says request to the question
+and
+it says 10 Milli core CPU
+um
+and
+10 maybe by memory
+no
+that's all that's all the Manifest tests
+um
+let us check if there is
+a Daemon set running in the project
+tiger namespace nothing
+uh that's now to substitute with all
+white nothing let's now create
+the demon set
+it says it is created let's see
+um
+so it's currently running three decide
+and the current is also three and all of
+them looks good
+um let's check the number of nodes it
+will get nodes so we have three nodes
+one master and two work nodes so Daemon
+said see here we have not specified the
+replicas
+so the payment set figured out that it
+has to
+schedule a part on each node so that's
+that's how the number three
+is derived
+let's say
+quickly look at
+Daemon sets
+all
+in the namespace project
+at Tiger
+yeah it's running
+so
+if you get
+parts
+foreign
+but yeah so this one clearly gives an
+option
+that we have three dimensions flying so
+um that's all for this question and
+thank you for watching

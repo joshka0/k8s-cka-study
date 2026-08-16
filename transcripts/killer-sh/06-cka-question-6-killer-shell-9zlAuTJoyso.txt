@@ -1,0 +1,89 @@
+Welcome back. Let us now see how 
+to solve the question number six in  
+"Certified Kubernetes Administrator" killer shell  
+question number six. Task weight eight percentage. 
+So first, let's switch to the given context by  
+simply executing the command that they've given. 
+I've done it on both the shells terminals. The  
+question create a new persistent volume named 
+"safari-pv". It should have a capacity of 2GB  
+accessMode "ReadWriteOnce" hostpath " Volumes 
+Data" and no storageClassName defined.  
+Let us now use the Kubernetes documentation 
+to create PersistentVolume. Persistent Volume  
+we can search for PersistentVolume kind: 
+PersistentVolume. We should be able to  
+come down here. Let's copy this, go back to the 
+terminal and let's create a file called 6.yaml  
+Paste it. Now let's modify this to solve the 
+problem. The persistent volume name should be  
+"safari-pv" and should be of capacity 2GB. 
+Volume mode is not specified. Let's remove  
+that. accessMode : "ReadWriteOnce" which is 
+right and they have also given host path.  
+hostPath as " Volumes Data". This looks 
+good. Before creating the persistent volume,  
+let's query if there are any persistent volumes 
+already and no resource found. Let's create  
+the persistent volume. It says 
+there is some problem,.. With  
+the file. There is some problem with the host 
+host path. Let's check the syntax examples here  
+host path and then we have to give 
+a path its not a list. Sorry, Path.  
+Now let us execute this. Okay, it created the 
+persistent volume. Let's query it is there. Yeah,  
+it's there. So status is available. ReadwritOnce 
+'safari-pv'. Perfect. So we have solved this part.  
+Let's go to the second one. Next, create a 
+new PersistentVolumeClaim in the namespace  
+'project-tiger' name 'safari-pvc'. Let's go to  
+the documentation and search for 
+persistent volume. Volume Claim,  
+I think we should be able to use this So, and  
+Should not define a storage last name. The 
+PVC should bond to the PV correctly, right?  
+I think it should work until this point. Let's get 
+6-pvc.yaml paste the YAML So they say we have to  
+create a persistent volume named 'safari-pvc' 
+and we have to create in the namespace.  
+I think it should all be lowercase. Yes. 
+So namespace should be 'project-tiger'  
+and it should request 2 gigs storage and 
+access mode is ReadWriteOnce, its just there  
+and should not define the storage class name. 
+We don't have it. I think that is it. All the  
+constraints are set. "kubectl get pvc" to see if 
+there is any PVC ? Nothing. So let's create one  
+6-pvc.yaml. its created. Now get PVC we aren't 
+creating. This is a namespaced resource.  
+So we have to query in the right namespace. 
+It is there. Now we can also see this is bound  
+and it is bound to the volume 'safari-pv' which we 
+already created here and everything looks good. So  
+first, two parts of the question are done. Clear 
+the screen. Then finally create a deployment.  
+Create deployment name Safari, so we can 
+use safari is the name in the name space  
+"project-tiger", which mounts that 
+volume at the " tmp safari-data"  
+And the pods of the deployment 
+should be of image. Should be of  
+the specified image. So the only thing that's 
+left out is we have to mount the volume,  
+which we can do it once we have the manifest.  
+Looks good. So this is 6, let's say 
+'6-dep.yaml'. We will open the file.  
+So the other thing that we have to do is "that 
+mounts the volume at the ' tmp safari-data'".  
+deployment that exists with this name 
+deployments and the Project Tiger namespace.  
+The deployment name is Safari. So we don't 
+have the Safari deployment. Let's create that  
+it's created and it seems to be created up and 
+running. Let's describe the deployment. Safari  
+in the "project-tiger" namespace. The mounts are 
+there. The deployment name., We know it's safari.  
+The namespace and the image looks good all 
+looks good so that's all for this question.  
+Thanks for watching.

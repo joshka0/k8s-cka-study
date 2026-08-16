@@ -1,0 +1,160 @@
+welcome back let us now see how to solve
+the question number 23 in the certified
+kubernetes administrator killer shell
+exam simulation
+this is the question number 23 the task
+weight is two percentage
+let us switch to the given context
+and the question says
+um node cluster 2 Dash worker 1 has been
+added to the cluster using Cube ADM and
+TLS bootstrapping
+find the issuer and extended key usage
+values of the cluster 2 Dash worker 1.
+first
+cube a client certificate the one used
+for outgoing connections to the qbab
+server
+and cubelet's server certificate the one
+used for incoming connections from the
+cube API server
+write the information into the given
+file and compare the issuer in the
+extended key usage fields
+of both certificates and make sense of
+these
+all right
+so we have to find the cubelet client
+the server certificate grab
+the issuer and extended key usage and
+write that information into this file
+that's that's the challenge that we have
+to solve
+it's a cube let me know this it will be
+running as a process
+on a node
+so first
+we have the SSH onto this cluster 2 Dash
+worker one node
+using SSH
+and now let us sir check the service
+cubelet
+status to save this running so it is
+active and running
+and so the file itself
+cubelet config file
+or the process itself is running the
+payment itself is running from this
+location
+so let's see what's there in this file
+so here we'll be able to get the cube
+config file so the cubeconfig file for
+the cubelet
+should hold the certificate information
+as well because it needs to talk to the
+cluster
+so now let us see
+or open this file
+and let's grab for the word cert in it
+so it is say the client certificate
+is in this location
+let's copy this
+and just try to open the file so this is
+a file and that was the private key as
+well that's fine
+so for now we have to grab the issuer
+and external keys so let's use opensso
+x509 set command
+node text and let's input
+the
+cubelet client certificate file so it's
+using in dot pem extension so it works
+with pem or CRT or
+cert as well so say it will decode the
+certificate but what we are interested
+in is
+let's grab grab for the issuer the
+issuer it is kubernetes
+let's copy this and even before copying
+let's
+um in a different tab
+or terminal let's open the file
+create the file
+and
+the first for the first question
+kubernetes client certificate the issuer
+is
+kubernetes
+and let us now search the extended key
+usage
+let's say let's search for usage
+and
+[Music]
+lettuce copy this extended key usage
+cue them in quotes and let us print
+10 lines after this third string so
+extended key usage says it's TLS web
+client authentication so this is
+basically used for web
+client authentication now let's paste
+this
+this uh so it is the first question that
+we have uh program and we have
+um gathered the information for the
+cubelet client certificate now let us do
+the same for uh the cubelet server
+certificate
+um so this is the location where we have
+the client certificates are usually
+all the certificates would be placed on
+the same location so let us try our luck
+to list this directory
+so we have the key blood certificate
+cubelet key and this is the client
+certificate we just
+um inspected
+so this is the private key and this is
+the server certificate
+so all we have to do is uh do the exact
+same thing using openssl
+X
+509
+now out dash dash text input the
+foreign
+folder so let's go back and pick up the
+previous one and we know it's the file
+name is
+keyblood.crd let's just replace this one
+and now let's first search for
+um the issuer
+so this year it says
+cluster T worker one
+at
+some random number so
+let us copy the entire string here
+paste this
+now let us do the same thing
+uh and now crap for
+extended key usage
+and let's print
+10 lines after this it says dealer's web
+server authentication so let's copy this
+and paste here
+so
+we have gathered
+the answer for question you know
+uh part A and Part B of question number
+23 on this exam
+so the issuer for the client certificate
+is kubernetes and it is used for a
+dealer's web client Authentication
+and for the server certificate and this
+is the issuer which is basically the
+node name
+itself and this is used for TLS web
+server authentication so let's save this
+file
+and let's open the file once again for
+validation purpose so it is there
+foreign
+thanks for watching and see you again

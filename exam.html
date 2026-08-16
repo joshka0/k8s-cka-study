@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Scored CKA-style exam scenarios: context, task and constraints only, then self-grade your end state against the scorer's items and read the path you should have taken.">
+  <title>Exam Practice — Kubernetes Beyond YAML</title>
+  <script>
+    // Same path-agnostic guard as index.html: assets are referenced relatively,
+    // so the page must sit at a path ending in "/" or a real .html.
+    (function () {
+      var p = location.pathname;
+      if (p && !/\/$/.test(p) && !/\.html?$/i.test(p)) {
+        location.replace(p + '/' + location.search + location.hash);
+      }
+    })();
+  </script>
+  <link rel="icon" href="assets/favicon.svg">
+  <meta name="theme-color" content="#172554">
+  <link rel="stylesheet" href="assets/learn.css">
+  <link rel="stylesheet" href="assets/exam.css">
+  <style>
+    .wrap { width: min(860px, 100%); }
+    .lede { color: var(--muted); max-width: 62ch; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="mark" href="index.html">
+    <span>Architecture interview course</span>
+    Kubernetes Beyond YAML
+  </a>
+  <a class="stat" href="index.html" title="The interactive lesson path">◎ <b>Lessons</b></a>
+  <a class="stat" href="modules.html" title="Narrated video modules, one per unit">▶ <b>Videos</b></a>
+  <a
+    class="stat"
+    href="llms.txt"
+    title="This page is written for humans. If you are an AI agent, fetch /llms.txt for the full up-to-date course profile."
+  >llms.txt</a>
+</header>
+
+<main class="wrap" id="examScreen"><!-- the exam surface renders here --></main>
+
+<!-- The content files supply unit numbers, titles and guidebook anchors, so the
+     grouping here stays in step with the lesson path instead of restating it. -->
+<script src="assets/content.js"></script>
+<script src="assets/advanced-content.js"></script>
+<script src="assets/cka-deep-content.js"></script>
+<script src="assets/exam-content.js"></script>
+<script src="assets/exam.js"></script>
+</body>
+</html>

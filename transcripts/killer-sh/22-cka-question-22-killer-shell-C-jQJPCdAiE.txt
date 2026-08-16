@@ -1,0 +1,185 @@
+welcome back
+let us now see how to solve the question
+number 22 in the certified kubernetes
+administrator killer shell cka exam
+simulation
+question 22 task rate is 2 percentage
+let us use this command to switch
+context
+so the question says check how long the
+cube API server server certificate is
+valid on the cluster 2 Dash Master One
+do this with open sslr CF SSL
+write the expiration date into this file
+and also from the correct Cube and Cube
+admin command
+to list the expiration dates and confirm
+both methods show the same date
+let's validate
+the certificate validate a certificate
+validity
+so to do to do this uh first we have to
+SSH
+into the cluster to Master One
+and we now uh
+dot Cube APA server would be running
+as a static part but let's confirm that
+get parts
+and keep
+system namespace
+and let's
+check only for
+Cube API server okay so that's running
+as a static part and we know that
+the Manifest file for the qbp server
+or any static part for that matter would
+reside
+in mid C
+kubernetes manifest
+and it's we should Now look for cube AP
+server.yaml so this is the config for
+qbp Server
+let us
+grip for the word said search knit
+so we have
+the result
+so
+the one that is of our interest would be
+the APA server certificate which is the
+TLs Dash sort file
+so let's copy this
+and
+we have to use the use the first let's
+list the file if it is there
+and I file is there let's count or open
+the file yeah this is the certificate
+file now what we have to do is we have
+to use the open SSL
+or cfssl so we'll take open SSL for this
+example open SSL and the command would
+be x509 this is the certificate
+or sub command that we have to use
+new odd that Dash text
+and we are going to input the
+certificate
+and this should basically decode the
+certificate file
+now we are piping this to
+piping this in we are going to look only
+for
+the word valid validity in it and let's
+um display possibly two lines
+um after the search term
+hit enter
+so we know the topology D so it says not
+before 29th of September
+um this year and
+it is valid till 14th of December
+906 PM next year GMT
+time so this is
+the validity of the certificate the key
+baby server certificate let's copy this
+um
+let's create this file where we have to
+store the results
+let's create this file
+we will copy
+the expiry or validity of qbp server
+come back to this terminal now the
+second part of the question says you
+have to use the cube ADM command to list
+the expiration so while we are on
+connected to this cluster let's use
+cubeadm
+the sub command for working with the
+certificates or search
+and uh just hit enter let's see what
+options it presents
+so it says available commands there is
+something called check expiration
+so we'll make use of this command so
+QB EDM search
+check expiration
+hit enter
+so now let's clear the screen and
+present execute the command once again
+um so it says the certificate the expiry
+the reciprocal time all these things so
+for APA server it is
+this time it is showing here
+let's copy this go back to the other
+terminal paste it
+so here it is I'm showing in the UDC
+time format
+so gmdtc is now the same time
+um
+because of the delete saving so it's
+it's the same so this is from cubead and
+the second line is from cubead Amanda
+the first line we have obtained this
+value from the cube API server
+manifest file
+so the time matches
+and
+we need to have to I believe we do not
+have to write this because this is not
+explicitly stated in the question
+um I mean the second line but uh let us
+still write them
+and save this file
+let's open the file once again to double
+check we have
+written this information yes it is
+foreign
+this third section of this question says
+write the correct Cube ADM command that
+would renew
+the API server server certificates into
+this file
+um
+let us create this file
+so Cube ADM and sub command to work with
+certificate to search and
+when I press enter it gives available
+commands such as
+certificate key check expiration
+generate CSR rendering you so renew it
+says to renew certificates for
+kubernetes cluster
+so we can make use of renew command
+and the question says we have to renew
+the API server certificate
+so
+let's
+now
+let us know
+check expiration once again
+so we have to renew only this
+certificate API search uh server
+certificate so let us copy this uh
+and we have to use
+just the renew command followed by
+the certificate
+name so this should renew certificate
+let us copy this command
+paste it in here save the font
+let's validate
+if we have written the command properly
+into this file it is but how do we know
+that this works so they didn't say like
+you know you have to renew
+explicitly but I think renewing trying
+to renew this would hurt
+um proceeding with the renew
+it says certificate for serving the
+kubernetes API is now reviewed let's now
+check the API
+um certificate expiry
+so I think it is renewed so now the time
+for APA server is 20 21 20 or 9 20 PM
+UTC earlier all this certificate
+uh was
+volatile 906 PM so this is 20 so it does
+bring you the file
+so things we're done with this question
+uh thank you for watching see you again

@@ -1,0 +1,69 @@
+welcome back
+now let us look into the
+ways how to solve equation number seven
+in the cka killer.sh exam simulation
+number seven task fight one percentage
+first as usual let's
+um switch to the given context by using
+the command
+given here in the question
+foreign
+has been installed in the cluster
+your college would like to know the cube
+cuddle commands too
+one show nodes resource usage and show
+Parts in their container resource usage
+and we have to write please write the
+commands to
+sensor files
+just seems straightforward as well so to
+see the
+um now no utilization we have the code
+cuddle top
+node command which will show the
+resource utilization that includes the
+CPU
+cores the percentage
+memory in the memory percentage so
+this is it so they say we have to write
+the commands into this file so what I'm
+going to do right now is same thing as
+before
+I'm going to prefix this with Echo and
+then write the full command Cube control
+redirect
+says to the given file
+and verify the content of the file
+and just execute the script once again
+to see if it's working it does
+um second question is same as this so
+show Parts under container resource
+usage
+um so we have
+the command called cubicle top
+and instead of nodes we have to now
+replace it with parts
+and they say they need to
+you know
+get the container versus usage as well
+so we have to supply a switch called
+containers
+so this will provide
+um the pods and the container resource
+utilization as well
+um as you can see the First Column
+indicates the part names
+second form name indicates the container
+names and CPU cores and last column
+indicates the memory
+um in terms of points so we are going to
+write Cube bottle top parts and then
+we're going to write the output to
+um
+the pods.sh
+and verify if it is return to the file
+and then execute the file yes it does
+um so let's verify if we have both the
+files written
+foreign
+all right that's all for this question

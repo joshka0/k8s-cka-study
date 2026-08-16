@@ -1,0 +1,162 @@
+welcome back
+let us now see how to solve the question
+number 14 in the certified kubernetes
+administrator killer shell exam
+simulation
+question number 14 task rate two
+percentage
+and we'll use this command to switch
+context
+we'll do it on both the terminals
+and let's go to go through the question
+you are asked to find out
+um find out following information about
+the cluster
+that we are connected to so there is
+five set of questions question one how
+many masternodes are available question
+number two how many worker nodes are
+available question number three what is
+the service cider
+um question number four which networking
+or CNA plugin is configured and where is
+its config file
+question five
+which suffix will the static Parts have
+that run on the cluster one dash work
+one
+um seems straightforward and so what
+they are asking is we have to write our
+observations into the specified file
+here so in one of the terminal let's
+open the file they have specified
+and so they want us to record our
+observation
+in this format and give our information
+let's switch to another terminal so how
+many Master nodes are available and how
+many worker nodes are available so
+question one and two we should be able
+to get it using a simple cubicle get
+nodes command
+so control plane node we have one master
+node in two working nodes so for the
+first question we have one masternode
+for the second question how many worker
+nodes if we just see we've just seen
+that we have two working nodes
+and what is the service cider so for
+this
+um we have to connect to the master node
+which is cluster one
+Dash Master One in our case
+the reason why we're connecting is we
+have to inspect the cube API server
+configuration that holds the service
+side and information
+so we know that
+um
+the cube API service the cube API server
+would be running as a pod in the cube
+Cube system namespace so let's get to
+that first so keep a look at Parts in
+the name system keep system
+sorry namespace Cube system and let's
+grab only for cube Dash API Cube APA
+server
+so on the looks of it as we can see it
+is suffixed with the the node name
+it is an indication that it has been set
+up as a static pod and we know that the
+static part
+um the default directory for the static
+font would be uh
+let's see kubernetes manifest
+let's search for cube AP server and the
+file is there
+so let us now inspect this file
+um
+so I'm opening up the file opening the
+file
+uh Cube APA server config file but
+um we're not I mean it does have a whole
+lot of information but
+for in order to solve this question we
+are interested in the service cider so
+if we can grab for service cider or
+service side or IP range we should be
+able to get that
+so we have a
+switch that says Service cluster IP
+range
+so this is the service IP
+range so we'll copy this
+cider and paste it here for the third
+question
+that's done
+um or you can even check that by
+validating Cube cuddle get service and
+the cube system namespace so it should
+be
+within the specified range we can
+clearly see that
+so yeah
+question three assault question four
+which networking or CNA plugin is
+configured and there is its config file
+um
+so we we know
+um
+the
+the default directory for the CNA plugin
+as per the kubernetes documentation
+would be on it's C cni Net dot d so this
+is the directory that holds the
+networking configuration for any of the
+CNA plugins uh let's do a tab to see
+I don't have anything now let's do a
+listing
+so we have a file let's open the file
+so
+the plugin name is view so we use view
+as the networking plugin and this is
+this is the location where the config
+file is stored so let's go back to the
+other terminal and say
+we are using Viv
+um as the cni plugin
+and whereas it's config file stored so
+we'll copy
+where we'll copy
+this config file name
+sorry
+and the full location
+so let's say PWD
+so this is the
+uh cni plugin config file
+question number five which suffix will
+static Parts have that run on the
+cluster one work one so it's a
+straightforward response
+so any static part would by default run
+with their node name
+suffix to do it
+so it should be suffixed with the dash
+cluster worker one
+but we have to verify that because this
+could be easily overwritten using the
+cluster name over it or write parameter
+all right
+let's again inspect
+or qbb server to see if there are any or
+or write values uh nothing is set so it
+should be
+uh what we have already given
+let us save this file now
+uh and
+open this file once again just to make
+sure we have
+recorded everything
+looks good for now so
+this is for the question 4 14.
+thanks for watching

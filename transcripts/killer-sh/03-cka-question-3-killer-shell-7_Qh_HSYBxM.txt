@@ -1,0 +1,34 @@
+Welcome back. Now let's see how to solve the 
+question number 3 in the CKA killer shell  
+exam simulation. Task weight is 1%. 
+Let's now switch to the given context.  
+I'll switch it on two different terminals 
+so we're on the same page. Okay. Question.  
+There are two pods named 'o3db-*' 
+DB in the namespace "project-c13".  
+C13 Management asked you to scale the pods down 
+to one replica to save resources. Let's not focus  
+just on the pods. Let's see what are the resource 
+running in the given namespace. 'kubectl get all'  
+in the 'project-c13' namespace. Let's see if there 
+is anything that runs with the prefix 'o3db-*',  
+Pods, yeah, we do see two pods, as 
+they said 'o3db-0' and 'o3db-1'.  
+Service, There is a 'Cluster IP' service 
+for that, and we don't have any deployments  
+for that. We don't have any replica-sets. 
+But we do see it's basically a stateful  
+set with two replicas. So it's running with 
+two replicas. We need to scale down to one.  
+The command that we could use is 'kubectl scale 
+statefulset'. This is in the 'project-c13'  
+namespace. The name of the statefulset 
+is o3db and the desired replica is 1.  
+Let us execute this command. It says it's scaled. 
+Now let us focus on get pods. Just say 'grep -i  
+o3db'. It should result in only one part. Yes, we 
+could see. Earlier it was two. Now it's only one.  
+Now let's probe the statefulsets in this 
+namespace. Now it's one of one. Earlier it was  
+two replicas. So it's a simple question. 
+So that's all for this one. Thank you.

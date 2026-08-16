@@ -16,6 +16,9 @@ const MODULE_VIDEOS = window.MODULE_VIDEOS || {};
 // the path when remote state differs; without this it would throw the user
 // out of a video they are part-way through.
 let viewingModule = null;
+// Same reason for an open exam scenario: a background sync must not throw the
+// candidate out of a question they are part-way through answering.
+let viewingExam = null;
 const KEY = 'k8s-course:v3';
 const BOXES = [0, 1, 3, 7, 21];        // days until an item is due again
 const CAP_REVIEW = 16;
@@ -131,7 +134,7 @@ function flush() {
       }
       const changed = adopt(remote);
       setSync('ok');
-      if (changed && !session && !viewingModule) showPath();
+      if (changed && !session && !viewingModule && !viewingExam) showPath();
       else if (changed) setTop();
     })
     .catch(function (e) { setSync(e && e.absent ? 'off' : 'error'); })
@@ -295,7 +298,8 @@ function setTop() {
 
 function showPath() {
   viewingModule = null;
-  if (location.hash.indexOf('#m/') === 0) {
+  viewingExam = null;
+  if (location.hash.indexOf('#m/') === 0 || location.hash.indexOf('#x/') === 0) {
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ }
   }
   session = null;
@@ -388,6 +392,14 @@ function showPath() {
       }
     }
 
+    // Exam scenarios attach to the unit exactly as the module video does, and
+    // for the same reason: they are a separate way through the unit, not a
+    // step after its drills, so they are never gated.
+    if (window.EXAM) {
+      const examNodes = window.EXAM.unitNodes(u.id, showExam);
+      if (examNodes) body.push(examNodes);
+    }
+
     if (open) {
       body.push(el('div', { cls: 'lessons' }, u.lessons.map((l, li) => {
         const d = !!S.done[l.id];
@@ -431,6 +443,7 @@ function showModule(unitId, mode) {
   const vid = MODULE_VIDEOS[unitId];
   if (!u || !vid) { showPath(); return; }
   viewingModule = unitId;
+  viewingExam = null;
   session = null;
   hideFeedback();
   mountCheck(null);
@@ -528,6 +541,27 @@ function showModule(unitId, mode) {
   // module index can point at one video.
   if (location.hash !== '#m/' + unitId) {
     try { history.replaceState(null, '', '#m/' + unitId); } catch (e) { location.hash = 'm/' + unitId; }
+  }
+  window.scrollTo(0, 0);
+}
+
+/* An exam scenario as a step in the path. exam.js owns the four stages and
+   the scoring; the path only lends it the screen and takes it back. */
+function showExam(id) {
+  if (!window.EXAM) { showPath(); return; }
+  viewingModule = null;
+  session = null;
+  hideFeedback();
+  mountCheck(null);
+  screen.textContent = '';
+  if (!window.EXAM.open(id, screen, { onBack: showPath, backLabel: 'Back to the path' })) {
+    showPath();
+    return;
+  }
+  viewingExam = id;
+  // Deep-linkable: #x/<question id> opens one scenario directly.
+  if (location.hash !== '#x/' + id) {
+    try { history.replaceState(null, '', '#x/' + id); } catch (e) { location.hash = 'x/' + id; }
   }
   window.scrollTo(0, 0);
 }
@@ -950,6 +984,21 @@ document.addEventListener('keydown', e => {
   if (/^[1-9]$/.test(e.key) && v.pick) { e.preventDefault(); v.pick(parseInt(e.key, 10) - 1); }
 });
 
+/* ---------- shared progress, for surfaces this engine does not render ----
+
+   This file holds the whole progress object in memory and rewrites the key on
+   every save, so anything else on the page that wrote localStorage directly
+   would be reverted by the next save here. One hook, so exam.js mutates the
+   same object and its change is saved, synced and reflected in the header. */
+
+window.CourseStore = {
+  key: KEY,
+  boxes: BOXES,
+  today: today,
+  state: function () { return S; },
+  update: function (fn) { fn(S); save(); setTop(); }
+};
+
 /* ---------- boot ---------- */
 
 $('#reviewBtn').addEventListener('click', () => startReview());
@@ -957,6 +1006,9 @@ $('#soundBtn').addEventListener('click', () => { S.sound = !S.sound; save(); set
 $('#homeBtn').addEventListener('click', showPath);
 
 const deep = /^#m\/(\w+)$/.exec(location.hash || '');
-if (deep && MODULE_VIDEOS[deep[1]]) showModule(deep[1]); else showPath();
+const deepExam = /^#x\/([\w-]+)$/.exec(location.hash || '');
+if (deep && MODULE_VIDEOS[deep[1]]) showModule(deep[1]);
+else if (deepExam && window.EXAM) showExam(deepExam[1]);
+else showPath();
 syncBoot();
 })();

@@ -1,0 +1,166 @@
+welcome back
+let's now see how to solve question
+number 20 in the certified kubernetes
+administrator killer shell exam
+simulation
+question 20 task rate 10 percentage
+we'll execute this given command to
+switch the context
+and the question says your co-worker
+said node cluster 3-worker 2 is running
+an older version
+Elder kubernetes version is and is not
+even part of the cluster
+update the kubernetes on the Node to
+exact version that's running on the
+cluster 3 Master One then add this node
+to the cluster use the cube admin for
+this
+all right let's see the number of nodes
+so we have only two nodes cluster three
+Master one which is a control plane node
+and we have only one working node which
+is cluster three dash work one
+and they are running currently running
+v1.25.2 version
+of kubernetes
+so
+in the question they specified the the
+cluster 3 worker to node is not even
+part of the cluster
+uh let's SSH
+into the cluster 3 worker too
+and now inspect the version of cube
+admin
+I think we have to use skip admin
+version so it is
+125.2 that's already with the right
+version
+which is good no need to upgrade the
+cube admin now let us take a look at the
+Cube
+cubelet
+version
+I'm going to use dash dash version
+cubelet yeah cubelet version is version
+1.24.6
+so it's running on the lower version
+so we need to use the keyboard mean
+upgrade cluster
+okay for the kubernetes documentation so
+we have to upgrade it to
+um t125
+and we are doing this on
+worker node let's search for worker
+this is the third one in the list
+upgrade the worker nodes
+so we need to check
+um the cube admin Cube admin is already
+on 125 so we need not have to take any
+action for this one
+uh let's try Cubit main upgrade node to
+see if it is able to upgrade it
+uh
+you know the cubelet file is missing
+that's fine because it's not even part
+of the cluster
+we'll try and join this worker node
+to the cluster now we have to upgrade
+the cubelet and cubicle Cube cuddle we
+have noticed at the zone and lower
+version let's inspect the cubelet
+we have to use dash dash version so it's
+even on the lower version 124.6
+so we have to upgrade both
+the keyboard and cubicle
+to the desired version First will
+unhold them
+and then we will
+even yeah
+uh 125 so this is the exact version I
+suppose let's check another terminal
+125.2 as it is
+let's get the update for them
+both
+and once that is done we have to
+hold them so that it does not
+automatically update
+this one is taking a while
+let's give it some time
+it's done let's
+hold them set them
+now we have to restart
+um
+the cubelet
+and reload the Daemon
+it's done
+we didn't Harden anything because it's
+it's not running anything it's not even
+part of the cluster so we need not have
+to uncoordinate that
+uh for this situation
+so get nodes obviously will not give us
+any useful information about this
+upgrade because we have to use Q button
+join
+to in order to join this
+node so
+let's use this one
+so basically it will be key we have to
+use a token
+to join
+foreign
+so let us let us frame the command so
+it's basically keep keep admin token
+create so we have to do this from the
+master node
+so let us SSH into
+cluster 3 Master 1
+and then let us execute
+admin
+token create
+reduce print join
+join command let's create a token and um
+this attribute print join command will
+also give the join command which we have
+to execute on the worker node we where
+we just upgraded so I'm just copying the
+entire uh string
+we can also check this by using keep
+admin
+token list
+so this one is with
+token u3f so this is something which is
+valid for 23 hours
+let's go back here and execute the key
+but we join
+that's running the pre-flight checks now
+it's starting the cubelet
+and just configuring the cubelet
+let's give it some time and it seems
+it's done
+now if we go about to the other terminal
+exit out of it and say Cube cuddle I'll
+get node we should be able to see
+it right here
+it's still not ready we have to give it
+some time but uh what we have to make
+sure is uh it's it's already joined part
+of the cluster and we have
+um the same version
+of cube admin cubelet and
+um
+the cube could running on all these
+nodes
+so the API server should be coming up so
+now it's not ready state
+so anything else that we have to do then
+add this note to the cluster you have to
+so nothing more so
+so as long as we are able to see the
+cluster 3 worker 2 part of this cluster
+and it doesn't really State and it's
+running the same version as the other
+two nodes uh uh it should should be fine
+thanks for your time and see you in the
+next session

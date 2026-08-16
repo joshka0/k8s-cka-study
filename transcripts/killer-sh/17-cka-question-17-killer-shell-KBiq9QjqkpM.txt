@@ -1,0 +1,167 @@
+welcome back
+let us now see how to solve question
+number 17 in the certified kubernetes
+administrator killer shell exam
+simulator
+this is equation 17 and
+I'll copy this command to switch
+to the right context
+and now
+the question says in the namespace
+project Dash tiger create a pod names
+Tigers Dash reunite of image httpd colon
+2.4.41-alpine with the labels pods
+equality container and container equals
+pod
+find out on which node the part is
+killed and SSH that node and find the
+container the container belonging
+to that part
+so the given the commands like you know
+you have to use the
+critical command
+and we have to write the ID of the
+container
+and the info dot runtime
+into this file
+and second
+option
+write the logs of the container into
+the given file
+now let's
+um try to solve this bit so we have to
+create a pod
+um in the namespace project Dash tiger
+and the part name should be Tigers Dash
+reunite and the image that we are going
+to use is this one
+and we have to give the labels
+as
+part equals container
+and we can give multiple labels by
+separating them with a comma so I'll
+copy the second label which is container
+equal to pod and let us now do the try
+run
+it does have both the
+labels
+uh part part name is Tigers United just
+use the image that we are looking for it
+looks good
+um
+so let us now remove the dry run and
+execute the command
+so the part is created
+let's get the parts
+um
+in the
+project tiger namespace and the Pod name
+is
+um Tigers reunite
+supporters in the running state
+so now we have to see which
+and note the for the schedule so we'll
+use the dash or space wide
+and we see this running on cluster one
+dash worker to node
+so this is completed so let's try to
+solve this
+so they say first write the ID of the
+container and
+the n4. runtime into this file so in
+this terminal let's open a file
+and in the other terminal let us try and
+connect to the cluster one worker 2
+because if we are trying to
+um
+check the details and uh until the
+containers I mean up to the containers
+then we have the
+um
+connect to the node and use a critical
+command
+first one write the ID of the container
+okay let's see
+critical PS we'll give the list of
+containers that is running here so there
+are a lot of them but um our interest is
+um tigers
+Dash reunite
+let me do that nuclear screen so it is
+there the running status which is
+about a minute ago and this is the
+container ID so we'll copy this
+and paste it and the other terminal
+where they're expecting this to be
+written
+so this is the container ID
+and the info n4. runtime
+we have to give there so
+um
+server
+can get the info.r runtime if if we can
+use the same critical command to inspect
+inspect
+um
+this container ID
+it should give some details
+details about the container and our
+interest
+is info dot runtime
+let's grab for it
+um
+or let us simply just search for runtime
+runtime type here
+let us also say
+the four file lens and after file lines
+just to see
+it is under the info which is in for DOT
+runtime type yes it is a child of info
+and this is the runtime type
+which is V2 we'll copy this and right to
+this file
+so that's the part one of uh question 17
+let's try and validate
+if it has the information that we just
+passed on it does so part one is done
+let us focus on the part two so it says
+write the logs of the container into
+this file
+um
+so we can do it in two ways one since we
+have connected to the cluster or denote
+the worker node already
+we can use
+yeah
+same Cricket rule command
+um next sub command we have to use locks
+and followed by the container ID it will
+give the logs so it is
+hardly a couple of lines which we can
+simply copy paste otherwise otherwise
+you can use SSH
+if you want to do it from the the main
+terminal where you're working on
+um you can use test one so SSH into
+cluster one dash worker
+worker two
+and we have to execute
+the command ER
+Cricket logs
+let's execute this
+so we are able to get this bit of
+information on the main terminal
+uh what we can do is we can say
+Ampersand greater than so this is the
+standard
+uh terminal
+redirection so it either it's basically
+the error as well as
+the output of this command and we want
+this to be written to
+the given file
+uh it's done so let us open the file to
+see if it holds the log it does so we
+have now solved the question 17 so
+that's it for this question
+thank you for your time

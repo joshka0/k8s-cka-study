@@ -1,0 +1,349 @@
+welcome back
+let us now see how to solve question
+number 24 in the certified kubernetes
+administrator killer shell exam
+simulation
+question number 24 the task way is nine
+percentage
+um
+before we start solving the question
+let's use the right context
+um
+all the terminals that we use to solve
+this challenge
+now reading through the question so
+there was a security incident where an
+intruder was able to access the whole
+cluster from a single hacked backend pod
+to prevent this create a network policy
+called np-backant in the namespace
+project snake
+it should allow the back end pods only
+to connect to the DB Parts DB1 pods on
+the port number double on W1
+and once you connect to the db2 pods on
+port number 22 22.
+and use the app label of parts in your
+policy
+after implementation connection from the
+back and pods to Vault Parts on
+Port 3333 should for example no longer
+work
+so
+the challenge talks about a security
+incident where someone has come the an
+intruder has compromised
+um the back end part
+so we should now secure the
+communication from back and part to the
+DB parts and and so we should create a
+network policy and allow them allow the
+connection from backend to DB fonts and
+the only on the loud port numbers
+so before we start
+let's see how
+um the resources are organized in this
+namespace so Cube could get all
+oh
+wide in the project
+snake namespace
+so we have four pods and four stateful
+sets
+and basically all of them all these
+parts are created by the stateful sets
+indeed
+um so DB1 DBT backend and vault
+so backend this is the compromised
+resource
+uh
+so let us try and connect from backend
+pod to the DB1 db2 and the world parts
+to see
+uh whether we are able to connect at
+this stage before uh implementing the
+network policy because once we have
+implemented or deployed the negative
+Network policy we may not be able to
+validate whether whatever approach we
+tried is working or not so we'll use
+we'll take a moment to validate that
+so
+so we'll use Cube cuddle
+um execute it in the namespace project
+snake
+and we'll pick the part so we are going
+to test connectivity from back end
+part and we're going to connect to the
+DB1 first so DB on this is the IEP
+address of DB1
+so we'll try and connect to the port
+number one one one one
+so it comes back with the message
+database one
+so we're able to connect
+let us also try in ping
+this database
+so we're able to think that the Ping the
+database one part so if ping is working
+it means the icmp protocol is enabled
+and working so it uses a different port
+and then one one one one
+now let us test the same thing for the
+database 2 font
+let us also give the Das s switch
+so this is the database part let's
+try and connect
+uh we had to give the port number it's
+it's we should connect on port number
+222
+it comes back with a response database
+too so we are able to connect that is
+also
+ping and once again
+so we are able to Ping
+the db2 part from
+the back end port
+let us test the same approach
+but now we're going to
+access the vault
+pod
+and this IP address and they said the
+Vault Parts on the port number
+333
+so
+it responds back with a message Vault
+secret storage so it means from back and
+forth we are able to connect to all the
+other parts including dp1 db2 and Vault
+Parts on the given port numbers let us
+also coin ping
+yeah pink is also working
+so variable tipping and connect to the
+given ports and everything seems to be
+working so
+once we deploy the network policy this
+should we should kind of reuse the same
+commands to see whether we are able to
+achieve
+uh what is stated in this question
+so
+the network policy we know uh does he
+used to restrict or govern the
+communication between the parts in the
+cluster so it does have Ingress in
+egress so now we are focusing on the
+communication from back end to the DB1
+db2 pods
+uh we should be focusing on the egress
+Network policy so let us search
+the kubernetes documentation for the
+network policy
+uh search for egress
+so we have this
+except
+all right we can we can
+if we can make use of this
+or basically let us copy everything
+it does have increase in decrease both
+of them in it let's copy them
+let's create a file 24.24.yama
+um paste everything in here
+uh let's try to modify the network
+policy right from the top
+so metadata the name of the network
+policy
+so the name of the network policy should
+be
+NP Dash bracket
+and we should create them in the project
+Dash
+snake namespace
+so part selectors so we have to use the
+labels labels for that so let's get
+pods
+reports in the name space
+project snake
+[Music]
+um
+we'll say show labels
+so we have this label that says app
+equals backend dp1 db2 and Vault using
+which we should be able to uniquely
+identify them
+so we are going to apply uh
+foreign
+C
+matching the labels
+app
+as backend
+so
+app
+this packet and we don't need an Ingress
+uh we will delete
+this
+and now let us
+right
+so
+so from back end
+do we need the cider
+um there should be something with egress
+with names
+let's see
+let's search another one
+foreign
+I think we can very much use this
+um
+yeah we can very much use this
+section for doing that
+so egress let's delete everything from
+here on
+let's let's paste this so two namespace
+selector so namespace
+we are focused on Project snake
+pod selector matched labels
+um so the communication
+from
+the part that has the label app
+DB1 I suppose here
+DB1
+on
+let's say I think let's say TCP port
+0.111
+.
+so
+this is
+um condition
+let us now say one more
+equals rule
+so
+um
+so the namespace selector namespace
+selector should match the label so let's
+see if the namespace itself does have a
+um label keep going to look at namespace
+project snake
+Dash show label sorry show labels
+so this
+this ship
+be the ones that we should use I suppose
+foreign
+space
+Port selectors apart we are now
+setting this t
+app db2
+and ports is a TCP port and this time it
+should allow the equals from backend to
+db2 part on Port 222
+let's check once again namespace and
+name is NP Dash back end
+name so name of the network policies NP
+Dash back-end namespace is Project Dash
+snake
+spec Port selector app
+for looks good
+block all looks good so let's save this
+file and now before executing let's see
+if there are any other network policy in
+this name space
+uh Network policies in the project snake
+namespace
+uh nothing as of now so let's create the
+network policy
+it has created let's validate it
+so it has been created it's created
+three seconds back now let's
+do the same commands once again
+and just test the connectivity so keep
+going to get
+and
+all
+let's do get parts in the namespace
+project snake
+or white
+and what we are going to do right now is
+we are going to use Cube
+um
+in Project snake namespace
+um
+exec exit
+and we're going to uh so we're going to
+choose the back end font and we are
+going to
+curl
+the database
+DB1 pod
+and on port number 1111
+so earlier I think it came back with the
+response database one
+so it's it's working
+no changes here
+now let us do the same thing for the
+database two part
+copy and paste
+on the port number 222
+came back with the response database too
+now
+[Music]
+let us ping and see
+how it reacts
+so it's a ping is basically making use
+of the icmp protocol to connect to the
+Target cluster
+so it does use a different port so since
+we have explicitly specified port number
+222 for database two part uh it's trying
+to reach but it's
+it's not coming back with any response
+so I think it's working
+let's stop that so it says like you know
+29 packets transmitted but no zero
+packets received so it's 100 packet loss
+so seems to be working let's test the
+same thing
+for
+database one part to see if the ping
+works
+let's give it some time and then
+terminate
+so even here it's 100 100 packet loss so
+six packets transmitted uh nothing
+perceived so it's it is able to talk to
+the database one cluster on port number
+and 11 11. but not on any other ports
+so that seems to be working so
+um so
+let us do the same thing
+but this time let's connect to the vault
+zero point and one port 33 33 so
+previously it was able to come back with
+the response
+um
+there's something on vault but let's see
+if this is working
+uh doesn't seem to come back with any
+response at all
+let's close this
+and let's also try and ping
+mere earlier pink was working
+now it's trying to Ping let's give it
+some time and then terminate this
+command
+here is 100 packet loss
+so from the network policy perspective
+we have defined the egress from backend
+to database 1 and database part
+database two ports and the given ports
+but we didn't
+um
+give or specify anything about
+the
+the connection to the Vault pod so we
+have security communication from backend
+pods to the database Parts in the given
+ports and any other
+uh communication is pretty much blocked
+and we can validate it the same so with
+this we conclude uh the question number
+24.
+thank you for your time and talk to you
+again

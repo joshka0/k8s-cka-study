@@ -1,0 +1,242 @@
+welcome back
+let us now see how to solve question
+number 12 in the certified kubernetes
+administrator killer shell exam
+simulation
+let's go to the exam interface this is
+question 12 task wait six six percentage
+and we will use the given context a
+given command to switch the context
+now let us go through the question
+so use the namespace project Dash tiger
+for the following to create a deployment
+named deploy Dash important with label
+ID equals very Dash important
+the pods should also have this label
+and three replicas
+so it should contain two containers the
+first container named container one with
+image nginx 1176 Alpine and second one
+named container 2 with the image so this
+is basically a deployment
+and deployment holds a multi-part
+container with three replicas
+let's get started
+uh so let's say it's a great deployment
+let's create a deployment Google create
+deployment
+uh deployment is named as deploy
+important
+and
+we have to create them in the namespace
+project tiger
+um
+and the deployment should have uh three
+duplicates so we'll set the replicas to
+three
+so I won't be able to give the container
+details at this stage but once we grab
+the yaml Manifest we will tweak them
+um accordingly
+so for now let's pick up this image
+nginx colon
+1.17.6 Alpine
+uh
+I think that's good for now let's do it
+right run
+uh
+deployment name
+this deploy important looks good
+and then project tiger namespace looks
+good
+um
+container name would by default be
+the image name
+but we have to alter that image name
+looks good so and replicas so whatever
+we have given part of this command looks
+good for now so let's redirect to a file
+called 12 dot ammo
+now uh
+let's edit this file
+so first they said
+the first container name should be
+container one let's do that so let's
+name this as container one
+and it is with the right image and to
+say the second one named container two
+with this image so let's copy paste
+these two lines
+foreign
+container two and it's going to use
+kubernetes slash
+image
+so it is done to two containers
+in a pod
+in its deployment with three replicas
+well looks good
+um they also did specify the pods should
+also have this label so we have to label
+this with ID equals very important so
+let us come back to the label section
+and give the label
+so since we are in the ammo manifest we
+have to replace the equals with a colon
+um let us remove the other ones
+and
+so we don't need this label that came by
+default let's remove that but for now
+we'll use this for indentation and then
+once that's set we'll remove that
+press done
+uh we have to change the speed as well
+for labels
+we'll remove the default label so ID
+equals very Dash important
+um so we have completed this part for
+now
+uh
+let's look at this at the second part of
+the question there should be only ever
+one part of the deployment running on
+one worker node
+we have two working nodes cluster one
+dash work one and cluster one dash
+worker two
+because the deployment has three
+replicas the result should be that on
+both nodes one part is running
+the third part won't be scheduled unless
+a new worker will be added
+so
+so they don't want this to be
+um the parts to be running and the
+master nodes so it should be running
+only on the worker node
+um now that we have three replicas at
+the desired
+state is that
+let's let's first grab the number of
+nodes we have uh Cube cuddle will get
+nodes so we have three nodes so we
+should not schedule any part on the
+master node and since we have only two
+working nodes so out of three replicas
+each replica should run on one of these
+nodes
+so so two of the replicas will be
+running on each node
+and since we don't have a third worker
+node it should be simply an appending
+State waiting for the third worker node
+to be added to the cluster so that's
+that's what
+it means it could be achieved with
+Port anti-affinity so let's go back to
+the kubernetes documentation
+and grab the Manifest for pod and type
+Infinity
+let's use the control you have to
+filter
+foreign
+this should
+do the trick so we'll copy only
+this section
+go back
+to our terminal
+so as we can see this is under the spec
+section
+just about the container so
+we are there already
+foreign
+Ty
+now we have to make changes to reflect
+the labels
+so
+this says says do not schedule do not
+schedule so what the section says is do
+not schedule a part on a node
+and if it matches this label I mean at
+least this topology key is the driver
+main driver that says on a host so it
+restricts scheduling one part on one
+host or one node
+so we have to make changes to the key so
+which is the label that we are using so
+the key is basically the ID and n and
+the values should be
+Library Dash important
+uh this looks good
+let's check once again
+I think it looks good so far
+let's read the last bit of the question
+and it may be kind of simulate the
+behavior of a diamond set here but using
+the deployment and a fixed number of
+replicas
+yeah
+let's save this
+and then let's run
+um you've got to create Dash F12
+it says the deployments are created
+Cube could get deployments in the
+namespace project tiger
+um
+it's a deploy important is running so we
+have specified
+um three replicas so it says
+two of three is in ready state
+and available is also two so
+let's let's check the parts and
+see
+get parts in this name space we also
+will give the dash or white
+and we are looking for the deploy
+important so we can see three of them is
+already there and the status is like
+ready
+uh two two out of um two
+um because it it does have two
+containers in it
+uh
+so
+the desired state is
+you know even though we have three
+replicas uh it should behave like a
+demon set so each one should run on one
+node as we can see three of them are
+there so each one uh we see that it's
+running on cluster one dash worker one
+and cluster one dash worker two it's
+it's not running on the master node so
+it's it's in pending State one of the
+one of the part is currently in pending
+state so if we had another working node
+to the cluster it would automatically
+be scheduled on the new worker node and
+it will be getting into the running
+status
+we'll also validate some of
+our solution so we'll describe
+uh describe the deployment
+in the project tiger namespace
+and the deployment name is deploy
+important
+what we have to verify is basically
+the deployment name is definitely
+important looks good it is in the
+project tiger namespace as defined in
+the question that's good and it should
+have the label ID Dash ID equals which
+very Dash important it does have the
+label and it should have three replicas
+and it does have and the container one
+so we have two containers container one
+and container two the container one
+should have the this image which we have
+the container 2 should have kubernetes
+Dash sorry kubernetes slash pause and
+video have it and we have verified
+uh this section and all looks good
+so that's all for this question and
+thanks for your time watching this
