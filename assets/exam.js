@@ -192,6 +192,9 @@ const esc = s => String(s).replace(/[&<>"]/g, c => (
 function rich(s) {
   return esc(s)
     .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // The walkthrough data authors inline <code>/<em>/<b>; restore exactly
+    // those after escaping. Literal output like <none> or <unset> stays text.
+    .replace(/&lt;(\/?(?:code|em|b))&gt;/g, '<$1>')
     .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
 }
 

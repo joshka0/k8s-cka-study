@@ -12686,5 +12686,5983 @@ window.EXAM_WALKTHROUGHS = {
       }
     ],
     "closing": "A snapshot is the keyspace at one revision, and a restore rebuilds a data directory from it — so everything written after that revision simply is not in the result. That is why the marker Pod has to be created after the snapshot, and why its create revision being higher than the snapshot revision is the proof of ordering that a file timestamp could never give. In etcd 3.6 the tools are split cleanly: etcdctl talks to a running member and only saves, etcdutl works on files and owns both status and restore, and it takes no endpoints or TLS flags because it never opens a connection. Verify the file with etcdutl snapshot status, which recomputes the SHA-256 that a size check cannot see. Restore into a new directory, never over the live one, and pass --bump-revision 1000000000 with --mark-compacted — etcd requires the pair, because a bump without a compaction marker leaves a billion-revision hole that watchers would wait in forever, and the bump itself exists so the restored member never reissues revisions clients have already seen. That is exactly what defeats the tempting shortcut: cp -a of the live data directory produces a new path, a clean start and a healthy cluster, but it carries the live revision and the live keyspace, so the marker Pod survives, no restore is recorded, and the member never enters the bump range. Cut over by changing the etcd-data hostPath, not the container --data-dir flag and not by deleting the mirror Pod, then wait out the connection-refused window rather than restarting things into it. See kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/ and the etcd 3.6 recovery guide at etcd.io/docs/v3.6/op-guide/recovery/."
+  },
+  "exam-var-gaps-q01": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "Where you start",
+            "text": "$ kubectl config current-context\nshoal\n\n$ kubectl -n busy get deploy,hpa\nNAME                   READY   UP-TO-DATE   AVAILABLE   AGE\ndeployment.apps/mill   2/2     2            2           6d\n\nNo resources found in busy namespace.\n\n$ kubectl -n busy top pods\nNAME                    CPU(cores)   MEMORY(bytes)\nmill-6b7c9d5f4-2q8xv    3m           6Mi\nmill-6b7c9d5f4-lz4kt    2m           6Mi"
+          },
+          {
+            "type": "terminal",
+            "title": "What the container actually declares",
+            "text": "$ kubectl -n busy get deploy mill -o jsonpath='{.spec.template.spec.containers[0]}{\"\\n\"}' | python3 -m json.tool\n{\n    \"name\": \"web\",\n    \"image\": \"nginx:1.27-alpine\",\n    \"resources\": {\n        \"limits\": {\n            \"memory\": \"128Mi\"\n        }\n    }\n}"
+          }
+        ],
+        "prompt": "The metrics pipeline works and no HPA exists. What has to be true before an HPA can hold this Deployment at 60 percent CPU?",
+        "options": [
+          {
+            "label": "Container web needs resources.requests.cpu — utilization is a percentage of the request, and there is no request",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "What Utilization means",
+                  "text": "target.type: Utilization  ->  averageUtilization is a percentage of the sum of the equivalent resource REQUESTS on the containers in the Pod.\nNo request for that resource in any container -> the Pod's utilization is undefined -> the autoscaler takes no action on that metric."
+                },
+                {
+                  "type": "note",
+                  "title": "The verify pair that reads this",
+                  "text": "2 pts  Every container in mill's pod template declares resources.requests.cpu, still named web, still nginx:1.27-alpine."
+                }
+              ],
+              "teach": "<code>top</code> proving numbers exist is a different fact from the autoscaler being able to use them. The Metrics Server reports raw cores; <code>Utilization</code> turns raw cores into a percentage by dividing by the request. A missing request is a missing denominator, and the question the HPA is asked becomes unanswerable rather than merely wrong."
+            }
+          },
+          {
+            "label": "Nothing — kubectl top returns numbers, so the metrics pipeline is complete",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Numbers in, no utilization out",
+                  "text": "$ kubectl -n busy get hpa mill-hpa\nNAME       REFERENCE          TARGETS              MINPODS   MAXPODS   REPLICAS   AGE\nmill-hpa   Deployment/mill    cpu: <unknown>/60%   2         8         2          45s"
+                }
+              ],
+              "teach": "Both facts are true at once: <code>top</code> shows 3m of CPU, and the HPA shows <code>&lt;unknown&gt;</code>. They come from different computations. Treat a working <code>top</code> as evidence about the Metrics Server only, never as evidence about the HPA."
+            }
+          },
+          {
+            "label": "The memory limit already gives the container a request, so a CPU request follows from it",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What the server actually defaulted",
+                  "text": "$ kubectl -n busy get pod mill-6b7c9d5f4-2q8xv -o jsonpath='{.spec.containers[0].resources}{\"\\n\"}'\n{\"limits\":{\"memory\":\"128Mi\"},\"requests\":{\"memory\":\"128Mi\"}}"
+                }
+              ],
+              "teach": "A limit does default the request — for <em>that same resource</em>. The memory limit produced a memory request and nothing else. Read the defaulted object rather than the manifest when you want to know what the scheduler and the HPA see."
+            }
+          },
+          {
+            "label": "The Metrics Server needs a --kubelet-insecure-tls patch before HPA can read it",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Two constraints say no",
+                  "text": "Do not install or change the Metrics Server. Checkable: metrics-server Deployment matches the snapshot.\nAnd kubectl top pods already returns numbers for both Pods, which is exactly the read the HPA controller makes."
+                }
+              ],
+              "teach": "That patch is a fix for a broken metrics pipeline on clusters with self-signed kubelet certificates. Here the pipeline answers. Changing it would cost you the fourth pair for no gain — when a component already returns data, it is not the component to touch."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Suppose you created the HPA first and stopped there",
+            "text": "kubectl autoscale deployment mill -n busy --cpu=60% --min=2 --max=8, with container web still declaring only limits.memory."
+          },
+          {
+            "type": "terminal",
+            "title": "The object is perfect and nothing happens",
+            "text": "$ kubectl -n busy get hpa mill-hpa\nNAME       REFERENCE          TARGETS              MINPODS   MAXPODS   REPLICAS   AGE\nmill-hpa   Deployment/mill    cpu: <unknown>/60%   2         8         2          2m\n\n$ kubectl -n busy describe hpa mill-hpa | sed -n '/Conditions:/,$p'\nConditions:\n  Type            Status  Reason                   Message\n  ----            ------  ------                   -------\n  AbleToScale     True    SucceededGetScale        the HPA controller was able to get the target's current scale\n  ScalingActive   False   FailedGetResourceMetric  the HPA was unable to compute the replica count: failed to get cpu utilization: missing request for cpu in container web of Pod mill-6b7c9d5f4-2q8xv\nEvents:\n  Type     Reason                   Age                From                       Message\n  ----     ------                   ----               ----                       -------\n  Warning  FailedGetResourceMetric  8s (x9 over 2m)    horizontal-pod-autoscaler  failed to get cpu utilization: missing request for cpu in container web of Pod mill-6b7c9d5f4-2q8xv"
+          }
+        ],
+        "prompt": "Eight points are on the table. How many does this state hold, and how many does it lose?",
+        "options": [
+          {
+            "label": "It holds the two spec pairs and loses the status pair and the request pair — four points",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The spec really is right",
+                  "text": "$ kubectl -n busy get hpa mill-hpa -o jsonpath='{.apiVersion}{\"\\n\"}{.spec.metrics}{\"\\n\"}'\nautoscaling/v2\n[{\"resource\":{\"name\":\"cpu\",\"target\":{\"averageUtilization\":60,\"type\":\"Utilization\"}},\"type\":\"Resource\"}]"
+                },
+                {
+                  "type": "terminal",
+                  "title": "And the status really is empty",
+                  "text": "$ kubectl -n busy get hpa mill-hpa -o jsonpath='{.status.currentMetrics}{\"\\n\"}'\nnull"
+                }
+              ],
+              "teach": "This is why the question grades spec and status in separate pairs. A spec pair asks \"did you write the right object\"; a status pair asks \"is the controller able to act on it\". Half marks for a correct object that computes nothing is a fair reading, and it is the split the exam is testing you can see."
+            }
+          },
+          {
+            "label": "All eight — the object matches the task word for word, and the reading fills in on its own",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Twenty minutes later",
+                  "text": "$ kubectl -n busy get hpa mill-hpa\nNAME       REFERENCE          TARGETS              MINPODS   MAXPODS   REPLICAS   AGE\nmill-hpa   Deployment/mill    cpu: <unknown>/60%   2         8         2          22m"
+                }
+              ],
+              "teach": "<code>ScalingActive: False</code> with reason <code>FailedGetResourceMetric</code> is not a warm-up state. The controller retries every fifteen seconds and fails identically each time, because a missing request cannot become present by waiting. Distinguish \"not yet\" from \"never\" by reading the reason, not the age."
+            }
+          },
+          {
+            "label": "None — a broken HPA fails everything, so delete it and start over",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "What deleting costs you",
+                  "text": "2 pts  HorizontalPodAutoscaler busy/mill-hpa exists and is the only one in busy...\n2 pts  spec.metrics has exactly one Resource cpu Utilization entry at 60."
+                }
+              ],
+              "teach": "The object you already have satisfies four points and needs no edit. Deleting it throws away work and risks leaving two HPAs behind if the re-create is interrupted. Fix the Deployment underneath it; the HPA starts computing on the next tick without being touched."
+            }
+          },
+          {
+            "label": "Six — only the status pair is lost, because the pod template is not part of this task",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "The fourth pair is a template check",
+                  "text": "2 pts  Every container in mill's pod template declares resources.requests.cpu. The container is still named web with image nginx:1.27-alpine..."
+                }
+              ],
+              "teach": "The task says the autoscaler must be working on live numbers, and the verify list turns that into two separate reads: the empty status, and the missing request that causes it. One root cause, two pairs. Cause-and-symptom often score twice on this exam."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "file",
+            "title": "The edit you are about to make to mill's container",
+            "text": "    spec:\n      containers:\n      - name: web\n        image: nginx:1.27-alpine\n        resources:\n          limits:\n            memory: 128Mi\n          # <- one line goes here"
+          }
+        ],
+        "prompt": "Which resource line do you add so that every container declares a CPU request and the container keeps its name and image?",
+        "options": [
+          {
+            "label": "requests.cpu: 100m, leaving the memory limit as it is",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "After the rollout",
+                  "text": "$ kubectl -n busy rollout status deploy/mill\ndeployment \"mill\" successfully rolled out\n\n$ kubectl -n busy get deploy mill -o jsonpath='{.spec.template.spec.containers[0].resources}{\"\\n\"}'\n{\"limits\":{\"memory\":\"128Mi\"},\"requests\":{\"cpu\":\"100m\"}}\n\n$ kubectl -n busy get hpa mill-hpa\nNAME       REFERENCE          TARGETS         MINPODS   MAXPODS   REPLICAS   AGE\nmill-hpa   Deployment/mill    cpu: 3%/60%     2         8         2          6m"
+                }
+              ],
+              "teach": "The value is yours to choose; the exam grades that a request exists, not its size. Pick something the Pods can actually get on a busy node — <code>100m</code> keeps two replicas schedulable — and remember the reading only appears once the Pods have been re-created with the request, so watch the rollout before you judge the HPA."
+            }
+          },
+          {
+            "label": "limits.cpu: 200m — a CPU limit is simpler and the container gets capped as a bonus",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It does produce a request",
+                  "text": "$ kubectl -n busy get deploy mill -o jsonpath='{.spec.template.spec.containers[0].resources}{\"\\n\"}'\n{\"limits\":{\"cpu\":\"200m\",\"memory\":\"128Mi\"},\"requests\":{\"cpu\":\"200m\",\"memory\":\"128Mi\"}}\n\n$ kubectl -n busy get hpa mill-hpa\nNAME       REFERENCE          TARGETS         MINPODS   MAXPODS   REPLICAS   AGE\nmill-hpa   Deployment/mill    cpu: 2%/60%     2         8         2          7m"
+                }
+              ],
+              "teach": "Not wrong: a limit with no matching request defaults the request to the limit, so the template does declare <code>requests.cpu</code> and all four pairs pass. The side effect is real though — you have also capped the container at 200m, so under load it throttles at the cap instead of climbing to the 60 percent that would trigger a scale-up. You changed the autoscaling behaviour to fix a reporting problem."
+            }
+          },
+          {
+            "label": "Create a LimitRange in busy with a defaultRequest of 100m CPU, so nothing in the template changes",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Pods get it, the template does not",
+                  "text": "$ kubectl -n busy get deploy mill -o jsonpath='{.spec.template.spec.containers[0].resources}{\"\\n\"}'\n{\"limits\":{\"memory\":\"128Mi\"}}\n\n$ kubectl -n busy get pod mill-79d4f8c6b7-h2rrp -o jsonpath='{.spec.containers[0].resources}{\"\\n\"}'\n{\"limits\":{\"memory\":\"128Mi\"},\"requests\":{\"cpu\":\"100m\",\"memory\":\"128Mi\"}}"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Every container in mill's POD TEMPLATE declares resources.requests.cpu."
+                }
+              ],
+              "teach": "A LimitRange defaults at admission, so it writes into each new Pod and never into the Deployment's template. The HPA would compute — and the pair that reads the template still scores 0. Also note the context: no LimitRange exists in <code>busy</code>, which is the question telling you this route was considered and closed."
+            }
+          },
+          {
+            "label": "requests.memory: 64Mi, matching the resource that already has a limit",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Same message, one rollout later",
+                  "text": "$ kubectl -n busy describe hpa mill-hpa | grep -A1 ScalingActive\n  ScalingActive   False   FailedGetResourceMetric  the HPA was unable to compute the replica count: failed to get cpu utilization: missing request for cpu in container web of Pod mill-79d4f8c6b7-h2rrp"
+                }
+              ],
+              "teach": "The metric named in the HPA is <code>cpu</code>, so the request that matters is <code>cpu</code>. Memory requests are read only by a memory metric. Match the request to the resource the target names, every time."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "The Deployment now declares a CPU request. Time to create the autoscaler.",
+            "text": "Grading: stored apiVersion autoscaling/v2, scaleTargetRef apps/v1 Deployment mill, minReplicas 2, maxReplicas 8, and exactly one Resource cpu metric with target.type Utilization and averageUtilization 60."
+          }
+        ],
+        "prompt": "Which command or manifest do you use?",
+        "options": [
+          {
+            "label": "kubectl autoscale deployment mill -n busy --cpu=60% --min=2 --max=8 --name=mill-hpa",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What it writes",
+                  "text": "$ kubectl autoscale deployment mill -n busy --cpu=60% --min=2 --max=8 --name=mill-hpa\nhorizontalpodautoscaler.autoscaling/mill-hpa autoscaled\n\n$ kubectl -n busy get hpa mill-hpa -o yaml | sed -n '1,3p;/spec:/,/status:/p'\napiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata:\nspec:\n  maxReplicas: 8\n  metrics:\n  - resource:\n      name: cpu\n      target:\n        averageUtilization: 60\n        type: Utilization\n    type: Resource\n  minReplicas: 2\n  scaleTargetRef:\n    apiVersion: apps/v1\n    kind: Deployment\n    name: mill\nstatus:"
+                }
+              ],
+              "teach": "The percent sign is the whole decision: <code>--cpu=60%</code> writes a <code>Utilization</code> target, while <code>--cpu=600m</code> writes an <code>AverageValue</code> target. One flag, two different metrics. Check the generated object once with <code>-o yaml</code> and you never have to trust your memory of which form the generator picked."
+            }
+          },
+          {
+            "label": "kubectl autoscale deployment mill -n busy --cpu-percent=60 --min=2 --max=8",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The flag is gone",
+                  "text": "$ kubectl autoscale deployment mill -n busy --cpu-percent=60 --min=2 --max=8\nerror: unknown flag: --cpu-percent\nSee 'kubectl autoscale --help' for usage."
+                },
+                {
+                  "type": "note",
+                  "title": "Current synopsis",
+                  "text": "kubectl autoscale (-f FILENAME | TYPE NAME | TYPE/NAME) [--min=MINPODS] --max=MAXPODS [--cpu=CPU] [--memory=MEMORY]"
+                }
+              ],
+              "teach": "<code>--cpu-percent</code> is in every older tutorial and no longer exists; <code>--cpu</code> replaced it and gained the ability to express both metric target types. It costs you nothing here because the command fails loudly — the real risk is copying a whole line from memory and losing a minute to the round trip. <code>kubectl autoscale --help</code> settles it in three seconds."
+            }
+          },
+          {
+            "label": "An autoscaling/v1 manifest with spec.targetCPUUtilizationPercentage: 60",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What comes back out",
+                  "text": "$ kubectl apply -f /tmp/hpa-v1.yaml\nhorizontalpodautoscaler.autoscaling/mill-hpa created\n\n$ kubectl -n busy get hpa mill-hpa -o jsonpath='{.apiVersion}{\"\\n\"}{.spec.metrics}{\"\\n\"}'\nautoscaling/v2\n[{\"resource\":{\"name\":\"cpu\",\"target\":{\"averageUtilization\":60,\"type\":\"Utilization\"}},\"type\":\"Resource\"}]"
+                }
+              ],
+              "teach": "Not wrong: the API server converts v1 into the stored v2 shape, so the graded object is identical and both spec pairs pass. It is still the weaker habit — v1 can express one CPU utilization target and nothing else, so the moment a task asks for a second metric or a behavior block you have to rewrite it. Author in the version you are graded on."
+            }
+          },
+          {
+            "label": "A v2 manifest with target.type AverageValue and averageValue: 60m, which fills the status reliably",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It reports, and it answers a different question",
+                  "text": "$ kubectl -n busy get hpa mill-hpa\nNAME       REFERENCE          TARGETS         MINPODS   MAXPODS   REPLICAS   AGE\nmill-hpa   Deployment/mill    cpu: 3m/60m     2         8         2          30s"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "resource.target.type is Utilization and resource.target.averageUtilization is 60."
+                }
+              ],
+              "teach": "<code>AverageValue</code> compares raw cores per Pod and needs no request, which is exactly why it looks like a cure for <code>&lt;unknown&gt;</code>. It is a different control law: 60m of CPU per Pod, not 60 percent of what each Pod asked for. When a workaround makes a symptom disappear without touching the cause, check whether it also changed the meaning."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Last check before you move on",
+            "text": "2 pts  mill-hpa exists, only HPA in busy, autoscaling/v2, scaleTargetRef apps/v1 Deployment mill, min 2 max 8\n2 pts  exactly one Resource cpu Utilization metric at 60\n2 pts  status.currentMetrics carries a cpu averageUtilization that is not null\n2 pts  the pod template declares requests.cpu, container still web on nginx:1.27-alpine"
+          }
+        ],
+        "prompt": "What do you run to prove the third pair?",
+        "options": [
+          {
+            "label": "kubectl -n busy get hpa mill-hpa -o jsonpath over status.currentMetrics, plus the template's resources",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The two reads that decide four points",
+                  "text": "$ kubectl -n busy get hpa mill-hpa -o jsonpath='{.status.currentMetrics}{\"\\n\"}'\n[{\"resource\":{\"current\":{\"averageUtilization\":3,\"averageValue\":\"3m\"},\"name\":\"cpu\"},\"type\":\"Resource\"}]\n\n$ kubectl -n busy get deploy mill -o jsonpath='{.spec.template.spec.containers[0].name}{\" \"}{.spec.template.spec.containers[0].image}{\" \"}{.spec.template.spec.containers[0].resources.requests.cpu}{\"\\n\"}'\nweb nginx:1.27-alpine 100m"
+                }
+              ],
+              "teach": "<code>averageUtilization</code> present and non-null is the exact field the pair names, and <code>averageValue</code> beside it is the raw number it was computed from. Reading the field the grader reads removes the guesswork from \"does this count as working\"."
+            }
+          },
+          {
+            "label": "kubectl -n busy get hpa and read the TARGETS column",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Fast, and one step removed",
+                  "text": "$ kubectl -n busy get hpa\nNAME       REFERENCE          TARGETS         MINPODS   MAXPODS   REPLICAS   AGE\nmill-hpa   Deployment/mill    cpu: 3%/60%     2         8         2          9m"
+                }
+              ],
+              "teach": "Genuinely useful, and it is the first thing to run: a number instead of <code>&lt;unknown&gt;</code> means the status has been populated. It is a rendering of the status rather than the status, and it tells you nothing about the pod template half of the fourth pair. Use it to decide whether to look closer, not as your final evidence."
+            }
+          },
+          {
+            "label": "kubectl -n busy scale deployment mill --replicas=5 to prove the autoscaler is live",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What you have proved",
+                  "text": "$ kubectl -n busy scale deployment mill --replicas=5\ndeployment.apps/mill scaled\n\n$ kubectl -n busy get hpa mill-hpa\nNAME       REFERENCE          TARGETS         MINPODS   MAXPODS   REPLICAS   AGE\nmill-hpa   Deployment/mill    cpu: 1%/60%     2         8         5          10m"
+                }
+              ],
+              "teach": "Five replicas at 1 percent means the HPA will scale back down to 2 on its next stabilization window, so you have proved that <code>kubectl scale</code> works and started a change you did not want. The third pair asks for a utilization reading, not for replica movement."
+            }
+          },
+          {
+            "label": "kubectl -n busy describe hpa mill-hpa and confirm the Conditions block",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Good evidence, and not the graded field",
+                  "text": "$ kubectl -n busy describe hpa mill-hpa | sed -n '/Metrics:/,/Events:/p'\nMetrics:                                               ( current / target )\n  resource cpu on pods  (as a percentage of request):   3% (3m) / 60%\nMin replicas:                                          2\nMax replicas:                                          8\nDeployment pods:                                       2 current / 2 desired\nConditions:\n  Type            Status  Reason              Message\n  ----            ------  ------              -------\n  AbleToScale     True    ReadyForNewScale    recommended size matches current size\n  ScalingActive   True    ValidMetricFound    the HPA was able to successfully calculate a replica count from cpu resource utilization (percentage of request)"
+                }
+              ],
+              "teach": "<code>ScalingActive: True</code> is listed in the verify text as extra evidence, and the Metrics line even spells out \"as a percentage of request\" — a nice confirmation of the mechanism. The pair is still decided by <code>status.currentMetrics</code>, so treat this as corroboration and read the field itself before you leave."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "An HPA has two halves that fail independently. The spec half is easy: autoscaling/v2, one Resource cpu metric, target.type Utilization, averageUtilization 60, min 2 max 8 — and kubectl autoscale writes exactly that when you pass --cpu=60% (the modern flag; --cpu-percent is gone) plus --name if the target's name is not the name you want. The status half depends on something outside the HPA: Utilization is a percentage of the container's CPU request, so with no request the utilization is undefined, ScalingActive goes False with FailedGetResourceMetric, and TARGETS reads cpu: <unknown>/60% forever. A working kubectl top does not fix this, because top reports cores and the HPA needs a denominator. Add requests.cpu to the pod template — a CPU limit would default one for you, at the price of capping the very metric you are autoscaling on, and a LimitRange defaults into Pods but never into the template the grader reads. Switching to AverageValue makes the <unknown> disappear by asking a different question. See kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/ and the walkthrough at kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/."
+  },
+  "exam-var-gaps-q02": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The history you were given",
+            "text": "$ kubectl -n ship get deploy deck\nNAME   READY   UP-TO-DATE   AVAILABLE   AGE\ndeck   3/3     3            3           11d\n\n$ kubectl rollout history deployment/deck -n ship\ndeployment.apps/deck \nREVISION  CHANGE-CAUSE\n1         initial import\n2         blue build\n3         green build\n4         nginx 1.29"
+          },
+          {
+            "type": "terminal",
+            "title": "What is running right now",
+            "text": "$ kubectl -n ship get deploy deck -o jsonpath='{.spec.template.spec.containers[0].image}{\" \"}{.spec.template.spec.containers[0].env}{\"\\n\"}'\nnginx:1.29-alpine [{\"name\":\"TIER\",\"value\":\"green\"}]"
+          }
+        ],
+        "prompt": "The task says: put deck back on the exact pod template recorded at revision 2. What do you read first?",
+        "options": [
+          {
+            "label": "kubectl rollout history deployment/deck -n ship --revision=2, to see the whole template you must land on",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The target, in full",
+                  "text": "$ kubectl rollout history deployment/deck -n ship --revision=2\ndeployment.apps/deck with revision #2\nPod Template:\n  Labels:       app=deck\n                pod-template-hash=7c9f6d4b58\n  Annotations:  kubernetes.io/change-cause: blue build\n  Containers:\n   web:\n    Image:      nginx:1.26-alpine\n    Port:       80/TCP\n    Host Port:  0/TCP\n    Environment:\n      TIER:     blue\n    Mounts:     <none>\n  Volumes:      <none>"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "The live pod template equals revision 2's template field for field, ignoring pod-template-hash. In particular image nginx:1.26-alpine and TIER=blue."
+                }
+              ],
+              "teach": "Read the target before you move toward it. This one printout names both graded fields and would also expose a third — a volume, a probe, a command — that you would otherwise miss when you \"just set the image back\". It is also your check that revision 2 still exists at all."
+            }
+          },
+          {
+            "label": "The CHANGE-CAUSE column — revision 2 says blue build, which is the blue template",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The column is free text",
+                  "text": "$ kubectl -n ship annotate deploy deck kubernetes.io/change-cause=\"blue build\" --overwrite\ndeployment.apps/deck annotated\n\n$ kubectl rollout history deployment/deck -n ship\ndeployment.apps/deck \nREVISION  CHANGE-CAUSE\n1         initial import\n2         blue build\n3         green build\n4         blue build"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Grade nothing from kubernetes.io/change-cause. It is free text and proves nothing about the running template."
+                }
+              ],
+              "teach": "<code>CHANGE-CAUSE</code> is copied from an annotation that any person or pipeline can write, and nothing keeps it honest — the run above made revision 4 claim to be the blue build without changing a byte of the template. Treat it as a comment, and read the template when you need a fact."
+            }
+          },
+          {
+            "label": "Nothing to read — run kubectl rollout undo deployment/deck -n ship and let it go back",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Where bare undo lands",
+                  "text": "$ kubectl rollout undo deployment/deck -n ship\ndeployment.apps/deck rolled back\n\n$ kubectl -n ship get deploy deck -o jsonpath='{.spec.template.spec.containers[0].image}{\" \"}{.spec.template.spec.containers[0].env}{\"\\n\"}'\nnginx:1.28-alpine [{\"name\":\"TIER\",\"value\":\"green\"}]"
+                }
+              ],
+              "teach": "With no <code>--to-revision</code>, undo means \"the previous revision\", which is 3 — still green, just older. The command reports success either way, so nothing warns you. Name the revision you want whenever you know it."
+            }
+          },
+          {
+            "label": "kubectl get rs -n ship, and pick the ReplicaSet whose image is nginx:1.26-alpine",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It is there, with the revision annotation",
+                  "text": "$ kubectl -n ship get rs -L pod-template-hash \\\n    -o custom-columns=NAME:.metadata.name,REV:'.metadata.annotations.deployment\\.kubernetes\\.io/revision',IMAGE:.spec.template.spec.containers[0].image,DESIRED:.spec.replicas\nNAME              REV   IMAGE               DESIRED\ndeck-5f8b6c7d94   4     nginx:1.29-alpine   3\ndeck-6d5c8f7b42   3     nginx:1.28-alpine   0\ndeck-7c9f6d4b58   2     nginx:1.26-alpine   0\ndeck-84bd9c6f77   1     nginx:1.25-alpine   0"
+                }
+              ],
+              "teach": "Not wrong — revisions <em>are</em> ReplicaSets, and this view is the honest picture of what <code>rollout history</code> is reading. It is more typing and it invites you to act on the ReplicaSet directly, which is the mistake this route leads to. Use it to understand, and use <code>--revision=2</code> to decide."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Suppose you fixed only the image",
+            "text": "kubectl set image deployment/deck web=nginx:1.26-alpine -n ship, and nothing else."
+          },
+          {
+            "type": "terminal",
+            "title": "Green content on a blue image",
+            "text": "$ kubectl -n ship get deploy deck -o jsonpath='{.spec.template.spec.containers[0].image}{\" \"}{.spec.template.spec.containers[0].env}{\"\\n\"}'\nnginx:1.26-alpine [{\"name\":\"TIER\",\"value\":\"green\"}]\n\n$ kubectl -n ship get rs -o custom-columns=NAME:.metadata.name,REV:'.metadata.annotations.deployment\\.kubernetes\\.io/revision',IMAGE:.spec.template.spec.containers[0].image,DESIRED:.spec.replicas\nNAME              REV   IMAGE               DESIRED\ndeck-5f8b6c7d94   4     nginx:1.29-alpine   0\ndeck-6d5c8f7b42   3     nginx:1.28-alpine   0\ndeck-7c9f6d4b58   2     nginx:1.26-alpine   0\ndeck-9f4a2b8c65   5     nginx:1.26-alpine   3"
+          }
+        ],
+        "prompt": "Three replicas are Ready on the right image. Why does the second pair still score 0?",
+        "options": [
+          {
+            "label": "A revision is a whole pod template — TIER is still green, so this is a fifth template, not revision 2",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "A new hash means a new template",
+                  "text": "$ kubectl rollout history deployment/deck -n ship --revision=5\ndeployment.apps/deck with revision #5\nPod Template:\n  Labels:       app=deck\n                pod-template-hash=9f4a2b8c65\n  Containers:\n   web:\n    Image:      nginx:1.26-alpine\n    Environment:\n      TIER:     green"
+                }
+              ],
+              "teach": "The pod-template-hash is computed from the template, so a template that differs anywhere gets a new hash and a new ReplicaSet — here <code>9f4a2b8c65</code> instead of revision 2's <code>7c9f6d4b58</code>. That hash is the cheapest way to answer \"is this the same template\" without comparing fields by eye."
+            }
+          },
+          {
+            "label": "Because the rollback did not go through the rollout API, so the revision number is wrong",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "kubectl rollout history lists a revision numbered above 4, and --revision=<that number> shows the nginx:1.26-alpine / TIER=blue template."
+                }
+              ],
+              "teach": "The pair explicitly expects a new, higher revision number — that is what a rollback produces, and it is what applying a template by hand produces too. The route is not what fails here; the contents are."
+            }
+          },
+          {
+            "label": "The old ReplicaSets still exist with 0 replicas, and the grader counts them",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Exactly one ReplicaSet owned by deck has 3 ready Pods, and its template is that same template."
+                }
+              ],
+              "teach": "Scaled-to-zero ReplicaSets are how history exists at all; keeping them is correct and <code>revisionHistoryLimit</code> (default 10) decides when they are pruned. The pair counts ReplicaSets with ready Pods, and there is exactly one."
+            }
+          },
+          {
+            "label": "The container image tag must match the annotation, and the change-cause still reads nginx 1.29",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Grade nothing from kubernetes.io/change-cause."
+                }
+              ],
+              "teach": "Nothing in this question is decided by an annotation. Every time the change-cause looks like the answer, the exam is checking whether you will read the template instead."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Back to the real state: revision 4 running, revision 2 the target",
+            "text": "3/3 Ready on nginx:1.29-alpine with TIER=green. deck.metadata.uid must not change, replicas must stay 3."
+          }
+        ],
+        "prompt": "How do you move the live Deployment onto revision 2's template?",
+        "options": [
+          {
+            "label": "kubectl rollout undo deployment/deck -n ship --to-revision=2",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "One command, and the old ReplicaSet is re-used",
+                  "text": "$ kubectl rollout undo deployment/deck -n ship --to-revision=2\ndeployment.apps/deck rolled back\n\n$ kubectl rollout status deployment/deck -n ship\nWaiting for deployment \"deck\" rollout to finish: 1 old replicas are pending termination...\ndeployment \"deck\" successfully rolled out\n\n$ kubectl -n ship get rs -o custom-columns=NAME:.metadata.name,REV:'.metadata.annotations.deployment\\.kubernetes\\.io/revision',IMAGE:.spec.template.spec.containers[0].image,DESIRED:.spec.replicas\nNAME              REV   IMAGE               DESIRED\ndeck-5f8b6c7d94   4     nginx:1.29-alpine   0\ndeck-6d5c8f7b42   3     nginx:1.28-alpine   0\ndeck-7c9f6d4b58   5     nginx:1.26-alpine   3"
+                }
+              ],
+              "teach": "Look at the last line: the ReplicaSet that was revision 2 is now revision 5. The template hash matched an existing ReplicaSet, so the Deployment scaled that one back up rather than creating another, and re-stamped it with the new revision number. Same object, same uid, replicas untouched — a rollback changes only the template."
+            }
+          },
+          {
+            "label": "Copy the template from --revision=2 into a manifest and kubectl apply it",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It reaches the same end state",
+                  "text": "$ kubectl apply -f /tmp/deck-blue.yaml\ndeployment.apps/deck configured\n\n$ kubectl -n ship get rs -o custom-columns=NAME:.metadata.name,REV:'.metadata.annotations.deployment\\.kubernetes\\.io/revision',DESIRED:.spec.replicas\nNAME              REV   DESIRED\ndeck-5f8b6c7d94   4     0\ndeck-6d5c8f7b42   3     0\ndeck-7c9f6d4b58   5     3"
+                },
+                {
+                  "type": "note",
+                  "title": "Two risks the undo does not have",
+                  "text": "The printed template is a summary: Port, Environment and Mounts are shown, but resource requests, probes and securityContext are easy to lose in transcription.\nIf your manifest omits spec.replicas, apply resets it to the default of 1 and the first pair fails."
+                }
+              ],
+              "teach": "Not wrong — the verify notes say this route scores, and it is the only route left if the old ReplicaSet has been pruned past <code>revisionHistoryLimit</code>. It is hand-work under exam time against a printout that is not a manifest. Reach for it when undo cannot reach the revision, not before."
+            }
+          },
+          {
+            "label": "Delete deck and re-create it from the revision 2 template",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "New object, new uid",
+                  "text": "$ kubectl -n ship get deploy deck -o jsonpath='{.metadata.uid}{\"\\n\"}'\n4f2b91c7-30ad-4b6e-9a52-7d1c8e0f5b33      # snapshot\n\n$ kubectl -n ship delete deploy deck && kubectl apply -f /tmp/deck-blue.yaml\ndeployment.apps \"deck\" deleted\ndeployment.apps/deck created\n\n$ kubectl -n ship get deploy deck -o jsonpath='{.metadata.uid}{\"\\n\"}'\nb80e6a14-5c72-49df-8f13-2ea4d9b06c58"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Deployment ship/deck has the SNAPSHOT uid... Do not delete the Deployment and do not create a new one."
+                }
+              ],
+              "teach": "The running Pods would look perfect and the first pair — worth two points and gating the other two — scores 0. The uid is how the grader asks \"is this the same object\", and it is also why the whole history went with it: your new Deployment starts at revision 1 with no way back."
+            }
+          },
+          {
+            "label": "kubectl rollout restart deployment/deck -n ship, to re-create the Pods from history",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Same template, new Pods",
+                  "text": "$ kubectl rollout restart deployment/deck -n ship\ndeployment.apps/deck restarted\n\n$ kubectl -n ship get deploy deck -o jsonpath='{.spec.template.spec.containers[0].image}{\" \"}{.spec.template.spec.containers[0].env}{\"\\n\"}'\nnginx:1.29-alpine [{\"name\":\"TIER\",\"value\":\"green\"}]"
+                }
+              ],
+              "teach": "<code>restart</code> adds a timestamp annotation to the pod template so the Pods are replaced — it is for picking up a changed ConfigMap or a re-pushed tag. It moves forward, never back, and here it burns a revision number for nothing."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "History after the undo",
+            "text": "$ kubectl rollout history deployment/deck -n ship\ndeployment.apps/deck \nREVISION  CHANGE-CAUSE\n1         initial import\n3         green build\n4         nginx 1.29\n5         blue build"
+          }
+        ],
+        "prompt": "Revision 2 is gone from the list. Did the rollback lose it?",
+        "options": [
+          {
+            "label": "No — the template moved to revision 5, and a revision number is only a label on a ReplicaSet",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Same ReplicaSet, new number",
+                  "text": "$ kubectl rollout history deployment/deck -n ship --revision=5\ndeployment.apps/deck with revision #5\nPod Template:\n  Labels:       app=deck\n                pod-template-hash=7c9f6d4b58\n  Annotations:  kubernetes.io/change-cause: blue build\n  Containers:\n   web:\n    Image:      nginx:1.26-alpine\n    Environment:\n      TIER:     blue"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "kubectl rollout history lists a revision numbered ABOVE 4, and --revision=<that number> shows the nginx:1.26-alpine / TIER=blue template."
+                }
+              ],
+              "teach": "The hash is the giveaway: <code>7c9f6d4b58</code> is the same ReplicaSet you read at the start, re-annotated as revision 5. Each rollback writes a new, higher revision instead of restoring the old number, so history only ever grows. The pair was written to expect exactly this."
+            }
+          },
+          {
+            "label": "Yes — run the undo again with --to-revision=2 to put the number back",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The number no longer resolves",
+                  "text": "$ kubectl rollout undo deployment/deck -n ship --to-revision=2\nerror: unable to find specified revision 2 in history"
+                }
+              ],
+              "teach": "There is nothing to restore and nothing to repair: the numbering is bookkeeping over the surviving ReplicaSets. Had it succeeded, it would have rolled you onto an unrelated template. Read the error as confirmation that the move already happened."
+            }
+          },
+          {
+            "label": "Yes — annotate the Deployment kubernetes.io/change-cause=\"revert to revision 2\" so the record is honest",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Grade nothing from kubernetes.io/change-cause."
+                }
+              ],
+              "teach": "Harmless and worth nothing here. Note the cost of the habit: an annotation on the Deployment is copied to the next revision that is created, so it can end up describing a change it had nothing to do with."
+            }
+          },
+          {
+            "label": "It does not matter either way, because the grader only reads the live pod template",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "The third pair reads history too",
+                  "text": "2 pts  kubectl rollout history lists a revision numbered above 4, and --revision=<that number> shows the blue template. Exactly one ReplicaSet owned by deck has 3 ready Pods, and its template is that same template."
+                }
+              ],
+              "teach": "Two of the six points are for the record, not the Pods — that is the pair that separates a real rollback from a delete-and-recreate that happens to run the right image. Read every verify item before deciding which evidence is optional."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Last check before you move on",
+            "text": "2 pts  snapshot uid, only Deployment in ship, spec.replicas 3, 3 ready and 3 available\n2 pts  live pod template equals revision 2's, image nginx:1.26-alpine, TIER=blue\n2 pts  a revision above 4 shows that template, and exactly one ReplicaSet with 3 ready Pods carries it"
+          }
+        ],
+        "prompt": "What do you run?",
+        "options": [
+          {
+            "label": "uid and replicas by jsonpath, the container image and env by jsonpath, and the ReplicaSet table with the revision annotation",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Three reads, six points",
+                  "text": "$ kubectl -n ship get deploy deck -o jsonpath='{.metadata.uid}{\" \"}{.spec.replicas}{\" \"}{.status.readyReplicas}{\"\\n\"}'\n4f2b91c7-30ad-4b6e-9a52-7d1c8e0f5b33 3 3\n\n$ kubectl -n ship get deploy deck -o jsonpath='{.spec.template.spec.containers[0].image}{\" \"}{.spec.template.spec.containers[0].env}{\"\\n\"}'\nnginx:1.26-alpine [{\"name\":\"TIER\",\"value\":\"blue\"}]\n\n$ kubectl -n ship get rs -o custom-columns=NAME:.metadata.name,REV:'.metadata.annotations.deployment\\.kubernetes\\.io/revision',IMAGE:.spec.template.spec.containers[0].image,READY:.status.readyReplicas\nNAME              REV   IMAGE               READY\ndeck-5f8b6c7d94   4     nginx:1.29-alpine   <none>\ndeck-6d5c8f7b42   3     nginx:1.28-alpine   <none>\ndeck-7c9f6d4b58   5     nginx:1.26-alpine   3"
+                }
+              ],
+              "teach": "One line per pair, each reading the field the pair names. The uid check is the one people skip, and it is the pair that gates the other two."
+            }
+          },
+          {
+            "label": "kubectl -n ship get deploy,pods — 3/3 Running is the end state the task describes",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Identical output from a wrong route",
+                  "text": "$ kubectl -n ship get deploy,pods\nNAME                   READY   UP-TO-DATE   AVAILABLE   AGE\ndeployment.apps/deck   3/3     3            3           11d\n\nNAME                          READY   STATUS    RESTARTS   AGE\npod/deck-7c9f6d4b58-4kq2n     1/1     Running   0          90s\npod/deck-7c9f6d4b58-9tzlv     1/1     Running   0          88s\npod/deck-7c9f6d4b58-mx6dc     1/1     Running   0          85s"
+                }
+              ],
+              "teach": "A delete-and-recreate, and a bare undo onto revision 3, both print a healthy 3/3 here. Readiness is necessary and never sufficient — when two different states share a printout, the printout is not your evidence."
+            }
+          },
+          {
+            "label": "kubectl -n ship describe deploy deck and read the Pod Template block",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What describe gives you",
+                  "text": "$ kubectl -n ship describe deploy deck | sed -n '/Pod Template:/,/Conditions:/p'\nPod Template:\n  Labels:       app=deck\n  Annotations:  kubernetes.io/change-cause: blue build\n  Containers:\n   web:\n    Image:      nginx:1.26-alpine\n    Environment:\n      TIER:     blue\n    Mounts:     <none>\n  Volumes:      <none>\nConditions:"
+                }
+              ],
+              "teach": "Fast and genuinely good for the second pair — both graded fields are visible. It shows no uid and no revision numbers, so it settles one pair of the three. Note it also prints the change-cause, which is the one line here you must not draw conclusions from."
+            }
+          },
+          {
+            "label": "kubectl -n ship delete rs deck-5f8b6c7d94 deck-6d5c8f7b42 to leave only the live ReplicaSet",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "History goes with them",
+                  "text": "$ kubectl -n ship delete rs deck-5f8b6c7d94 deck-6d5c8f7b42\nreplicaset.apps \"deck-5f8b6c7d94\" deleted\nreplicaset.apps \"deck-6d5c8f7b42\" deleted\n\n$ kubectl rollout history deployment/deck -n ship\ndeployment.apps/deck \nREVISION  CHANGE-CAUSE\n1         initial import\n5         blue build"
+                }
+              ],
+              "teach": "Old ReplicaSets are the history. Deleting them destroys the ability to roll back and, on a task graded partly on the record, throws away evidence for nothing. <code>revisionHistoryLimit</code> already prunes them on a schedule you do not have to help with."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "A Deployment revision is a whole pod template, stored as a ReplicaSet and numbered by an annotation. That single fact answers the question: setting only the image produces a fifth template rather than revision 2, because the pod-template-hash covers every field. Read the target first with kubectl rollout history --revision=2, then land on it with kubectl rollout undo --to-revision=2 — bare undo means the previous revision, which was still green. The undo re-uses the matching ReplicaSet, keeps the Deployment's uid and replicas, and re-stamps that ReplicaSet with a new higher revision number, so revision 2 disappearing from the list is the success signal, not a loss. Applying the recorded template by hand reaches the same end state and is the fallback when the old ReplicaSet has been pruned past revisionHistoryLimit; deleting and re-creating the Deployment fails on the uid however right the Pods look. Ignore CHANGE-CAUSE entirely: it is an annotation anyone can write. See kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment."
+  },
+  "exam-var-gaps-q03": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "Where you start",
+            "text": "$ helm version --short\nv3.16.3+g8e5b74e\n\n$ helm list -n retail\nNAME  NAMESPACE  REVISION  UPDATED  STATUS  CHART  APP VERSION\n\n$ ls -R /opt/charts/till\n/opt/charts/till:\nChart.yaml  templates  values.yaml\n\n/opt/charts/till/templates:\ndeployment.yaml  service.yaml"
+          },
+          {
+            "type": "file",
+            "title": "/opt/charts/till/values.yaml",
+            "text": "replicaCount: 1\nimage:\n  repository: nginx\n  tag: 1.27-alpine\nservice:\n  port: 80"
+          },
+          {
+            "type": "note",
+            "title": "The task has two beats",
+            "text": "First: bring the chart up EXACTLY as it ships, as release till in retail.\nThen: move the SAME release forward to 4 replicas on tag 1.29-alpine, recorded as values you supplied, ending deployed at revision 2."
+          }
+        ],
+        "prompt": "Nothing is installed yet. What is your first command?",
+        "options": [
+          {
+            "label": "helm install till /opt/charts/till -n retail, with no --set and no -f",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Revision 1, shipped as it ships",
+                  "text": "$ helm install till /opt/charts/till -n retail\nNAME: till\nLAST DEPLOYED: Sun Aug 16 09:12:44 2026\nNAMESPACE: retail\nSTATUS: deployed\nREVISION: 1\nTEST SUITE: None\n\n$ helm get values till -n retail --revision 1\nUSER-SUPPLIED VALUES:\nnull"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "helm get values till -n retail --revision 1 — without -a — is empty: revision 1 shipped the chart with no overrides."
+                }
+              ],
+              "teach": "The chart argument can be a path to an unpacked directory; no repository is involved. The reason this bare install matters is that <code>null</code> above is a graded fact — revision 1 is the exam's record that you shipped the chart untouched before you changed anything."
+            }
+          },
+          {
+            "label": "helm install till /opt/charts/till -n retail --set replicaCount=4 --set image.tag=1.29-alpine — one command reaches the end state",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The cluster looks right and revision 1 is contaminated",
+                  "text": "$ helm list -n retail\nNAME  NAMESPACE  REVISION  UPDATED                                 STATUS    CHART       APP VERSION\ntill  retail     1         2026-08-16 09:12:44.918273 +0000 UTC    deployed  till-0.1.0  \n\n$ helm get values till -n retail --revision 1\nUSER-SUPPLIED VALUES:\nimage:\n  tag: 1.29-alpine\nreplicaCount: 4"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "helm list shows REVISION 2... and revision 1's user-supplied values are empty."
+                }
+              ],
+              "teach": "Two verify facts fail at once: the release is at revision 1, not 2, and revision 1 carries overrides. The task's wording — \"first exactly as the chart ships, then move the same release forward\" — is describing a release history, not a final state. Helm keeps that history, so the exam can grade it."
+            }
+          },
+          {
+            "label": "helm template /opt/charts/till | kubectl apply -f - — the objects are what matter",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Objects yes, release no",
+                  "text": "$ helm template till /opt/charts/till -n retail | kubectl apply -n retail -f -\ndeployment.apps/till created\nservice/till created\n\n$ helm list -n retail\nNAME  NAMESPACE  REVISION  UPDATED  STATUS  CHART  APP VERSION\n\n$ helm get manifest till -n retail\nError: release: not found"
+                }
+              ],
+              "teach": "<code>helm template</code> renders locally and never talks to the release store, so there is no Secret recording a release and every verify item that names <code>helm</code> fails. Three of the four pairs here read release state, not cluster state."
+            }
+          },
+          {
+            "label": "Edit /opt/charts/till/values.yaml to the target values first, then install once",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The snapshot catches it",
+                  "text": "$ helm get values till -n retail\nUSER-SUPPLIED VALUES:\nnull\n\n$ helm get values till -n retail -a\nCOMPUTED VALUES:\nimage:\n  repository: nginx\n  tag: 1.29-alpine\nreplicaCount: 4\nservice:\n  port: 80"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Every file under /opt/charts/till matches the snapshot byte for byte. And: helm get values (without -a) reports the replica count as 4 and the image tag as 1.29-alpine."
+                }
+              ],
+              "teach": "This inverts both halves of the exercise: user-supplied values are empty and the chart's defaults have changed. A chart is the artifact you ship to everyone; values are how one release differs from it. Editing the chart to change one release is the mistake this question is built around."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Suppose you fixed the live objects instead",
+            "text": "After the bare install, someone runs: kubectl scale deployment till -n retail --replicas=4 and kubectl set image deployment/till till=nginx:1.29-alpine."
+          },
+          {
+            "type": "terminal",
+            "title": "The cluster is exactly what the task describes",
+            "text": "$ kubectl -n retail get deploy till\nNAME   READY   UP-TO-DATE   AVAILABLE   AGE\ntill   4/4     4            4           6m\n\n$ kubectl -n retail get deploy till -o jsonpath='{.spec.template.spec.containers[0].image}{\"\\n\"}'\nnginx:1.29-alpine\n\n$ helm list -n retail\nNAME  NAMESPACE  REVISION  UPDATED                                 STATUS    CHART       APP VERSION\ntill  retail     1         2026-08-16 09:12:44.918273 +0000 UTC    deployed  till-0.1.0  "
+          }
+        ],
+        "prompt": "Four replicas on the new tag. What has this cost, and what happens next?",
+        "options": [
+          {
+            "label": "Both value pairs are lost, and the next helm upgrade silently reverts the cluster",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The release still believes in 1 replica",
+                  "text": "$ helm get values till -n retail\nUSER-SUPPLIED VALUES:\nnull\n\n$ helm get manifest till -n retail | grep -E 'replicas|image:'\n  replicas: 1\n          image: \"nginx:1.27-alpine\"\n\n$ helm upgrade till /opt/charts/till -n retail\nRelease \"till\" has been upgraded. Happy Helming!\nNAME: till\nREVISION: 2\n\n$ kubectl -n retail get deploy till\nNAME   READY   UP-TO-DATE   AVAILABLE   AGE\ntill   1/1     1            1           9m"
+                }
+              ],
+              "teach": "Helm computes an upgrade as a three-way merge against the manifest it last rendered, so a change it never recorded is a change it will happily undo. This is the two-state-machines failure in one screen: the cluster was right, the release was wrong, and the next routine upgrade made them agree in the wrong direction."
+            }
+          },
+          {
+            "label": "Nothing — the grader reads the Deployment, and the Deployment is correct",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Two of the four pairs read the release",
+                  "text": "2 pts  helm list shows exactly one release, till, STATUS deployed, REVISION 2; helm history shows 1 superseded and 2 deployed...\n2 pts  helm get values till -n retail reports the replica count as 4 and the image tag as 1.29-alpine..."
+                }
+              ],
+              "teach": "The verify notes even say a grader that looked only at the cluster would pass this. The pairs are written against <code>helm list</code>, <code>helm history</code> and <code>helm get values</code> precisely because the cluster cannot tell you how it got that way."
+            }
+          },
+          {
+            "label": "Only the revision number is wrong — run helm upgrade with no flags to reach revision 2",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Revision 2, and the change is gone",
+                  "text": "$ helm upgrade till /opt/charts/till -n retail\nRelease \"till\" has been upgraded. Happy Helming!\nREVISION: 2\n\n$ helm get values till -n retail\nUSER-SUPPLIED VALUES:\nnull\n\n$ kubectl -n retail get deploy till -o jsonpath='{.spec.replicas}{\" \"}{.spec.template.spec.containers[0].image}{\"\\n\"}'\n1 nginx:1.27-alpine"
+                }
+              ],
+              "teach": "A revision counter that reads 2 is not the goal; the values recorded on it are. An upgrade with no values re-renders the chart defaults, so you would land on revision 2 with an empty value set and a Deployment back at 1 replica — three pairs lost instead of two."
+            }
+          },
+          {
+            "label": "Run helm upgrade --reuse-values so Helm adopts the live state",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It reuses values, not objects",
+                  "text": "$ helm upgrade till /opt/charts/till -n retail --reuse-values\nRelease \"till\" has been upgraded. Happy Helming!\nREVISION: 2\n\n$ helm get values till -n retail\nUSER-SUPPLIED VALUES:\nnull\n\n$ kubectl -n retail get deploy till\nNAME   READY   UP-TO-DATE   AVAILABLE   AGE\ntill   1/1     1            1           10m"
+                }
+              ],
+              "teach": "<code>--reuse-values</code> carries forward the <em>user-supplied values of the last release</em> — which are empty — and merges new overrides on top. It never inspects live objects. Helm has no \"import what is running\" mode; changes made outside it are invisible to it."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Suppose you guessed the key names",
+            "text": "helm upgrade till /opt/charts/till -n retail --set replicas=4 --set image.version=1.29-alpine"
+          },
+          {
+            "type": "terminal",
+            "title": "Accepted, recorded, and ignored",
+            "text": "$ helm upgrade till /opt/charts/till -n retail --set replicas=4 --set image.version=1.29-alpine\nRelease \"till\" has been upgraded. Happy Helming!\nNAME: till\nSTATUS: deployed\nREVISION: 2\n\n$ helm get values till -n retail\nUSER-SUPPLIED VALUES:\nimage:\n  version: 1.29-alpine\nreplicas: 4\n\n$ kubectl -n retail get deploy till -o jsonpath='{.spec.replicas}{\" \"}{.spec.template.spec.containers[0].image}{\"\\n\"}'\n1 nginx:1.27-alpine"
+          }
+        ],
+        "prompt": "The upgrade succeeded and nothing changed. What tells you the correct key names?",
+        "options": [
+          {
+            "label": "The chart's values.yaml — replicaCount and image.tag — confirmed afterwards with helm get values -a",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The shape the chart actually reads",
+                  "text": "$ helm get values till -n retail -a\nCOMPUTED VALUES:\nimage:\n  repository: nginx\n  tag: 1.29-alpine\nreplicaCount: 4\nservice:\n  port: 80"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "helm get values till -n retail reports the replica count as 4 and the image tag as 1.29-alpine, and reports NO OTHER override."
+                }
+              ],
+              "teach": "<code>--set</code> writes any key you name into the release's values; only the templates decide which keys are read, and an unread key is silently inert. <code>helm get values -a</code> prints the merged result, so a value that landed in the right place appears merged into the chart's defaults instead of sitting beside them. Note the invented keys would also fail the \"no other override\" half of the pair."
+            }
+          },
+          {
+            "label": "helm upgrade would have errored on an unknown key, so the keys must be right and the templates are broken",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The templates are fine",
+                  "text": "$ grep -n 'replicaCount\\|image\\.' /opt/charts/till/templates/deployment.yaml\n8:  replicas: {{ .Values.replicaCount }}\n19:          image: \"{{ .Values.image.repository }}:{{ .Values.image.tag }}\""
+                }
+              ],
+              "teach": "Values are an open map, not a schema — unless the chart ships a <code>values.schema.json</code>, Helm has nothing to validate a key against. A silent success is the expected behaviour for a typo, which is why you verify with <code>get values -a</code> instead of trusting the exit code."
+            }
+          },
+          {
+            "label": "helm show values /opt/charts/till, then edit those keys in the chart and upgrade",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Half right, and the wrong half is fatal",
+                  "text": "helm show values /opt/charts/till is a good read: it prints the chart's default values without opening the file.\nEditing the chart fails the constraint: every file under /opt/charts/till matches the snapshot byte for byte."
+                }
+              ],
+              "teach": "Keep the reading habit and drop the editing habit. <code>helm show values</code> answers \"what keys does this chart accept\" for a packaged chart or a repository chart where there is no file to open."
+            }
+          },
+          {
+            "label": "helm upgrade --set-string replicas=4 — the key was fine, the type was wrong",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Now it is a string, and still unread",
+                  "text": "$ helm get values till -n retail\nUSER-SUPPLIED VALUES:\nreplicas: \"4\"\n\n$ kubectl -n retail get deploy till -o jsonpath='{.spec.replicas}{\"\\n\"}'\n1"
+                }
+              ],
+              "teach": "<code>--set-string</code> exists for values that must not be coerced to numbers or booleans — image tags like <code>1.29</code>, or a version <code>\"3.10\"</code>. It changes the type of a key nobody reads. When a value has no effect, check the key path before the type."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Back to the real state",
+            "text": "Release till is at revision 1, deployed, with empty user-supplied values. The Deployment is 1/1 on nginx:1.27-alpine. Now move it forward."
+          }
+        ],
+        "prompt": "Which command moves the same release to 4 replicas on 1.29-alpine, recorded as your values?",
+        "options": [
+          {
+            "label": "helm upgrade till /opt/charts/till -n retail --set replicaCount=4 --set image.tag=1.29-alpine",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Revision 2, deployed",
+                  "text": "$ helm upgrade till /opt/charts/till -n retail --set replicaCount=4 --set image.tag=1.29-alpine\nRelease \"till\" has been upgraded. Happy Helming!\nNAME: till\nLAST DEPLOYED: Sun Aug 16 09:19:03 2026\nNAMESPACE: retail\nSTATUS: deployed\nREVISION: 2\n\n$ helm get values till -n retail\nUSER-SUPPLIED VALUES:\nimage:\n  tag: 1.29-alpine\nreplicaCount: 4\n\n$ kubectl -n retail get deploy till\nNAME   READY   UP-TO-DATE   AVAILABLE   AGE\ntill   4/4     4            4           7m"
+                }
+              ],
+              "teach": "Same release name, same chart path, values on the command line: the release moves from revision 1 to revision 2 and the two keys are recorded as yours. Note <code>--set image.tag=1.29-alpine</code> writes a nested key — the dot is a path separator, and escaping it (<code>image\\.tag</code>) would create one literal key with a dot in it."
+            }
+          },
+          {
+            "label": "Write /tmp/prod.yaml with the two values and run helm upgrade till /opt/charts/till -n retail -f /tmp/prod.yaml",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Same recorded values, same revision",
+                  "text": "$ cat /tmp/prod.yaml\nreplicaCount: 4\nimage:\n  tag: 1.29-alpine\n\n$ helm upgrade till /opt/charts/till -n retail -f /tmp/prod.yaml\nRelease \"till\" has been upgraded. Happy Helming!\nREVISION: 2\n\n$ helm get values till -n retail\nUSER-SUPPLIED VALUES:\nimage:\n  tag: 1.29-alpine\nreplicaCount: 4"
+                }
+              ],
+              "teach": "Not wrong at all — the verify notes list this as a scoring route, and the file must live outside the chart, which <code>/tmp</code> satisfies. It is the better habit for real work because the overrides are reviewable and re-runnable; under exam time it is one more file to get right. Both forms may be combined, and <code>--set</code> wins over <code>-f</code>."
+            }
+          },
+          {
+            "label": "helm upgrade --install till /opt/charts/till -n retail --set replicaCount=4 --set image.tag=1.29-alpine, so it works whether or not the release exists",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Here it is harmless. Run from scratch, it is not.",
+                  "text": "$ helm uninstall till -n retail && helm upgrade --install till /opt/charts/till -n retail --set replicaCount=4 --set image.tag=1.29-alpine\nrelease \"till\" uninstalled\nRelease \"till\" does not exist. Installing it now.\nREVISION: 1\n\n$ helm history till -n retail\nREVISION  UPDATED                   STATUS    CHART       APP VERSION  DESCRIPTION\n1         Sun Aug 16 09:24:10 2026  deployed  till-0.1.0               Install complete"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "helm list shows REVISION 2. helm history shows revision 1 superseded and revision 2 deployed."
+                }
+              ],
+              "teach": "<code>--install</code> makes the command idempotent about existence, which is exactly the property this task does not want: the two beats must be two revisions. Run against the existing release it behaves as a plain upgrade, so the flag is not the failure — the habit of using one command for both beats is."
+            }
+          },
+          {
+            "label": "helm uninstall till -n retail, then helm install with the two overrides",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "A clean release, at revision 1",
+                  "text": "$ helm list -n retail\nNAME  NAMESPACE  REVISION  UPDATED                                 STATUS    CHART       APP VERSION\ntill  retail     1         2026-08-16 09:26:31.442901 +0000 UTC    deployed  till-0.1.0  \n\n$ helm history till -n retail\nREVISION  UPDATED                   STATUS    CHART       APP VERSION  DESCRIPTION\n1         Sun Aug 16 09:26:31 2026  deployed  till-0.1.0               Install complete"
+                }
+              ],
+              "teach": "Uninstall deletes the release history along with the objects, so the record of shipping the chart untouched is gone and you are back at revision 1. Upgrade is how a release moves; uninstall-and-reinstall is how a release restarts."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Last check before you move on",
+            "text": "2 pts  one release till, STATUS deployed, REVISION 2; history 1 superseded and 2 deployed; get values --revision 1 empty\n2 pts  get values reports 4 and 1.29-alpine and nothing else; get values -a still shows repository nginx and service port 80\n2 pts  Deployment retail/till is in helm get manifest, spec.replicas 4, image nginx:1.29-alpine, 4 ready\n2 pts  Service retail/till is in the same manifest on port 80; the chart directory matches the snapshot"
+          }
+        ],
+        "prompt": "What do you run?",
+        "options": [
+          {
+            "label": "helm history, helm get values at revision 1 and now, helm get manifest, and a checksum of the chart directory",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Release side",
+                  "text": "$ helm history till -n retail\nREVISION  UPDATED                   STATUS      CHART       APP VERSION  DESCRIPTION\n1         Sun Aug 16 09:12:44 2026  superseded  till-0.1.0               Install complete\n2         Sun Aug 16 09:19:03 2026  deployed    till-0.1.0               Upgrade complete\n\n$ helm get values till -n retail --revision 1\nUSER-SUPPLIED VALUES:\nnull\n\n$ helm get values till -n retail\nUSER-SUPPLIED VALUES:\nimage:\n  tag: 1.29-alpine\nreplicaCount: 4"
+                },
+                {
+                  "type": "terminal",
+                  "title": "Object side, and the chart untouched",
+                  "text": "$ helm get manifest till -n retail | grep -E '^kind:|replicas:|image:|port:'\nkind: Deployment\n  replicas: 4\n          image: \"nginx:1.29-alpine\"\nkind: Service\n    - port: 80\n\n$ find /opt/charts/till -type f -exec md5sum {} + | sort -k2\n0f2b1d5a9c7e3f84a6b0c1d2e3f45a67  /opt/charts/till/Chart.yaml\n5c1e7a30b98d4f26e0a1b2c3d4e5f678  /opt/charts/till/templates/deployment.yaml\n7ab3f0c14d29e85b6f7a8b9c0d1e2f30  /opt/charts/till/templates/service.yaml\n9d4c2e6f8a01b357c9d0e1f2a3b4c5d6  /opt/charts/till/values.yaml"
+                }
+              ],
+              "teach": "Four reads, four pairs. The one people leave out is <code>--revision 1</code>, and it is the only read that separates the correct route from an <code>upgrade --install</code> run twice with overrides on both. Checksumming the chart is cheap insurance on a constraint that is graded byte for byte."
+            }
+          },
+          {
+            "label": "kubectl -n retail get deploy,svc — 4/4 on the new tag with the Service on 80 is the end state",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The same output the kubectl-only route produced",
+                  "text": "$ kubectl -n retail get deploy,svc\nNAME                   READY   UP-TO-DATE   AVAILABLE   AGE\ndeployment.apps/till   4/4     4            4           12m\n\nNAME           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE\nservice/till   ClusterIP   10.96.142.207   <none>        80/TCP    12m"
+                }
+              ],
+              "teach": "Necessary for the third and fourth pairs, and identical to what <code>kubectl scale</code> plus <code>kubectl set image</code> produced two steps ago. Cluster state cannot distinguish a recorded change from an unrecorded one — that is the whole lesson of this question."
+            }
+          },
+          {
+            "label": "helm status till -n retail — it prints the revision and status in one line",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What status covers",
+                  "text": "$ helm status till -n retail\nNAME: till\nLAST DEPLOYED: Sun Aug 16 09:19:03 2026\nNAMESPACE: retail\nSTATUS: deployed\nREVISION: 2\nTEST SUITE: None"
+                }
+              ],
+              "teach": "Two facts from the first pair, in one command, and nothing about values or revision 1. Useful as a quick confirmation that the last operation landed; not enough to close a question where four of eight points are about what was recorded."
+            }
+          },
+          {
+            "label": "helm rollback till 1 -n retail --dry-run to confirm revision 1 is still intact",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "One missing flag away from undoing the task",
+                  "text": "$ helm rollback till 1 -n retail\nRollback was a success! Happy Helming!\n\n$ helm list -n retail\nNAME  NAMESPACE  REVISION  UPDATED                                 STATUS    CHART       APP VERSION\ntill  retail     3         2026-08-16 09:31:07.220145 +0000 UTC    deployed  till-0.1.0  \n\n$ kubectl -n retail get deploy till\nNAME   READY   UP-TO-DATE   AVAILABLE   AGE\ntill   1/1     1            1           18m"
+                }
+              ],
+              "teach": "A rollback is a write: it creates revision 3 whose content is revision 1, so the release would end deployed at revision 3 with one replica and the first pair would fail. <code>helm get values --revision 1</code> reads the same history without touching it. Prefer the read-only command when a read is what you want."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "Helm keeps a second state machine beside the cluster, and this question grades both. A release is a history: helm install with no overrides records revision 1 whose user-supplied values are null, and that null is the graded proof that the chart shipped as it ships; helm upgrade --set replicaCount=4 --set image.tag=1.29-alpine records revision 2 whose user-supplied values are exactly those two keys. Everything that reaches the same cluster state by another road fails somewhere: kubectl scale and kubectl set image leave the release at revision 1 with empty values and are silently reverted by the next upgrade, because Helm merges against the manifest it last rendered and cannot see changes it did not make; editing the chart's values.yaml breaks the byte-for-byte snapshot and still records no user values; uninstall-and-reinstall and upgrade --install-from-scratch both land back on revision 1. Value keys are an open map, so a mistyped --set replicas=4 is accepted, recorded and ignored — read values.yaml for the key names and confirm the merge with helm get values -a. The read-only commands that prove all of it are helm history, helm get values (with --revision), and helm get manifest. See helm.sh/docs/helm/helm_upgrade/ and helm.sh/docs/helm/helm_get_values/."
+  },
+  "exam-var-gaps-q04": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The base, and the object it produced",
+            "text": "$ cat /opt/kustomize/inventory/base/kustomization.yaml\nresources:\n- deployment.yaml\n\n$ kubectl kustomize /opt/kustomize/inventory/base | grep -E 'kind:|name:|replicas:|image:|app:'\nkind: Deployment\n  name: ledger\n  replicas: 1\n      app: ledger\n        app: ledger\n          image: nginx:1.27-alpine\n\n$ kubectl -n stock get deploy ledger -o jsonpath='{.metadata.uid}{\" \"}{.spec.selector}{\"\\n\"}'\n2c8f4a91-77be-4d03-a6f5-19c0b3e8d742 {\"matchLabels\":{\"app\":\"ledger\"}}\n\n$ ls -A /opt/kustomize/inventory/overlays/prod\n$"
+          },
+          {
+            "type": "note",
+            "title": "The overlay must produce three changes",
+            "text": "spec.replicas 3, container web on nginx:1.29-alpine, and metadata.labels carrying tier: prod — while spec.selector stays exactly {\"matchLabels\":{\"app\":\"ledger\"}}."
+          }
+        ],
+        "prompt": "The overlay directory is empty. What goes in it?",
+        "options": [
+          {
+            "label": "A kustomization.yaml whose resources names ../../base, plus transformer fields for the three changes",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "file",
+                  "title": "/opt/kustomize/inventory/overlays/prod/kustomization.yaml",
+                  "text": "apiVersion: kustomize.config.k8s.io/v1beta1\nkind: Kustomization\nresources:\n- ../../base\nreplicas:\n- name: ledger\n  count: 3\nimages:\n- name: nginx\n  newTag: 1.29-alpine\nlabels:\n- pairs:\n    tier: prod"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "The overlay's kustomization.yaml names the base under resources. Checkable: a resources entry that resolves to /opt/kustomize/inventory/base."
+                }
+              ],
+              "teach": "An overlay is a kustomization that consumes another kustomization: <code>resources</code> takes directory paths as well as file paths, and a directory is read by its own <code>kustomization.yaml</code>. Everything else in the file is a transformer applied to whatever the base produced, which is why the overlay never has to know how the Deployment is written."
+            }
+          },
+          {
+            "label": "A copy of base/deployment.yaml with the three changes made in it, listed under resources",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It renders correctly and names no base",
+                  "text": "$ kubectl kustomize /opt/kustomize/inventory/overlays/prod | grep -E 'replicas:|image:|tier:'\n  replicas: 3\n    tier: prod\n          image: nginx:1.29-alpine\n\n$ cat /opt/kustomize/inventory/overlays/prod/kustomization.yaml\nresources:\n- deployment.yaml"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "The overlay builds on the base. Checkable: the overlay's kustomization.yaml has a resources entry that resolves to /opt/kustomize/inventory/base."
+                }
+              ],
+              "teach": "The render looks right, which is the trap — the first pair reads the <code>resources</code> entry itself. Two copies of the same Deployment drift apart the first time anyone edits one of them, and that divergence is the failure kustomize exists to prevent."
+            }
+          },
+          {
+            "label": "Nothing in the overlay — kubectl scale and kubectl set image are faster and the live object is what counts",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Two pairs gone",
+                  "text": "$ kubectl kustomize /opt/kustomize/inventory/overlays/prod\nerror: unable to find one of 'kustomization.yaml', 'kustomization.yml' or 'Kustomization' in directory '/opt/kustomize/inventory/overlays/prod'"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "kubectl kustomize <overlay> renders exactly one object: Deployment ledger, with replicas 3, image nginx:1.29-alpine, tier: prod... And the task: do not change the live Deployment with kubectl edit, scale or set."
+                }
+              ],
+              "teach": "Four of the six points are read from the build, not the cluster. The task forbids the imperative route in as many words — and the reason is the same as in the Helm question: the desired state and the live state have to agree about how the change was made."
+            }
+          },
+          {
+            "label": "Edit base/deployment.yaml to the target values and apply the base",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The base is graded too",
+                  "text": "$ kubectl kustomize /opt/kustomize/inventory/base | grep -E 'replicas:|image:'\n  replicas: 3\n          image: nginx:1.29-alpine"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  base/ matches the snapshot, and kubectl kustomize <base> still renders 1 replica on nginx:1.27-alpine."
+                }
+              ],
+              "teach": "A base is the shape shared by every environment; an overlay is one environment's difference from it. Editing the base changes dev and staging too, and here it costs a full pair even though the live Deployment ends up correct."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Suppose you reached for commonLabels",
+            "text": "The overlay is identical except the label block reads:  commonLabels:\\n  tier: prod"
+          },
+          {
+            "type": "terminal",
+            "title": "Read the render before you apply it",
+            "text": "$ kubectl kustomize /opt/kustomize/inventory/overlays/prod\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  labels:\n    app: ledger\n    tier: prod\n  name: ledger\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: ledger\n      tier: prod\n  template:\n    metadata:\n      labels:\n        app: ledger\n        tier: prod\n    spec:\n      containers:\n      - image: nginx:1.29-alpine\n        name: web"
+          }
+        ],
+        "prompt": "Three requested changes are all present. What happens when you apply this?",
+        "options": [
+          {
+            "label": "The apply is rejected — spec.selector is immutable — so both the first and third pairs score 0",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The rejection",
+                  "text": "$ kubectl apply -k /opt/kustomize/inventory/overlays/prod\nThe Deployment \"ledger\" is invalid: spec.selector: Invalid value: v1.LabelSelector{MatchLabels:map[string]string{\"app\":\"ledger\", \"tier\":\"prod\"}, MatchExpressions:[]v1.LabelSelectorRequirement(nil)}: field is immutable"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "...and spec.selector equal to the snapshot. Which is why the selector is graded in the first pair, on the render, before the cluster is consulted."
+                }
+              ],
+              "teach": "<code>commonLabels</code> writes the label into <code>metadata.labels</code>, the pod template labels <em>and</em> the selector, and a Deployment's selector cannot be changed after creation. The correct form is the <code>labels</code> field with <code>pairs</code>, where <code>includeSelectors</code> is false by default. If you also wanted the label on the Pods, that is <code>includeTemplates: true</code> — which still leaves the selector alone."
+            }
+          },
+          {
+            "label": "It applies, and the Deployment rolls out new Pods carrying tier: prod",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Nothing rolls out",
+                  "text": "$ kubectl -n stock get deploy ledger -o jsonpath='{.spec.replicas}{\" \"}{.spec.template.spec.containers[0].image}{\"\\n\"}'\n1 nginx:1.27-alpine"
+                }
+              ],
+              "teach": "An apply is one request per object: the whole Deployment is rejected, so the replica count and the image never land either. Partial success is not a thing here, which is the mercy of it — the failure is loud instead of half-applied."
+            }
+          },
+          {
+            "label": "It applies after kubectl replaces the ReplicaSet, since selectors are recomputed on rollout",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "What is and is not recomputed",
+                  "text": "pod-template-hash is computed per ReplicaSet, every rollout.\nspec.selector on the Deployment is set once at creation and is immutable — the API rejects any change, whoever sends it."
+                }
+              ],
+              "teach": "A Deployment finds its ReplicaSets through the selector, so letting it change would orphan everything the Deployment currently owns. The API refuses rather than trying to reconcile it."
+            }
+          },
+          {
+            "label": "It applies with a warning, and you can force it through with kubectl apply --force",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What --force actually does here",
+                  "text": "$ kubectl apply -k /opt/kustomize/inventory/overlays/prod --force\nThe Deployment \"ledger\" is invalid: spec.selector: Invalid value: ...: field is immutable"
+                },
+                {
+                  "type": "note",
+                  "title": "And if you reached the delete-and-recreate path",
+                  "text": "Deployment ledger keeps its identity. Checkable: ledger.metadata.uid matches the snapshot."
+                }
+              ],
+              "teach": "<code>--force</code> deletes and re-creates only when the apply conflicts, not when the object is invalid, so the error is unchanged. Had you got there by deleting the Deployment yourself, the uid check in the third pair would have caught it. Fix the transformer; do not fight the API."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The overlay is written and the build will not run",
+            "text": "$ cat /opt/kustomize/inventory/overlays/prod/kustomization.yaml\nresources:\n- ../base\nreplicas:\n- name: ledger\n  count: 3\nimages:\n- name: nginx\n  newTag: 1.29-alpine\nlabels:\n- pairs:\n    tier: prod\n\n$ kubectl kustomize /opt/kustomize/inventory/overlays/prod\nerror: accumulating resources: accumulation err='accumulating resources from '../base': evalsymlink failure on '/opt/kustomize/inventory/overlays/base' : lstat /opt/kustomize/inventory/overlays/base: no such file or directory'"
+          }
+        ],
+        "prompt": "Read the path in the error. What is the fix?",
+        "options": [
+          {
+            "label": "../../base — the path is relative to the overlay directory, which is two levels below inventory",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Count from where the kustomization.yaml lives",
+                  "text": "/opt/kustomize/inventory/overlays/prod/kustomization.yaml\n..    -> /opt/kustomize/inventory/overlays\n../.. -> /opt/kustomize/inventory\n../../base -> /opt/kustomize/inventory/base"
+                },
+                {
+                  "type": "terminal",
+                  "title": "It builds",
+                  "text": "$ kubectl kustomize /opt/kustomize/inventory/overlays/prod | grep -E 'replicas:|image:|tier:|matchLabels' -A1\n  replicas: 3\n  selector:\n    matchLabels:\n      app: ledger\n    tier: prod\n          image: nginx:1.29-alpine"
+                }
+              ],
+              "teach": "The error hands you the resolved path — <code>/opt/kustomize/inventory/overlays/base</code> — so you can see exactly how far it climbed. Read the resolved path rather than re-counting the dots in your head; it is the difference between one fix and three guesses."
+            }
+          },
+          {
+            "label": "Use the absolute path /opt/kustomize/inventory/base",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Kustomize refuses to leave the root",
+                  "text": "$ kubectl kustomize /opt/kustomize/inventory/overlays/prod\nerror: accumulating resources: accumulation err='accumulating resources from '/opt/kustomize/inventory/base': security; file '/opt/kustomize/inventory/base' is not in or below '/opt/kustomize/inventory/overlays/prod''"
+                }
+              ],
+              "teach": "Kustomize confines file references to the kustomization root and its subtree; a relative path is allowed to climb out, an absolute path is not. This is a deliberate guard so that a kustomization stays portable and cannot reach arbitrary files on the build machine."
+            }
+          },
+          {
+            "label": "Move the base under the overlay and reference ./base",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "base/ is untouched. Checkable: every file under /opt/kustomize/inventory/base matches the snapshot."
+                }
+              ],
+              "teach": "A path error is not a layout problem. Moving the base breaks every other overlay that points at it, and here it fails the snapshot outright. Fix the reference, never the referent."
+            }
+          },
+          {
+            "label": "Add bases: [../../base] instead — resources is for files, bases is for directories",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The field is gone",
+                  "text": "$ kubectl kustomize /opt/kustomize/inventory/overlays/prod\nerror: json: unknown field \"bases\""
+                }
+              ],
+              "teach": "<code>bases</code> was removed after being deprecated in kustomize v2.1; <code>resources</code> now takes files and directories alike. Tutorials from the <code>bases</code> era are the same tutorials that teach <code>commonLabels</code> — when one field from an example is stale, distrust the rest of the example."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The build now renders what the task asked for",
+            "text": "$ kubectl kustomize /opt/kustomize/inventory/overlays/prod\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  labels:\n    tier: prod\n  name: ledger\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: ledger\n  template:\n    metadata:\n      labels:\n        app: ledger\n    spec:\n      containers:\n      - image: nginx:1.29-alpine\n        name: web"
+          }
+        ],
+        "prompt": "The render is correct. What do you do with it?",
+        "options": [
+          {
+            "label": "kubectl apply -k /opt/kustomize/inventory/overlays/prod",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Configured, not created",
+                  "text": "$ kubectl apply -k /opt/kustomize/inventory/overlays/prod\ndeployment.apps/ledger configured\n\n$ kubectl -n stock rollout status deploy/ledger\ndeployment \"ledger\" successfully rolled out\n\n$ kubectl -n stock get deploy ledger -o jsonpath='{.metadata.uid}{\" \"}{.spec.replicas}{\" \"}{.spec.template.spec.containers[0].image}{\" \"}{.metadata.labels.tier}{\"\\n\"}'\n2c8f4a91-77be-4d03-a6f5-19c0b3e8d742 3 nginx:1.29-alpine prod"
+                }
+              ],
+              "teach": "<code>configured</code> rather than <code>created</code> is the word to look for: the same object was patched, so the uid in the third pair is safe. Note the namespace came from your current context here — if the overlay is meant to be namespace-independent, pass <code>-n stock</code> or set <code>namespace: stock</code> in the kustomization."
+            }
+          },
+          {
+            "label": "Nothing more — the task is about building the overlay, and the render proves it works",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The live object never moved",
+                  "text": "$ kubectl -n stock get deploy ledger\nNAME     READY   UP-TO-DATE   AVAILABLE   AGE\nledger   1/1     1            1           14d"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  Live Deployment stock/ledger... spec.replicas is 3, container web runs nginx:1.29-alpine, metadata.labels carries tier: prod, and it reports 3 ready replicas."
+                }
+              ],
+              "teach": "The task says \"Then apply it\", and a third of the points live in the cluster. Rendering is the review step; applying is the change. Doing the review and skipping the change is the most common way to lose points on a kustomize question."
+            }
+          },
+          {
+            "label": "kubectl kustomize <overlay> | kubectl apply -f -",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Same result here",
+                  "text": "$ kubectl kustomize /opt/kustomize/inventory/overlays/prod | kubectl apply -n stock -f -\ndeployment.apps/ledger configured"
+                }
+              ],
+              "teach": "Not wrong — it is the same bytes through a pipe, and it is useful when you want to inspect or save the render. <code>apply -k</code> is one command and cannot drift from what you reviewed. Watch the namespace: piped input carries whatever the render specifies, so <code>-n</code> is on you."
+            }
+          },
+          {
+            "label": "kubectl replace -k /opt/kustomize/inventory/overlays/prod, to make the live object exactly the render",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Replace wants the whole object",
+                  "text": "$ kubectl replace -k /opt/kustomize/inventory/overlays/prod\nerror: unknown shorthand flag: 'k' in -k"
+                },
+                {
+                  "type": "note",
+                  "title": "And if you had piped it into replace",
+                  "text": "replace overwrites the object with what you sent, dropping fields the render omits — for a Deployment created by the base, that is a good way to lose annotations and, on -f with --force, the uid."
+                }
+              ],
+              "teach": "<code>-k</code> is supported by <code>apply</code>, <code>delete</code>, <code>get</code>, <code>diff</code> and a few others, not by <code>replace</code>. Prefer <code>apply</code> for anything declarative: it merges your intent into the live object instead of substituting for it."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Last check before you move on",
+            "text": "2 pts  the overlay renders exactly one Deployment: replicas 3, web on nginx:1.29-alpine, metadata.labels tier: prod, selector equal to the snapshot, and resources names the base\n2 pts  base/ matches the snapshot and still renders 1 replica on nginx:1.27-alpine\n2 pts  live stock/ledger has the snapshot uid and selector, replicas 3, the new image, tier: prod, 3 ready"
+          }
+        ],
+        "prompt": "What do you run?",
+        "options": [
+          {
+            "label": "Render both directories, then read uid, selector, replicas, image and labels off the live object",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Base still ships the old shape",
+                  "text": "$ kubectl kustomize /opt/kustomize/inventory/base | grep -E 'replicas:|image:'\n  replicas: 1\n          image: nginx:1.27-alpine\n\n$ grep -c . /opt/kustomize/inventory/overlays/prod/kustomization.yaml\n10"
+                },
+                {
+                  "type": "terminal",
+                  "title": "And the cluster agrees with the render",
+                  "text": "$ kubectl -n stock get deploy ledger -o jsonpath='{.metadata.uid}{\"\\n\"}{.spec.selector}{\"\\n\"}{.spec.replicas}{\" \"}{.status.readyReplicas}{\"\\n\"}{.spec.template.spec.containers[0].image}{\"\\n\"}{.metadata.labels}{\"\\n\"}'\n2c8f4a91-77be-4d03-a6f5-19c0b3e8d742\n{\"matchLabels\":{\"app\":\"ledger\"}}\n3 3\nnginx:1.29-alpine\n{\"app\":\"ledger\",\"tier\":\"prod\"}"
+                }
+              ],
+              "teach": "Rendering the base is the check nobody thinks to run, and it is a whole pair: it proves your overlay did its work without the base moving underneath it. The selector line is the other one worth reading twice — it is the field the popular wrong answer breaks."
+            }
+          },
+          {
+            "label": "kubectl diff -k /opt/kustomize/inventory/overlays/prod and confirm it prints nothing",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Empty diff, and what it does not cover",
+                  "text": "$ kubectl diff -k /opt/kustomize/inventory/overlays/prod\n$ echo $?\n0"
+                }
+              ],
+              "teach": "An excellent habit — this is the command to run <em>before</em> an apply, when it would have shown you the selector change as a removal and an addition. As a closing check it says the cluster matches the render and nothing about whether the base is untouched or the overlay names it."
+            }
+          },
+          {
+            "label": "kubectl -n stock get deploy ledger --show-labels",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "One field of six",
+                  "text": "$ kubectl -n stock get deploy ledger --show-labels\nNAME     READY   UP-TO-DATE   AVAILABLE   AGE   LABELS\nledger   3/3     3            3           14d   app=ledger,tier=prod"
+                }
+              ],
+              "teach": "Neat for the label and the ready count. It shows no uid, no selector and no image, and it cannot tell you whether the label came from your overlay or from someone running <code>kubectl label</code> by hand."
+            }
+          },
+          {
+            "label": "Delete the base directory now that the overlay renders correctly",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The overlay is nothing without it",
+                  "text": "$ rm -rf /opt/kustomize/inventory/base && kubectl kustomize /opt/kustomize/inventory/overlays/prod\nerror: accumulating resources: accumulation err='accumulating resources from '../../base': evalsymlink failure on '/opt/kustomize/inventory/base' : lstat /opt/kustomize/inventory/base: no such file or directory'"
+                }
+              ],
+              "teach": "The overlay holds differences, not objects — the Deployment only exists in the base. Both pairs that read a build would fail, and the constraint asks for the base to match its snapshot, not to be gone."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "An overlay is a kustomization whose resources entry points at another kustomization directory, and whose other fields are transformers applied to whatever that base produced. Three transformers do this task: replicas with name and count, images with name and newTag, and labels with pairs. The label field is the whole exam question. commonLabels is deprecated and always writes the label into spec.selector as well; labels with includeSelectors: true does the same; and a Deployment's selector is immutable, so kubectl apply -k is rejected with 'field is immutable' and the live object never moves — which is why the selector is graded on the render, before the cluster is consulted. Default labels touch only metadata.labels; includeTemplates: true adds the pod template without the selector. Relative paths are counted from the directory holding the kustomization.yaml (../../base from overlays/prod), absolute paths are refused as outside the root, and bases no longer exists. Copying the base's deployment.yaml into the overlay renders correctly and fails the pair that reads resources, because the point of an overlay is that there is only one copy. Finish by applying: kubectl apply -k prints 'configured', which is how you know the uid survived. See kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/ and kubectl.docs.kubernetes.io/references/kustomize/kustomization/labels/."
+  },
+  "exam-var-gaps-q05": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "What the cluster gives you",
+            "text": "$ kubectl get gatewayclass\nNAME   CONTROLLER                      ACCEPTED   AGE\nedge   example.net/gateway-controller  True       23d\n\n$ kubectl -n front get gateway,httproute,ingress\nNo resources found in front namespace.\n\n$ kubectl -n front get svc\nNAME    TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE\nalpha   ClusterIP   10.96.31.204    <none>        80/TCP    9d\nbeta    ClusterIP   10.96.77.118    <none>        80/TCP    9d"
+          },
+          {
+            "type": "note",
+            "title": "What has to be true at the end",
+            "text": "Host shop.example.com through one entry point on port 80:\n/alpha and /alpha/v1  -> alpha\n/beta  and /beta/v1   -> beta\n/gamma                -> reaches neither Service"
+          }
+        ],
+        "prompt": "Nothing exists yet. What do you build?",
+        "options": [
+          {
+            "label": "A Gateway in front on GatewayClass edge with an HTTP listener on 80, and an HTTPRoute in front that attaches to it",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Who owns which half",
+                  "text": "GatewayClass edge   the controller — already exists, do not touch\nGateway             the entry point: class, listeners, port. Gets an address.\nHTTPRoute           the rules: hostnames, path matches, backendRefs. Attaches through parentRefs."
+                },
+                {
+                  "type": "note",
+                  "title": "The two spec pairs this satisfies",
+                  "text": "2 pts  exactly one Gateway in front, gateway.networking.k8s.io/v1, gatewayClassName edge, an HTTP listener on port 80, status.addresses non-empty.\n2 pts  an HTTPRoute in front with parentRefs naming that Gateway, hostnames exactly shop.example.com, Accepted: True and ResolvedRefs: True."
+                }
+              ],
+              "teach": "Gateway API splits Ingress in two along an ownership line: the Gateway is infrastructure that a platform team runs, the HTTPRoute is routing that an application team writes. Neither object routes anything alone — the Gateway has no rules and the route has no address. Expect to create both, and expect the grader to read a status condition on each."
+            }
+          },
+          {
+            "label": "Just an HTTPRoute with the hostname and both path rules — the GatewayClass controller will provision what it needs",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "A route with no parent",
+                  "text": "$ kubectl -n front get httproute\nNAME   HOSTNAMES               AGE\nshop   [\"shop.example.com\"]    50s\n\n$ kubectl -n front get httproute shop -o jsonpath='{.status}{\"\\n\"}'\n{\"parents\":[]}"
+                }
+              ],
+              "teach": "A GatewayClass is a template for Gateways, not a controller that invents them. With no <code>parentRefs</code> resolving to a Gateway, no controller claims the route and <code>status.parents</code> stays empty — no address, no listener, nothing serving. The empty status list is the fastest way to spot an unattached route."
+            }
+          },
+          {
+            "label": "An Ingress with two path rules and the shop.example.com host — it is fewer objects and the same routing",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Two lines rule it out",
+                  "text": "Task: Do not use an Ingress.\n2 pts (fourth pair)  ...the Services in front, GatewayClass edge, and the EMPTY INGRESS LIST all match the snapshot."
+                }
+              ],
+              "teach": "The routing really would be equivalent, which is why the constraint is explicit and why an empty Ingress list is a graded fact. This question is about which objects own which decisions, not about getting bytes to a Pod."
+            }
+          },
+          {
+            "label": "A Gateway with two listeners, one per Service, so each backend gets its own port",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "It has a listener with protocol: HTTP on port: 80. And the live pairs test /alpha and /beta through the SAME address and the same Host header."
+                }
+              ],
+              "teach": "A listener is a port and protocol, not a backend — backends are chosen by rules inside a route. The task asks for one HTTP entry point on port 80 where the path decides the Service, so a second listener would be a second port nobody sends traffic to."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Suppose the Gateway named a class that does not exist",
+            "text": "gatewayClassName: edge-1 instead of edge. Everything else identical."
+          },
+          {
+            "type": "terminal",
+            "title": "No address, ever",
+            "text": "$ kubectl -n front get gateway\nNAME   CLASS    ADDRESS   PROGRAMMED   AGE\nshop   edge-1             Unknown      3m\n\n$ kubectl -n front describe gateway shop | sed -n '/Status:/,$p'\nStatus:\n  Conditions:\n    Message:               Waiting for controller\n    Reason:                Pending\n    Status:                Unknown\n    Type:                  Accepted\n    Message:               Waiting for controller\n    Reason:                Pending\n    Status:                Unknown\n    Type:                  Programmed\nEvents:                    <none>"
+          }
+        ],
+        "prompt": "PROGRAMMED is Unknown and there are no events. What does that tell you?",
+        "options": [
+          {
+            "label": "No controller has claimed this Gateway, because no GatewayClass matches the name — fix gatewayClassName",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The class list is the whole story",
+                  "text": "$ kubectl get gatewayclass\nNAME   CONTROLLER                      ACCEPTED   AGE\nedge   example.net/gateway-controller  True       23d\n\n$ kubectl -n front get gateway\nNAME   CLASS   ADDRESS         PROGRAMMED   AGE\nshop   edge    10.96.184.72    True         12s"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  ...spec.gatewayClassName is edge... Its status.addresses is non-empty. And the two live pairs are gated on that address existing."
+                }
+              ],
+              "teach": "<code>Unknown</code> with reason <code>Pending</code> and message \"Waiting for controller\" is the default status the API server itself writes at creation. Nothing has looked at this object. That is different from a controller that looked and objected, which would give you <code>False</code> with a specific reason — read the status value before you read the message."
+            }
+          },
+          {
+            "label": "The controller is still provisioning — a load balancer takes a few minutes to appear",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Fifteen minutes later",
+                  "text": "$ kubectl -n front get gateway\nNAME   CLASS    ADDRESS   PROGRAMMED   AGE\nshop   edge-1             Unknown      18m"
+                }
+              ],
+              "teach": "A controller that is working sets <code>Accepted: True</code> long before an address exists, so a real provisioning wait looks like <code>Accepted True</code> and <code>Programmed False</code> with a reason such as <code>Pending</code> or <code>AddressNotAssigned</code>. Both conditions <code>Unknown</code> means nobody is home."
+            }
+          },
+          {
+            "label": "Create GatewayClass edge-1 pointing at the same controller so the name resolves",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Two grading lines",
+                  "text": "Do not change GatewayClass edge. Checkable: edge matches the snapshot.\n2 pts  spec.gatewayClassName is edge."
+                }
+              ],
+              "teach": "You would be inventing cluster-scoped infrastructure to justify a typo, and the pair names <code>edge</code> explicitly, so even a working <code>edge-1</code> scores 0. Fix the reference, never the referent."
+            }
+          },
+          {
+            "label": "Add spec.addresses to the Gateway so status.addresses gets populated",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "A request, not a result",
+                  "text": "$ kubectl -n front get gateway shop -o jsonpath='{.spec.addresses}{\"\\n\"}{.status.addresses}{\"\\n\"}'\n[{\"type\":\"IPAddress\",\"value\":\"10.96.200.5\"}]\n\n$ kubectl -n front get gateway\nNAME   CLASS    ADDRESS   PROGRAMMED   AGE\nshop   edge-1             Unknown      4m"
+                }
+              ],
+              "teach": "<code>spec.addresses</code> asks the controller for a particular address; <code>status.addresses</code> is what the controller assigned. With no controller, the request sits unread and the status stays empty. Spec is intent and status is fact — the graded field is the fact."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "file",
+            "title": "/opt/exam/route.yaml — first draft",
+            "text": "apiVersion: gateway.networking.k8s.io/v1\nkind: HTTPRoute\nmetadata:\n  name: shop\n  namespace: front\nspec:\n  parentRefs:\n  - name: shop\n  hostnames:\n  - shop.example.com\n  rules:\n  - matches:\n    - path:\n        type: Exact\n        value: /alpha\n    backendRefs:\n    - name: alpha\n      port: 80\n  - matches:\n    - path:\n        type: Exact\n        value: /beta\n    backendRefs:\n    - name: beta\n      port: 80"
+          },
+          {
+            "type": "terminal",
+            "title": "Applied, attached, and half broken",
+            "text": "$ kubectl apply -f /opt/exam/route.yaml\nhttproute.gateway.networking.k8s.io/shop created\n\n$ curl -s -o /dev/null -w '%{http_code}\\n' -H 'Host: shop.example.com' http://10.96.184.72/alpha\n200\n$ curl -s -H 'Host: shop.example.com' http://10.96.184.72/alpha/v1\n404 page not found"
+          }
+        ],
+        "prompt": "/alpha works and /alpha/v1 does not. What do you change?",
+        "options": [
+          {
+            "label": "path.type: PathPrefix on both rules, keeping the values /alpha and /beta",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "All four paths, and /gamma still refused",
+                  "text": "$ for p in /alpha /alpha/v1 /beta /beta/v1; do\n>   printf '%s -> ' $p; curl -s -H 'Host: shop.example.com' http://10.96.184.72$p; echo\n> done\n/alpha -> alpha\n/alpha/v1 -> alpha\n/beta -> beta\n/beta/v1 -> beta\n\n$ curl -s -o /dev/null -w '%{http_code}\\n' -H 'Host: shop.example.com' http://10.96.184.72/gamma\n404"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  /alpha and /alpha/v1 return 200 and the word alpha; /beta and /beta/v1 return 200 and the word beta.\n2 pts  /gamma returns 404 and reaches neither Service."
+                }
+              ],
+              "teach": "<code>PathPrefix</code> matches on whole path segments, so <code>/alpha</code> covers <code>/alpha</code> and <code>/alpha/v1</code> but not <code>/alphabet</code> — which is exactly the boundary you want. <code>Exact</code> matches one string. Note that <code>PathPrefix</code> is the default when you give a path match with no <code>type</code>, so the draft had to say <code>Exact</code> to get this wrong."
+            }
+          },
+          {
+            "label": "Add a third rule matching PathPrefix / to alpha, so anything unmatched still gets an answer",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Now /gamma is served",
+                  "text": "$ curl -s -H 'Host: shop.example.com' http://10.96.184.72/gamma\nalpha"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  Through the same address with the same Host, /gamma returns 404 and REACHES NEITHER SERVICE."
+                }
+              ],
+              "teach": "Gateway API picks the most specific match — longest prefix first — so a catch-all does not break <code>/alpha</code>; it only ever fires for the paths the task wants refused. \"To be safe\" is the reasoning to distrust: a rule that exists to catch the unexpected is precisely a rule that answers requests you never designed for."
+            }
+          },
+          {
+            "label": "path.type: RegularExpression with value /alpha.*",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Not in the standard channel",
+                  "text": "$ kubectl apply -f /opt/exam/route.yaml\nThe HTTPRoute \"shop\" is invalid: spec.rules[0].matches[0].path.type: Unsupported value: \"RegularExpression\": supported values: \"Exact\", \"PathPrefix\""
+                }
+              ],
+              "teach": "<code>RegularExpression</code> is an optional path match type: implementations may support it, and the CRD your cluster serves decides whether the value is even accepted. <code>Exact</code> and <code>PathPrefix</code> are core and portable. On an exam, reach for the core value — and note the regex would also have matched <code>/alphabet</code>."
+            }
+          },
+          {
+            "label": "Keep Exact and add a second match entry per rule for /alpha/v1 and /beta/v1",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It passes the test and misses the requirement",
+                  "text": "$ curl -s -H 'Host: shop.example.com' http://10.96.184.72/alpha/v1\nalpha\n$ curl -s -o /dev/null -w '%{http_code}\\n' -H 'Host: shop.example.com' http://10.96.184.72/alpha/v2\n404"
+                },
+                {
+                  "type": "note",
+                  "title": "Task wording",
+                  "text": "...for /alpha, AND FOR PATHS UNDER IT SUCH AS /alpha/v1, must be answered by alpha."
+                }
+              ],
+              "teach": "\"Such as\" means the grader's examples are samples, not the specification. Enumerating the two paths named in the question passes the two probes it prints and fails the requirement it states. When a task gives examples, implement the rule they are examples of."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Suppose the route had been created in namespace routes instead of front",
+            "text": "Identical spec, parentRefs still naming Gateway shop, applied into a different namespace."
+          },
+          {
+            "type": "terminal",
+            "title": "The status says exactly what happened",
+            "text": "$ kubectl -n routes get httproute shop -o jsonpath='{.status.parents[0]}{\"\\n\"}' | python3 -m json.tool\n{\n    \"conditions\": [\n        {\n            \"message\": \"No listeners included by this parent ref allowed this attachment.\",\n            \"reason\": \"NotAllowedByListeners\",\n            \"status\": \"False\",\n            \"type\": \"Accepted\"\n        },\n        {\n            \"message\": \"All references resolved\",\n            \"reason\": \"ResolvedRefs\",\n            \"status\": \"True\",\n            \"type\": \"ResolvedRefs\"\n        }\n    ],\n    \"controllerName\": \"example.net/gateway-controller\",\n    \"parentRef\": {\n        \"group\": \"gateway.networking.k8s.io\",\n        \"kind\": \"Gateway\",\n        \"name\": \"shop\",\n        \"namespace\": \"front\"\n    }\n}"
+          }
+        ],
+        "prompt": "ResolvedRefs is True and Accepted is False. Where is the fix?",
+        "options": [
+          {
+            "label": "Move the HTTPRoute into front — a listener accepts routes from its own namespace unless allowedRoutes says otherwise",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "In front, it attaches",
+                  "text": "$ kubectl -n front get httproute shop -o jsonpath='{range .status.parents[0].conditions[*]}{.type}{\"=\"}{.status}{\" \"}{.reason}{\"\\n\"}{end}'\nAccepted=True Accepted\nResolvedRefs=True ResolvedRefs"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  At least one HTTPRoute IN FRONT has a parentRefs entry naming that Gateway... For that parent, status.parents[].conditions reports Accepted: True and ResolvedRefs: True."
+                }
+              ],
+              "teach": "Attachment is a two-sided agreement: the route names the Gateway, and the Gateway's listener must allow the route's namespace. <code>allowedRoutes.namespaces.from</code> defaults to <code>Same</code>. The alternative — setting it to <code>All</code> or a <code>Selector</code> — is a change to shared infrastructure, and the task only asks for one namespace."
+            }
+          },
+          {
+            "label": "The Gateway is in the wrong namespace — move the Gateway to routes instead",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading lines",
+                  "text": "Exactly one Gateway IN FRONT. Checkable: Gateway list in front.\nAnd the backends: every backendRefs entry names alpha or beta on port 80 — Services that live in front."
+                }
+              ],
+              "teach": "Moving the Gateway would fix attachment and break backend resolution, since a backend in another namespace needs a ReferenceGrant. Two objects and two namespaces give you two ways to be wrong; put both in the namespace that holds the Services."
+            }
+          },
+          {
+            "label": "Add a ReferenceGrant in front permitting HTTPRoutes from routes",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The condition does not move",
+                  "text": "$ kubectl -n routes get httproute shop -o jsonpath='{.status.parents[0].conditions[0].reason}{\"\\n\"}'\nNotAllowedByListeners"
+                }
+              ],
+              "teach": "ReferenceGrant governs cross-namespace references <em>to backends</em> — a route in one namespace sending traffic to a Service in another. Route-to-Gateway attachment is governed by the listener's <code>allowedRoutes</code>. Two different trust decisions, two different objects; the condition reason names which one refused."
+            }
+          },
+          {
+            "label": "Nothing is wrong — ResolvedRefs: True means the route is working",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Nothing is served",
+                  "text": "$ curl -s -o /dev/null -w '%{http_code}\\n' -H 'Host: shop.example.com' http://10.96.184.72/alpha\n404"
+                }
+              ],
+              "teach": "<code>ResolvedRefs</code> only says the objects this route points at exist and are permitted — the backends are real Services in the route's own namespace, so it is True even for a route nothing will ever call. <code>Accepted</code> is the one that says a listener took the route. Read both, every time."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Suppose a backend name had a typo",
+            "text": "backendRefs names alfa instead of alpha, in an otherwise correct route in front."
+          },
+          {
+            "type": "terminal",
+            "title": "Attached, and refusing to serve",
+            "text": "$ kubectl -n front get httproute shop -o jsonpath='{range .status.parents[0].conditions[*]}{.type}{\"=\"}{.status}{\" \"}{.reason}{\" \"}{.message}{\"\\n\"}{end}'\nAccepted=True Accepted Route was valid\nResolvedRefs=False BackendNotFound Service \"alfa\" not found\n\n$ curl -s -o /dev/null -w '%{http_code}\\n' -H 'Host: shop.example.com' http://10.96.184.72/alpha\n500"
+          }
+        ],
+        "prompt": "Accepted is True this time and ResolvedRefs is False. What is the shape of this failure?",
+        "options": [
+          {
+            "label": "The listener took the route; the rule's backend does not resolve, so that rule answers 500 — fix the backend name",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "After the fix",
+                  "text": "$ kubectl -n front get httproute shop -o jsonpath='{range .status.parents[0].conditions[*]}{.type}{\"=\"}{.status}{\"\\n\"}{end}'\nAccepted=True\nResolvedRefs=True\n\n$ curl -s -H 'Host: shop.example.com' http://10.96.184.72/alpha\nalpha"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Every backendRefs entry names alpha or beta on port 80, and for that parent ResolvedRefs is True."
+                }
+              ],
+              "teach": "The two conditions fail independently and mean different things: <code>Accepted</code> is about the route reaching a listener, <code>ResolvedRefs</code> is about what the route points at. A rule with an unresolvable backend is specified to return 500, not 404 — the route matched, it just has nowhere to send you. The status code tells you which half is broken before you read any YAML."
+            }
+          },
+          {
+            "label": "Create a Service named alfa so the reference resolves",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not create, change, or delete Services in front. Checkable: the Service list and both Service specs match the snapshot."
+                }
+              ],
+              "teach": "A fourth-pair constraint, and an instinct worth unlearning generally: when a reference does not resolve, the reference is usually the mistake. Creating the referent to match a typo leaves you maintaining the typo forever."
+            }
+          },
+          {
+            "label": "The port must be wrong — set backendRefs port to the Service targetPort",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What the message actually named",
+                  "text": "$ kubectl -n front get svc alpha -o jsonpath='{.spec.ports[0]}{\"\\n\"}'\n{\"port\":80,\"protocol\":\"TCP\",\"targetPort\":8080}\n\n$ kubectl -n front get httproute shop -o jsonpath='{.status.parents[0].conditions[1].message}{\"\\n\"}'\nService \"alfa\" not found"
+                }
+              ],
+              "teach": "<code>backendRefs.port</code> is the Service port, and the Service's own <code>targetPort</code> takes it the rest of the way — 80 is correct here. The message names a Service that was not found, so read it literally: a wrong port would give you a different reason entirely."
+            }
+          },
+          {
+            "label": "It is transient — the controller re-resolves backends on a timer, so wait for it to clear",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Ten minutes on",
+                  "text": "$ kubectl -n front get httproute shop -o jsonpath='{.status.parents[0].conditions[1].reason}{\"\\n\"}'\nBackendNotFound"
+                }
+              ],
+              "teach": "Controllers do watch and re-resolve — which is why a genuinely transient failure clears in seconds. A name that does not exist will not start existing. <code>BackendNotFound</code> is a lookup result, not a retry counter."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Last check before you move on",
+            "text": "2 pts  one Gateway in front, v1, class edge, HTTP listener on 80, status.addresses non-empty\n2 pts  HTTPRoute in front, parentRefs on that Gateway, hostnames exactly shop.example.com, Accepted and ResolvedRefs True, backends alpha/beta on 80\n2 pts  /alpha, /alpha/v1 say alpha; /beta, /beta/v1 say beta\n2 pts  /gamma is 404 and reaches neither Service; Services, GatewayClass and the empty Ingress list match the snapshot"
+          }
+        ],
+        "prompt": "What do you run?",
+        "options": [
+          {
+            "label": "The five requests against the Gateway address with the Host header, plus the two status conditions and the Ingress list",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Five probes",
+                  "text": "$ ADDR=$(kubectl -n front get gateway shop -o jsonpath='{.status.addresses[0].value}')\n$ for p in /alpha /alpha/v1 /beta /beta/v1 /gamma; do\n>   printf '%-10s %s ' $p \"$(curl -s -o /dev/null -w '%{http_code}' -H \"Host: shop.example.com\" http://$ADDR$p)\"\n>   curl -s -H \"Host: shop.example.com\" http://$ADDR$p; echo\n> done\n/alpha     200 alpha\n/alpha/v1  200 alpha\n/beta      200 beta\n/beta/v1   200 beta\n/gamma     404 404 page not found"
+                },
+                {
+                  "type": "terminal",
+                  "title": "And the object side",
+                  "text": "$ kubectl -n front get httproute shop -o jsonpath='{range .status.parents[0].conditions[*]}{.type}{\"=\"}{.status}{\"\\n\"}{end}'\nAccepted=True\nResolvedRefs=True\n\n$ kubectl -n front get gateway,ingress\nNAME                                        CLASS   ADDRESS        PROGRAMMED   AGE\ngateway.gateway.networking.k8s.io/shop      edge    10.96.184.72   True         14m\n\nNo resources found in front namespace."
+                }
+              ],
+              "teach": "The <code>Host</code> header is not optional: <code>hostnames</code> on the route means requests without that header match nothing. Probing all five paths in one loop is the point — the fourth pair is a negative test, and negative tests are the ones people skip."
+            }
+          },
+          {
+            "label": "curl the Gateway address for /alpha and /beta and confirm both answer",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Both answer under three different configurations",
+                  "text": "$ curl -s -H 'Host: shop.example.com' http://10.96.184.72/alpha\nalpha\n$ curl -s -H 'Host: shop.example.com' http://10.96.184.72/beta\nbeta"
+                }
+              ],
+              "teach": "This exact output comes from the correct route, from the <code>Exact</code> route that loses <code>/alpha/v1</code>, and from a route with a catch-all that serves <code>/gamma</code>. Half the live points are in the paths you did not test."
+            }
+          },
+          {
+            "label": "kubectl -n front get gateway,httproute — an address and a hostname mean it is wired up",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What the columns do not show",
+                  "text": "$ kubectl -n front get gateway,httproute\nNAME                                        CLASS   ADDRESS        PROGRAMMED   AGE\ngateway.gateway.networking.k8s.io/shop      edge    10.96.184.72   True         14m\n\nNAME                                          HOSTNAMES               AGE\nhttproute.gateway.networking.k8s.io/shop      [\"shop.example.com\"]    9m"
+                }
+              ],
+              "teach": "A good five-second orientation: the Gateway has an address and is Programmed. The HTTPRoute table has no status column at all — it prints hostnames and age — so an unattached route with <code>NotAllowedByListeners</code> looks identical here. Go to <code>status.parents</code> for attachment."
+            }
+          },
+          {
+            "label": "curl the Service ClusterIPs directly to confirm both backends answer",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Bypassing the thing under test",
+                  "text": "$ curl -s http://10.96.31.204/anything\nalpha\n$ curl -s http://10.96.77.118/anything\nbeta"
+                }
+              ],
+              "teach": "The context already told you each Pod answers every path — so this confirms the premise and tests none of your work. Every graded request goes through the Gateway address with the Host header set."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "Gateway API splits the entry point from the routing, and grades each half by a status condition. The Gateway names a GatewayClass and a listener (HTTP, port 80) and is finished only when a controller assigns status.addresses — both conditions sitting at Unknown/Pending means no controller claimed it, which is usually a class name that does not exist, and spec.addresses is a request rather than a result. The HTTPRoute attaches through parentRefs, and attachment is two-sided: the listener's allowedRoutes.namespaces.from defaults to Same, so a route in another namespace reports Accepted: False with reason NotAllowedByListeners while ResolvedRefs stays True. Those two conditions fail independently — ResolvedRefs: False with BackendNotFound means the listener took the route and the backend name does not resolve, which serves 500 rather than 404. For paths, PathPrefix matches whole segments (and is the default), Exact matches one string and loses /alpha/v1, RegularExpression is optional and may be rejected by the CRD, and a catch-all PathPrefix / rule is what makes /gamma answer when the task says it must not. Test through the Gateway address with the Host header, including the request that must fail. See kubernetes.io/docs/concepts/services-networking/gateway/ and gateway-api.sigs.k8s.io/guides/http-routing/."
+  },
+  "exam-var-gaps-q06": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "Where you start",
+            "text": "$ kubectl get nodes\nNAME       STATUS   ROLES    AGE   VERSION\nworker-0   Ready    <none>   40d   v1.36.0\nworker-1   Ready    <none>   40d   v1.36.0\nworker-2   Ready    <none>   40d   v1.36.0\n\n$ kubectl -n mill get pods -o wide\nNAME                       READY   STATUS    RESTARTS   AGE   IP           NODE       NOMINATED NODE   READINESS GATES\nlogs-4t7bq                 1/1     Running   0          12d   10.1.0.14    worker-0   <none>           <none>\nlogs-9xm2c                 1/1     Running   0          12d   10.1.1.21    worker-1   <none>           <none>\nlogs-kd8vf                 1/1     Running   0          12d   10.1.2.33    worker-2   <none>           <none>\npress-6c9f7d84b5-2jw4x     1/1     Running   0          5d    10.1.0.29    worker-0   <none>           <none>\npress-6c9f7d84b5-hq7bn     1/1     Running   0          5d    10.1.1.44    worker-1   <none>           <none>\npress-6c9f7d84b5-t8zpl     1/1     Running   0          5d    10.1.2.51    worker-2   <none>           <none>\nscratch                    1/1     Running   0          3h    10.1.1.62    worker-1   <none>           <none>"
+          },
+          {
+            "type": "terminal",
+            "title": "The promise that governs press",
+            "text": "$ kubectl -n mill get pdb\nNAME        MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE\npress-pdb   3               N/A               0                     9d"
+          }
+        ],
+        "prompt": "worker-1 must end up cordoned and empty of workload Pods, with every promise kept. What do you do first?",
+        "options": [
+          {
+            "label": "Make room first — scale press to 4 so the budget can allow one disruption, then drain",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The fourth Pod changes the arithmetic",
+                  "text": "$ kubectl -n mill scale deployment press --replicas=4\ndeployment.apps/press scaled\n\n$ kubectl -n mill get pods -o wide -l app=press\nNAME                       READY   STATUS    RESTARTS   AGE   IP          NODE\npress-6c9f7d84b5-2jw4x     1/1     Running   0          5d    10.1.0.29   worker-0\npress-6c9f7d84b5-hq7bn     1/1     Running   0          5d    10.1.1.44   worker-1\npress-6c9f7d84b5-t8zpl     1/1     Running   0          5d    10.1.2.51   worker-2\npress-6c9f7d84b5-wl6rd     1/1     Running   0          25s   10.1.2.57   worker-2\n\n$ kubectl -n mill get pdb\nNAME        MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE\npress-pdb   3               N/A               1                     9d"
+                }
+              ],
+              "teach": "<code>minAvailable: 3</code> over 3 replicas is a budget with no slack: healthy minus required is zero, so every eviction is refused. The budget is not the problem to remove — it is the promise the owner asked for. Add capacity and the same budget starts allowing exactly one disruption at a time, which is all a single-node drain needs."
+            }
+          },
+          {
+            "label": "kubectl drain worker-1 --ignore-daemonsets --delete-emptydir-data straight away, and see what it says",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It cordons, then loops forever",
+                  "text": "$ kubectl drain worker-1 --ignore-daemonsets --delete-emptydir-data\nnode/worker-1 cordoned\nWarning: ignoring DaemonSet-managed Pods: mill/logs-9xm2c\nevicting pod mill/scratch\nevicting pod mill/press-6c9f7d84b5-hq7bn\nerror when evicting pods/\"press-6c9f7d84b5-hq7bn\" -n \"mill\" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.\nerror when evicting pods/\"press-6c9f7d84b5-hq7bn\" -n \"mill\" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.\n^C"
+                }
+              ],
+              "teach": "Not wrong as a diagnostic — the retry message names the cause precisely, and <code>scratch</code> did get evicted, so you learn the flags were right. Two things to notice: the node is now cordoned even though the drain never finished, and the command will retry until you stop it. Read the budget first and you skip the wait."
+            }
+          },
+          {
+            "label": "Lower press-pdb to minAvailable: 2 so the drain can proceed, then set it back afterwards",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The node empties and the pair is gone",
+                  "text": "$ kubectl -n mill get pdb press-pdb -o jsonpath='{.spec.minAvailable}{\"\\n\"}'\n2"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  PodDisruptionBudget mill/press-pdb MATCHES THE SNAPSHOT EXACTLY — still minAvailable: 3, same selector — and its status.currentHealthy is at least its status.desiredHealthy."
+                }
+              ],
+              "teach": "Also the task in one line: do not weaken or delete any policy object. Restoring it afterwards does not help, because during the drain <code>press</code> really did run on two replicas — the disruption the budget existed to refuse. The budget is the requirement, not an obstacle to it."
+            }
+          },
+          {
+            "label": "kubectl cordon worker-1 first, so nothing new lands while you work out the rest",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Harmless, and it makes the next step harder",
+                  "text": "$ kubectl cordon worker-1\nnode/worker-1 cordoned\n\n$ kubectl -n mill scale deployment press --replicas=4\ndeployment.apps/press scaled\n\n$ kubectl -n mill get pods -l app=press -o wide | tail -1\npress-6c9f7d84b5-wl6rd     0/1     Pending   0          30s   <none>      <none>"
+                }
+              ],
+              "teach": "Cordoning is not itself a mistake — drain does it for you, and the verify notes accept a cordon before the drain. The order costs you: with worker-1 unschedulable, the replacement Pod has two nodes to fit on instead of three, and a Pending fourth replica leaves ALLOWED DISRUPTIONS at 0. Make room while you still have all the room."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Suppose you ran the drain bare",
+            "text": "kubectl drain worker-1, with no flags, before doing anything else."
+          },
+          {
+            "type": "terminal",
+            "title": "It refuses to start — and something has already changed",
+            "text": "$ kubectl drain worker-1\nnode/worker-1 cordoned\nerror: unable to drain node \"worker-1\" due to error:[cannot delete DaemonSet-managed Pods (use --ignore-daemonsets to ignore): mill/logs-9xm2c, cannot delete Pods with local storage (use --delete-emptydir-data to override): mill/scratch], continuing command...\nThere are pending nodes to be drained:\n worker-1\ncannot delete DaemonSet-managed Pods (use --ignore-daemonsets to ignore): mill/logs-9xm2c\ncannot delete Pods with local storage (use --delete-emptydir-data to override): mill/scratch"
+          }
+        ],
+        "prompt": "The command errored and evicted nothing. What is the state of the cluster now?",
+        "options": [
+          {
+            "label": "worker-1 is already unschedulable — the cordon happens before any eviction is attempted",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Read the node",
+                  "text": "$ kubectl get node worker-1\nNAME       STATUS                     ROLES    AGE   VERSION\nworker-1   Ready,SchedulingDisabled   <none>   40d   v1.36.0\n\n$ kubectl get node worker-1 -o jsonpath='{.spec.unschedulable}{\" \"}{.spec.taints}{\"\\n\"}'\ntrue [{\"effect\":\"NoSchedule\",\"key\":\"node.kubernetes.io/unschedulable\",\"timeAdded\":\"2026-08-16T10:04:11Z\"}]"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  Node worker-1 exists, is Ready, and is unschedulable: spec.unschedulable is true, or it carries the node.kubernetes.io/unschedulable NoSchedule taint."
+                }
+              ],
+              "teach": "Drain is cordon-then-evict, and the cordon is committed even when the eviction phase never runs. That is worth knowing in both directions: a failed drain has already changed the cluster, and — if you decide not to proceed — <code>kubectl uncordon worker-1</code> is the undo. Here it means the first pair is already scored while the second is not."
+            }
+          },
+          {
+            "label": "Nothing changed — the command errored out before doing any work",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The first line of the output was not a warning",
+                  "text": "$ kubectl get nodes\nNAME       STATUS                     ROLES    AGE   VERSION\nworker-0   Ready                      <none>   40d   v1.36.0\nworker-1   Ready,SchedulingDisabled   <none>   40d   v1.36.0\nworker-2   Ready                      <none>   40d   v1.36.0"
+                }
+              ],
+              "teach": "<code>node/worker-1 cordoned</code> is a report of a completed write, printed before the error. \"The command failed\" and \"the command changed nothing\" are different claims; check the objects rather than inferring from the exit status."
+            }
+          },
+          {
+            "label": "The DaemonSet Pod on worker-1 was deleted and the DaemonSet controller is re-creating it",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It never moved",
+                  "text": "$ kubectl -n mill get pods -o wide -l app=logs\nNAME          READY   STATUS    RESTARTS   AGE   IP          NODE\nlogs-4t7bq    1/1     Running   0          12d   10.1.0.14   worker-0\nlogs-9xm2c    1/1     Running   0          12d   10.1.1.21   worker-1\nlogs-kd8vf    1/1     Running   0          12d   10.1.2.33   worker-2"
+                }
+              ],
+              "teach": "The message says <em>cannot delete</em>: the DaemonSet Pod was the reason the drain refused to run, not something it acted on. Even with <code>--ignore-daemonsets</code> it stays put — the flag means \"proceed without touching them\", and the fourth pair expects <code>logs</code> ready on all three nodes at the end."
+            }
+          },
+          {
+            "label": "The eviction of the press Pod is queued and will complete when the budget allows",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "No eviction was ever attempted",
+                  "text": "$ kubectl -n mill get pods -o wide -l app=press\nNAME                       READY   STATUS    RESTARTS   AGE   IP          NODE\npress-6c9f7d84b5-2jw4x     1/1     Running   0          5d    10.1.0.29   worker-0\npress-6c9f7d84b5-hq7bn     1/1     Running   0          5d    10.1.1.44   worker-1\npress-6c9f7d84b5-t8zpl     1/1     Running   0          5d    10.1.2.51   worker-2"
+                }
+              ],
+              "teach": "Drain builds the full list of Pods it must remove and refuses as a whole if any of them is disallowed, before evicting anything. There is no server-side queue: the retry loop lives in your kubectl process, and it only exists once evictions have started."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "Room has been made; the node is cordoned",
+            "text": "$ kubectl -n mill get pdb\nNAME        MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE\npress-pdb   3               N/A               1                     9d\n\n$ kubectl -n mill get pods -o wide --field-selector spec.nodeName=worker-1\nNAME                       READY   STATUS    RESTARTS   AGE   IP          NODE\nlogs-9xm2c                 1/1     Running   0          12d   10.1.1.21   worker-1\npress-6c9f7d84b5-hq7bn     1/1     Running   0          5d    10.1.1.44   worker-1\nscratch                    1/1     Running   0          3h    10.1.1.62   worker-1"
+          }
+        ],
+        "prompt": "Which drain command empties worker-1 of workload Pods and leaves what a node is expected to keep?",
+        "options": [
+          {
+            "label": "kubectl drain worker-1 --ignore-daemonsets --delete-emptydir-data",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It completes",
+                  "text": "$ kubectl drain worker-1 --ignore-daemonsets --delete-emptydir-data\nnode/worker-1 already cordoned\nWarning: ignoring DaemonSet-managed Pods: mill/logs-9xm2c; deleting Pods with local storage: mill/scratch\nevicting pod mill/scratch\nevicting pod mill/press-6c9f7d84b5-hq7bn\npod/scratch evicted\npod/press-6c9f7d84b5-hq7bn evicted\nnode/worker-1 drained\n\n$ kubectl -n mill get pods -o wide --field-selector spec.nodeName=worker-1\nNAME         READY   STATUS    RESTARTS   AGE   IP          NODE\nlogs-9xm2c   1/1     Running   0          12d   10.1.1.21   worker-1"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  The only Pods running on worker-1 are managed by a DaemonSet or are mirror Pods... DaemonSet logs still has a ready Pod on worker-1."
+                }
+              ],
+              "teach": "Each flag answers one of the two refusals the bare drain printed. <code>--ignore-daemonsets</code> leaves the <code>logs</code> Pod alone — which the task wants, since a DaemonSet Pod is one a node is expected to keep. <code>--delete-emptydir-data</code> is your acknowledgement that <code>scratch</code>'s emptyDir contents are lost, because emptyDir lives and dies with the Pod on that node."
+            }
+          },
+          {
+            "label": "kubectl drain worker-1 --ignore-daemonsets --force",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The local-storage refusal is untouched",
+                  "text": "$ kubectl drain worker-1 --ignore-daemonsets --force\nnode/worker-1 already cordoned\nerror: unable to drain node \"worker-1\" due to error:cannot delete Pods with local storage (use --delete-emptydir-data to override): mill/scratch, continuing command...\nThere are pending nodes to be drained:\n worker-1"
+                }
+              ],
+              "teach": "<code>--force</code> covers a different refusal: Pods that declare no controller, which would be gone for good since nothing would re-create them. <code>scratch</code> is owned by a Deployment, so <code>--force</code> was never the flag it needed. The error names the flag it does need — the messages are precise, so read them instead of trying the flags you remember."
+            }
+          },
+          {
+            "label": "kubectl drain worker-1 --ignore-daemonsets --delete-emptydir-data --disable-eviction",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Same end state, different mechanism",
+                  "text": "$ kubectl drain worker-1 --ignore-daemonsets --delete-emptydir-data --disable-eviction\nnode/worker-1 already cordoned\nWarning: ignoring DaemonSet-managed Pods: mill/logs-9xm2c; deleting Pods with local storage: mill/scratch\npod/scratch deleted\npod/press-6c9f7d84b5-hq7bn deleted\nnode/worker-1 drained\n\n$ kubectl -n mill get pdb\nNAME        MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE\npress-pdb   3               N/A               1                     9d"
+                },
+                {
+                  "type": "note",
+                  "title": "What the verify notes say",
+                  "text": "--disable-eviction after scaling to 4 skips the budget check, and at 4 replicas the budget was never actually violated. End-state grading cannot separate it from an eviction. It scores."
+                }
+              ],
+              "teach": "Honest answer: run in this order, after the scale-up, it scores all four pairs — the budget had room, so nothing was violated, and <code>deleted</code> instead of <code>evicted</code> in the output is the only trace. The flag is still the wrong habit: it force-deletes and skips the PodDisruptionBudget check entirely, so run before the scale-up it would have emptied the node while breaking the very promise the task tells you to keep. It removes your safety net on exactly the runs where you needed it."
+            }
+          },
+          {
+            "label": "kubectl drain worker-1 --ignore-daemonsets --delete-emptydir-data --grace-period=0",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "No graceful shutdown, same budget",
+                  "text": "$ kubectl drain worker-1 --ignore-daemonsets --delete-emptydir-data --grace-period=0\nnode/worker-1 already cordoned\nevicting pod mill/press-6c9f7d84b5-hq7bn\npod/press-6c9f7d84b5-hq7bn evicted\nnode/worker-1 drained"
+                }
+              ],
+              "teach": "It happens to work here and it throws away the thing eviction is for: the container gets no time to finish in-flight requests or shut down cleanly. A budget protects the replica count; the grace period protects the connections. Do not trade the second to speed up the first."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Suppose a colleague took the short way",
+            "text": "kubectl cordon worker-1, then kubectl delete pod on the press Pod and on scratch. No scale-up first."
+          },
+          {
+            "type": "terminal",
+            "title": "The node empties, and watch the budget while it does",
+            "text": "$ kubectl -n mill delete pod press-6c9f7d84b5-hq7bn\npod \"press-6c9f7d84b5-hq7bn\" deleted\n\n$ kubectl -n mill get pdb\nNAME        MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE\npress-pdb   3               N/A               0                     9d\n\n$ kubectl -n mill get pdb press-pdb -o jsonpath='{.status.currentHealthy}/{.status.desiredHealthy}{\"\\n\"}'\n2/3\n\n$ kubectl -n mill get pods -o wide -l app=press\nNAME                       READY   STATUS    RESTARTS   AGE   IP          NODE\npress-6c9f7d84b5-2jw4x     1/1     Running   0          5d    10.1.0.29   worker-0\npress-6c9f7d84b5-t8zpl     1/1     Running   0          5d    10.1.2.51   worker-2\npress-6c9f7d84b5-xk92m     0/1     Running   0          4s    10.1.2.59   worker-2"
+          }
+        ],
+        "prompt": "Grade it honestly. Does this route score?",
+        "options": [
+          {
+            "label": "Yes — the end state is identical once the replacement is Ready, and end-state grading cannot see the gap",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "A minute later, every pair passes",
+                  "text": "$ kubectl -n mill get pdb press-pdb -o jsonpath='{.status.currentHealthy}/{.status.desiredHealthy}{\"\\n\"}'\n3/3\n\n$ kubectl -n mill get pods -o wide --field-selector spec.nodeName=worker-1\nNAME         READY   STATUS    RESTARTS   AGE   IP          NODE\nlogs-9xm2c   1/1     Running   0          12d   10.1.1.21   worker-1"
+                },
+                {
+                  "type": "note",
+                  "title": "What the verify notes say",
+                  "text": "kubectl cordon followed by kubectl delete pod on the press and scratch Pods also empties the node, and the press replacement lands on another worker. End-state grading cannot separate it from an eviction. Both score. Note them in feedback."
+                }
+              ],
+              "teach": "It scores, and it is still the move to unlearn. <code>kubectl delete pod</code> goes straight to the Pod resource and never consults the eviction API, so <code>currentHealthy</code> dropped to 2 for as long as the replacement took to go Ready — precisely the disruption the budget exists to refuse. On a node with a real workload that window is a partial outage, and nothing would have stopped you from repeating it on worker-2 immediately."
+            }
+          },
+          {
+            "label": "No — the budget was violated, so the third pair scores 0",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What the third pair actually reads",
+                  "text": "$ kubectl -n mill get pdb press-pdb -o jsonpath='{.spec.minAvailable}{\" \"}{.spec.selector}{\" \"}{.status.currentHealthy}{\"/\"}{.status.desiredHealthy}{\"\\n\"}'\n3 {\"matchLabels\":{\"app\":\"press\"}} 3/3"
+                }
+              ],
+              "teach": "The pair reads the budget object against the snapshot and its current health at grading time — the object was never touched and health recovered. A transient dip leaves no trace in any object. Be precise about the difference between \"this was unsafe\" and \"this loses points\"; here only the first is true."
+            }
+          },
+          {
+            "label": "No — deleted Pods do not count as drained, so the second pair fails",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  The only Pods running on worker-1 are managed by a DaemonSet or are mirror Pods. No press Pod and no tmpjob Pod runs there."
+                }
+              ],
+              "teach": "The pair counts Pods on the node; it has no way to ask how they left. Eviction and deletion both end with the Pod gone — the difference is that eviction asks permission first."
+            }
+          },
+          {
+            "label": "No — the node is only cordoned, not drained, so the first pair fails",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Cordon is the whole of what the first pair asks",
+                  "text": "$ kubectl get node worker-1 -o jsonpath='{.spec.unschedulable}{\"\\n\"}'\ntrue"
+                }
+              ],
+              "teach": "There is no \"drained\" flag on a Node: draining is a client-side loop over evictions, and the only lasting state it leaves is <code>spec.unschedulable</code> plus the emptiness of the node. That is why the question grades those two facts separately."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Last check before you move on",
+            "text": "2 pts  worker-1 exists, is Ready, and is unschedulable\n2 pts  only DaemonSet or mirror Pods on worker-1; logs still ready there\n2 pts  press-pdb matches the snapshot and currentHealthy >= desiredHealthy\n2 pts  press has at least 3 ready replicas, none on worker-1; tmpjob has 1 ready replica off worker-1; logs matches the snapshot and is ready on all three nodes"
+          }
+        ],
+        "prompt": "What do you run?",
+        "options": [
+          {
+            "label": "The node's schedulability, the Pods on worker-1 by field selector, the budget's spec and status, and press/tmpjob placement",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Node and node contents",
+                  "text": "$ kubectl get node worker-1 -o jsonpath='{.metadata.name}{\" \"}{.spec.unschedulable}{\" \"}{.status.conditions[?(@.type==\"Ready\")].status}{\"\\n\"}'\nworker-1 true True\n\n$ kubectl get pods -A -o wide --field-selector spec.nodeName=worker-1\nNAMESPACE     NAME                       READY   STATUS    RESTARTS   AGE   IP          NODE\nkube-system   kube-proxy-l7fnq           1/1     Running   0          40d   10.1.1.3    worker-1\nmill          logs-9xm2c                 1/1     Running   0          12d   10.1.1.21   worker-1"
+                },
+                {
+                  "type": "terminal",
+                  "title": "Budget and placement",
+                  "text": "$ kubectl -n mill get pdb press-pdb -o jsonpath='{.spec.minAvailable}{\" \"}{.status.currentHealthy}{\"/\"}{.status.desiredHealthy}{\"\\n\"}'\n3 4/3\n\n$ kubectl -n mill get pods -o wide -l 'app in (press)' --no-headers | awk '{print $1, $3, $7}'\npress-6c9f7d84b5-2jw4x Running worker-0\npress-6c9f7d84b5-t8zpl Running worker-2\npress-6c9f7d84b5-wl6rd Running worker-2\npress-6c9f7d84b5-zn5cq Running worker-0\n\n$ kubectl -n mill get pods -o wide -l app=tmpjob --no-headers | awk '{print $1, $3, $7}'\nscratch Running worker-0"
+                }
+              ],
+              "teach": "Note the two Pods left on <code>worker-1</code>: the DaemonSet Pod and <code>kube-proxy</code>, which is also DaemonSet-managed — both are Pods a node is expected to keep. Scaling <code>press</code> back to 3 is optional; the fourth pair says <em>at least</em> 3 ready replicas off <code>worker-1</code>, so 4 is fine and the temporary capacity is a means rather than a goal."
+            }
+          },
+          {
+            "label": "kubectl get nodes and confirm worker-1 shows Ready,SchedulingDisabled",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The same line a failed drain produces",
+                  "text": "$ kubectl get nodes\nNAME       STATUS                     ROLES    AGE   VERSION\nworker-0   Ready                      <none>   40d   v1.36.0\nworker-1   Ready,SchedulingDisabled   <none>   40d   v1.36.0\nworker-2   Ready                      <none>   40d   v1.36.0"
+                }
+              ],
+              "teach": "It settles the first pair in one line, and the bare drain that evicted nothing printed exactly this too. Six of the eight points are about what is running where — the node's own status cannot see any of it."
+            }
+          },
+          {
+            "label": "kubectl -n mill describe node worker-1 and read the Non-terminated Pods table",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What describe shows",
+                  "text": "$ kubectl describe node worker-1 | sed -n '/Non-terminated Pods/,/Allocated resources/p'\nNon-terminated Pods:          (2 in total)\n  Namespace     Name               CPU Requests  CPU Limits  Memory Requests  Memory Limits  Age\n  ---------     ----               ------------  ----------  ---------------  -------------  ---\n  kube-system   kube-proxy-l7fnq   0 (0%)        0 (0%)      0 (0%)           0 (0%)         40d\n  mill          logs-9xm2c         0 (0%)        0 (0%)      0 (0%)           0 (0%)         12d"
+                }
+              ],
+              "teach": "Good evidence for the second pair, and it also shows the taints and the unschedulable flag higher up. It says nothing about whether the Pods that left came back Ready somewhere else, which is the fourth pair, and nothing about the budget."
+            }
+          },
+          {
+            "label": "kubectl uncordon worker-1 to leave the cluster tidy now that the node is empty",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The first pair, undone",
+                  "text": "$ kubectl uncordon worker-1\nnode/worker-1 uncordoned\n\n$ kubectl get node worker-1 -o jsonpath='{.spec.unschedulable}{\"\\n\"}'\n\n$ kubectl -n mill get pods -o wide --field-selector spec.nodeName=worker-1 --no-headers | wc -l\n3"
+                }
+              ],
+              "teach": "The task asks for the node still a member and <em>refusing new Pods</em> — it is going down for a kernel update. Uncordoning invites the scheduler straight back in, and the second pair goes with the first as Pods land there. Uncordon is what you run after the maintenance, not after the drain."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "Drain is cordon-then-evict, and every part of that matters. The cordon is committed even when the drain then refuses, so a failed drain has already made the node unschedulable — which is why the first pair can score while the second does not. Eviction goes through the eviction API, which respects PodDisruptionBudgets: minAvailable 3 over 3 replicas allows zero disruptions, every eviction comes back 429 with 'Cannot evict pod as it would violate the pod's disruption budget', and kubectl retries every five seconds forever. The fix is to give the budget room — scale press to 4 before you cordon anything, so the replacement has all three nodes to land on — never to lower or delete the budget, which is the promise you were told to keep. The two refusal messages name their own flags: --ignore-daemonsets for DaemonSet-managed Pods (which stay, because a node is expected to keep them), --delete-emptydir-data for local storage, and --force for Pods with no controller, which is not what scratch needed. Two shortcuts reach the same graded end state — --disable-eviction after the scale-up, and cordon plus kubectl delete pod — because end-state grading cannot see a transient drop; both bypass the budget check, and the raw delete really does run press at 2 healthy until the replacement is Ready. See kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/ and kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/."
+  },
+  "exam-var-gaps-q07": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "Where you start",
+            "text": "$ kubectl get sc\nNAME   PROVISIONER       RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE\nfast   csi.example.com   Delete          Immediate           false                  21d\n\n$ kubectl get pv\nNo resources found\n\n$ kubectl -n vault get pvc,pods\nNo resources found in vault namespace."
+          },
+          {
+            "type": "note",
+            "title": "What the driver is like",
+            "text": "csi.example.com provisions on demand, and its volumes are reachable ONLY from the node that owns them. That is a topology constraint: the volume has to be created where the Pod will run."
+          }
+        ],
+        "prompt": "You must add a StorageClass that does not commit a volume until a Pod that needs it has been scheduled. What does that class look like?",
+        "options": [
+          {
+            "label": "provisioner: csi.example.com with volumeBindingMode: WaitForFirstConsumer, and no default-class annotation",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "file",
+                  "title": "/opt/exam/late.yaml",
+                  "text": "apiVersion: storage.k8s.io/v1\nkind: StorageClass\nmetadata:\n  name: late\nprovisioner: csi.example.com\nvolumeBindingMode: WaitForFirstConsumer"
+                },
+                {
+                  "type": "terminal",
+                  "title": "Both classes, neither default",
+                  "text": "$ kubectl apply -f /opt/exam/late.yaml\nstorageclass.storage.k8s.io/late created\n\n$ kubectl get sc\nNAME   PROVISIONER       RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE\nfast   csi.example.com   Delete          Immediate              false                  21d\nlate   csi.example.com   Delete          WaitForFirstConsumer   false                  6s"
+                }
+              ],
+              "teach": "<code>WaitForFirstConsumer</code> delays binding <em>and</em> provisioning until a Pod using the claim exists, so the volume is created to match that Pod's scheduling constraints — node selectors, affinity, taints, resource requests. That is the whole point for a driver whose volumes are node-local: bind first and you may pin the claim to a node the Pod cannot use. Note <code>reclaimPolicy</code> defaulted to <code>Delete</code>, which is fine; the task says nothing about it."
+            }
+          },
+          {
+            "label": "The same class without volumeBindingMode — delayed binding is the default for CSI drivers",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The column tells you otherwise",
+                  "text": "$ kubectl get sc late\nNAME   PROVISIONER       RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE\nlate   csi.example.com   Delete          Immediate           false                  5s"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  StorageClass late exists, provisioner is csi.example.com, volumeBindingMode is WaitForFirstConsumer, and it is not marked default."
+                }
+              ],
+              "teach": "\"When unset, <code>Immediate</code> mode is used by default\" — the provisioner has no say in it. This is the single most expensive omission in the question, because <code>used</code> still binds and <code>reader</code> still runs, so everything looks finished while two pairs score 0. Read the <code>VOLUMEBINDINGMODE</code> column after every class you create."
+            }
+          },
+          {
+            "label": "Mark late as the cluster default so the claims pick it up without naming it",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The annotation is graded",
+                  "text": "$ kubectl get sc -o custom-columns=NAME:.metadata.name,DEFAULT:'.metadata.annotations.storageclass\\.kubernetes\\.io/is-default-class'\nNAME   DEFAULT\nfast   <none>\nlate   true"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not make any class the cluster default. Checkable: no StorageClass carries storageclass.kubernetes.io/is-default-class: \"true\"."
+                }
+              ],
+              "teach": "A default class changes the meaning of every future claim in the cluster that omits <code>storageClassName</code> — a large, invisible side effect to buy yourself two lines of YAML. Name the class on each claim instead; the task asks for claims \"on <code>late</code>\", and being explicit is what makes that checkable."
+            }
+          },
+          {
+            "label": "Edit fast to WaitForFirstConsumer — one class is simpler than two",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It is refused anyway",
+                  "text": "$ kubectl apply -f /opt/exam/fast-edited.yaml\nThe StorageClass \"fast\" is invalid: volumeBindingMode: Invalid value: \"WaitForFirstConsumer\": field is immutable"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "fast is unchanged. Checkable: fast matches the snapshot."
+                }
+              ],
+              "teach": "Two reasons this route is closed: the constraint forbids it, and the API would refuse it. <code>provisioner</code>, <code>parameters</code>, <code>reclaimPolicy</code> and <code>volumeBindingMode</code> are all immutable on a StorageClass — a class is a contract that existing PVs were provisioned under, so changing it after the fact would make those volumes lie."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Suppose you created late with Immediate and then noticed",
+            "text": "The class exists with the wrong binding mode. No claims have been created yet."
+          },
+          {
+            "type": "terminal",
+            "title": "The obvious fix does not work",
+            "text": "$ kubectl edit sc late\nerror: storageclasses.storage.k8s.io \"late\" could not be patched: StorageClass.storage.k8s.io \"late\" is invalid: volumeBindingMode: Invalid value: \"WaitForFirstConsumer\": field is immutable\nYou can run `kubectl replace -f /tmp/kubectl-edit-1837.yaml` to try this update again.\n\n$ kubectl replace -f /tmp/kubectl-edit-1837.yaml\nThe StorageClass \"late\" is invalid: volumeBindingMode: Invalid value: \"WaitForFirstConsumer\": field is immutable"
+          }
+        ],
+        "prompt": "The field is immutable. What now?",
+        "options": [
+          {
+            "label": "Delete late and create it again with the right mode — nothing is bound to it yet",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Clean, because nothing depends on it",
+                  "text": "$ kubectl get pvc -A --field-selector spec.storageClassName=late\nNo resources found\n\n$ kubectl delete sc late && kubectl apply -f /opt/exam/late.yaml\nstorageclass.storage.k8s.io \"late\" deleted\nstorageclass.storage.k8s.io/late created\n\n$ kubectl get sc late\nNAME   PROVISIONER       RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE\nlate   csi.example.com   Delete          WaitForFirstConsumer   false                  3s"
+                }
+              ],
+              "teach": "Deleting a StorageClass does not touch PersistentVolumes or claims that already reference it — they keep working, they just cannot be provisioned from it again. Here there are none, so the re-create is free. Check first: <code>kubectl get pvc -A</code> filtered on the class is the read that makes this decision safe rather than lucky."
+            }
+          },
+          {
+            "label": "kubectl patch sc late --type=merge with the new mode, which bypasses the edit validation",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Same validation, different verb",
+                  "text": "$ kubectl patch sc late --type=merge -p '{\"volumeBindingMode\":\"WaitForFirstConsumer\"}'\nThe StorageClass \"late\" is invalid: volumeBindingMode: Invalid value: \"WaitForFirstConsumer\": field is immutable"
+                }
+              ],
+              "teach": "Immutability is enforced in the API server's update validation, so every write verb hits it — <code>edit</code>, <code>patch</code>, <code>replace</code>, server-side apply. When one verb is refused on validation grounds, reaching for another verb never helps; only a different object does."
+            }
+          },
+          {
+            "label": "Leave it and create a second class late-wfc with the right mode, pointing the claims at that",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  StorageClass LATE exists, provisioner is csi.example.com, volumeBindingMode is WaitForFirstConsumer...\n2 pts  PVC vault/used ... its storageClassName is late.\n2 pts  PVC vault/spare ... its storageClassName is late."
+                }
+              ],
+              "teach": "All three pairs name the class <code>late</code>. Leaving a broken object beside a working one is also how clusters accumulate traps: the next person picks the wrong name and gets <code>Immediate</code> binding with no warning."
+            }
+          },
+          {
+            "label": "Set spec.volumeBindingMode on the two claims instead — the claim can override the class",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "No such field",
+                  "text": "$ kubectl apply -f /opt/exam/used.yaml\nerror: error validating \"/opt/exam/used.yaml\": error validating data: ValidationError(PersistentVolumeClaim.spec): unknown field \"volumeBindingMode\" in io.k8s.api.core.v1.PersistentVolumeClaimSpec"
+                }
+              ],
+              "teach": "Binding mode is a property of the class, not of the claim — that is the split the API draws: an administrator decides <em>how</em> storage binds, an application author decides <em>what</em> it needs. <code>kubectl explain pvc.spec</code> shows the short list of fields a claim actually has."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "file",
+            "title": "The three objects you are about to create",
+            "text": "# used.yaml and spare.yaml differ only in metadata.name\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: used\n  namespace: vault\nspec:\n  storageClassName: late\n  accessModes: [\"ReadWriteOnce\"]\n  resources:\n    requests:\n      storage: 1Gi\n---\napiVersion: v1\nkind: Pod\nmetadata:\n  name: reader\n  namespace: vault\nspec:\n  containers:\n  - name: app\n    image: busybox:1.36\n    command: [\"sleep\", \"3600\"]\n    volumeMounts:\n    - name: data\n      mountPath: /data\n  volumes:\n  - name: data\n    persistentVolumeClaim:\n      claimName: used"
+          },
+          {
+            "type": "terminal",
+            "title": "After applying all three",
+            "text": "$ kubectl -n vault get pvc\nNAME    STATUS    VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE\nspare   Pending                                                                        late           <unset>                 40s\nused    Bound     pvc-8f1c0f27-6a1e-4a35-9a02-b7d3e5c14f90   1Gi        RWO            late           <unset>                 40s\n\n$ kubectl -n vault describe pvc spare | sed -n '/Events:/,$p'\nEvents:\n  Type    Reason                Age   From                         Message\n  ----    ------                ----  ----                         -------\n  Normal  WaitForFirstConsumer  38s   persistentvolume-controller  waiting for first consumer to be created before binding"
+          }
+        ],
+        "prompt": "One claim is Bound and one is stuck Pending. Which is it?",
+        "options": [
+          {
+            "label": "This is the finished state — spare Pending with no volumeName is the graded proof that binding waits",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  PVC vault/spare exists, its storageClassName is late, its request is 1Gi, and it is STILL PENDING with an empty spec.volumeName. No Pod in any namespace references spare."
+                },
+                {
+                  "type": "terminal",
+                  "title": "The two claims side by side",
+                  "text": "$ kubectl -n vault get pvc -o custom-columns=NAME:.metadata.name,PHASE:.status.phase,VOLUME:.spec.volumeName\nNAME    PHASE     VOLUME\nspare   Pending   <none>\nused    Bound     pvc-8f1c0f27-6a1e-4a35-9a02-b7d3e5c14f90"
+                }
+              ],
+              "teach": "The event text is the mechanism in one line: <em>waiting for first consumer to be created before binding</em>. <code>used</code> has a consumer, so the scheduler picked a node and the driver provisioned there; <code>spare</code> has none, so nothing is committed. The unconsumed claim is the only object in this task that can distinguish <code>WaitForFirstConsumer</code> from <code>Immediate</code> — which is why the question insists on a claim nobody uses."
+            }
+          },
+          {
+            "label": "Create a small Pod that mounts spare so both claims bind",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It binds, and the proof is gone",
+                  "text": "$ kubectl -n vault get pvc\nNAME    STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE\nspare   Bound    pvc-3d90a71b-52cc-4f18-b6e7-0c2af9e34d15   1Gi        RWO            late           2m\nused    Bound    pvc-8f1c0f27-6a1e-4a35-9a02-b7d3e5c14f90   1Gi        RWO            late           2m"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "No Pod in any namespace references spare."
+                }
+              ],
+              "teach": "Pending is not a failure state here — it is the answer. The instinct to make every object green is the trap the question is built on: you would be destroying the evidence that your class behaves as specified."
+            }
+          },
+          {
+            "label": "Move spare to class fast so it binds immediately, since nothing will consume it",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Bound, on the wrong class",
+                  "text": "$ kubectl -n vault get pvc spare -o custom-columns=NAME:.metadata.name,PHASE:.status.phase,SC:.spec.storageClassName\nNAME    PHASE   SC\nspare   Bound   fast"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "PVC vault/spare... its storageClassName is LATE, and it is still Pending."
+                }
+              ],
+              "teach": "Two failures in one move: it binds at once, and it was never on the class under test. <code>fast</code> is in this question to be the contrast — <code>Immediate</code> on the same provisioner — not to be a place to put claims that will not bind."
+            }
+          },
+          {
+            "label": "Something is wrong with the driver — check the provisioner logs before continuing",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The driver was never asked",
+                  "text": "$ kubectl -n vault describe pvc spare | grep -A2 Events:\nEvents:\n  Type    Reason                Age   From                         Message\n  Normal  WaitForFirstConsumer  38s   persistentvolume-controller  waiting for first consumer to be created before binding\n\n$ kubectl -n vault describe pvc used | grep -A3 Events:\nEvents:\n  Type    Reason                 Age   From                                          Message\n  Normal  WaitForFirstConsumer   62s   persistentvolume-controller                   waiting for first consumer to be created before binding\n  Normal  ExternalProvisioning   61s   persistentvolume-controller                   Waiting for a volume to be created either by the external provisioner 'csi.example.com' or manually by the system administrator...\n  Normal  ProvisioningSucceeded  59s   csi.example.com_controller-0_9f1c              Successfully provisioned volume pvc-8f1c0f27-6a1e-4a35-9a02-b7d3e5c14f90"
+                }
+              ],
+              "teach": "Checking a Pending claim is a good reflex, and the events answer it without leaving <code>kubectl</code>: <code>spare</code> has one event and it names the reason. Compare with <code>used</code>, which shows the same first event, then <code>ExternalProvisioning</code> and <code>ProvisioningSucceeded</code> once its Pod scheduled — the whole delayed-binding sequence in three lines. Read the events before the logs."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Suppose you had pinned reader to a node",
+            "text": "The same Pod, plus spec.nodeName: node-2, to be sure it lands somewhere with room."
+          },
+          {
+            "type": "terminal",
+            "title": "The Pod runs nowhere and the claim never binds",
+            "text": "$ kubectl -n vault get pod reader\nNAME     READY   STATUS    RESTARTS   AGE\nreader   0/1     Pending   0          4m\n\n$ kubectl -n vault get pvc used\nNAME   STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE\nused   Pending                                      late           4m\n\n$ kubectl -n vault describe pod reader | tail -3\nEvents:\n  Type     Reason       Age   From     Message\n  Warning  FailedMount  2m    kubelet  Unable to attach or mount volumes: unmounted volumes=[data], unattached volumes=[data]: timed out waiting for the condition"
+          }
+        ],
+        "prompt": "No FailedScheduling event, and nothing is binding. Why?",
+        "options": [
+          {
+            "label": "nodeName bypasses the scheduler, and delayed binding waits for a scheduling decision that never happens",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "The documented warning",
+                  "text": "If you choose to use WaitForFirstConsumer, do not use nodeName in the Pod spec to specify node affinity. If nodeName is used in this case, the scheduler will be bypassed and PVC will remain in pending state. Instead, use a node selector on kubernetes.io/hostname."
+                },
+                {
+                  "type": "terminal",
+                  "title": "Without nodeName",
+                  "text": "$ kubectl -n vault delete pod reader && kubectl apply -f /opt/exam/reader.yaml\npod \"reader\" deleted\npod/reader created\n\n$ kubectl -n vault get pvc used\nNAME   STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE\nused   Bound    pvc-8f1c0f27-6a1e-4a35-9a02-b7d3e5c14f90   1Gi        RWO            late           5m"
+                }
+              ],
+              "teach": "It is the scheduler that tells the volume machinery which node was chosen, so a Pod that never goes through scheduling leaves the claim with nothing to bind to — and the kubelet then waits forever for a volume that is not coming. The deadlock is silent because there is no failed scheduling attempt to report. If you must steer placement under delayed binding, use <code>nodeSelector</code> on <code>kubernetes.io/hostname</code>."
+            }
+          },
+          {
+            "label": "The node is out of capacity — pick a different node in nodeName",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Any node, same result",
+                  "text": "$ kubectl -n vault get pod reader -o wide\nNAME     READY   STATUS    RESTARTS   AGE   IP       NODE     NOMINATED NODE\nreader   0/1     Pending   0          3m    <none>   node-1   <none>"
+                }
+              ],
+              "teach": "Look at that output: the Pod already has a NODE and is still Pending — that combination only happens with <code>nodeName</code>, because assignment happened without scheduling. A capacity problem would have produced a <code>FailedScheduling</code> event naming what did not fit."
+            }
+          },
+          {
+            "label": "The claim must exist before the Pod — delete both and create the PVC first",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Creating late, then both claims, then the Pod reaches the end state; so does creating late, then the Pod and used together, then spare. The grader reads the end state and does not care about the order."
+                }
+              ],
+              "teach": "Kubernetes controllers are level-triggered: they reconcile whatever exists whenever it appears, so a Pod created before its claim simply waits and then proceeds. Ordering superstitions cost you time and hide the real cause."
+            }
+          },
+          {
+            "label": "Switch late to Immediate so the volume exists before the Pod needs it",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading lines",
+                  "text": "2 pts  volumeBindingMode is WaitForFirstConsumer.\nAnd the driver's volumes are reachable only from the node that owns them."
+                }
+              ],
+              "teach": "It would clear the symptom and break the question — and for this driver it is the wrong storage design too: bind before scheduling and the volume may be created on a node the Pod cannot run on. Remove the <code>nodeName</code> that caused the deadlock, not the mode that revealed it."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Last check before you move on",
+            "text": "2 pts  late exists with provisioner csi.example.com and WaitForFirstConsumer, not default; fast matches the snapshot; no class is default\n2 pts  used is Bound on late, 1Gi, RWO; reader is Running on busybox:1.36 with used mounted at /data; the PV has spec.csi.driver csi.example.com and a claimRef naming vault/used\n2 pts  spare exists on late, 1Gi, still Pending with an empty spec.volumeName, referenced by no Pod"
+          }
+        ],
+        "prompt": "What do you run?",
+        "options": [
+          {
+            "label": "The class table with the default annotation, the two claims with phase and volumeName, and the PV's driver and claimRef",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Classes and claims",
+                  "text": "$ kubectl get sc -o custom-columns=NAME:.metadata.name,PROV:.provisioner,MODE:.volumeBindingMode,DEFAULT:'.metadata.annotations.storageclass\\.kubernetes\\.io/is-default-class'\nNAME   PROV              MODE                   DEFAULT\nfast   csi.example.com   Immediate              <none>\nlate   csi.example.com   WaitForFirstConsumer   <none>\n\n$ kubectl -n vault get pvc -o custom-columns=NAME:.metadata.name,PHASE:.status.phase,SC:.spec.storageClassName,SIZE:.spec.resources.requests.storage,VOLUME:.spec.volumeName\nNAME    PHASE     SC     SIZE   VOLUME\nspare   Pending   late   1Gi    <none>\nused    Bound     late   1Gi    pvc-8f1c0f27-6a1e-4a35-9a02-b7d3e5c14f90"
+                },
+                {
+                  "type": "terminal",
+                  "title": "The volume, and the Pod using it",
+                  "text": "$ kubectl get pv -o custom-columns=NAME:.metadata.name,DRIVER:.spec.csi.driver,CLAIM:'.spec.claimRef.namespace/.spec.claimRef.name'\nNAME                                       DRIVER            CLAIM\npvc-8f1c0f27-6a1e-4a35-9a02-b7d3e5c14f90   csi.example.com   vault/used\n\n$ kubectl -n vault get pod reader -o jsonpath='{.status.phase}{\" \"}{.spec.containers[0].image}{\" \"}{.spec.containers[0].volumeMounts[0].mountPath}{\" \"}{.spec.volumes[0].persistentVolumeClaim.claimName}{\"\\n\"}'\nRunning busybox:1.36 /data used"
+                }
+              ],
+              "teach": "Exactly one PV exists, and its <code>claimRef</code> names <code>vault/used</code> — that pair of facts proves nothing was provisioned for <code>spare</code> and nothing was made by hand. The default-class column is worth keeping in the habit: it is a constraint you can violate without noticing, since <code>kubectl get sc</code> only marks it with a <code>(default)</code> suffix on the name."
+            }
+          },
+          {
+            "label": "kubectl -n vault get pvc,pods and confirm used is Bound and reader is Running",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What an Immediate class would have printed",
+                  "text": "$ kubectl -n vault get pvc,pods\nNAME                          STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE\npersistentvolumeclaim/spare   Bound    pvc-3d90a71b-52cc-4f18-b6e7-0c2af9e34d15   1Gi        RWO            late           3m\npersistentvolumeclaim/used    Bound    pvc-8f1c0f27-6a1e-4a35-9a02-b7d3e5c14f90   1Gi        RWO            late           3m\n\nNAME         READY   STATUS    RESTARTS   AGE\npod/reader   1/1     Running   0          3m"
+                }
+              ],
+              "teach": "Necessary for the second pair and blind to the third: the class with the wrong binding mode produces a <em>healthier-looking</em> version of this same output, with both claims Bound. The evidence that matters here is the object that did not change."
+            }
+          },
+          {
+            "label": "kubectl -n vault exec reader -- touch /data/ok to prove the volume is really mounted",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It does work",
+                  "text": "$ kubectl -n vault exec reader -- sh -c 'touch /data/ok && ls -l /data'\ntotal 0\n-rw-r--r--    1 root     root             0 Aug 17 09:41 ok"
+                }
+              ],
+              "teach": "A satisfying end-to-end check, and stronger than reading YAML for the question \"is this volume usable\". The pair asks for the mount path and the claim binding, which the spec already states, and this proves nothing about <code>spare</code> or the class. Keep it as a smoke test, not as your evidence."
+            }
+          },
+          {
+            "label": "kubectl delete pvc spare -n vault now that you have shown it stays Pending",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  PVC vault/spare EXISTS, its storageClassName is late, its request is 1Gi, and it is still Pending..."
+                }
+              ],
+              "teach": "The Pending claim is a deliverable, not scaffolding. Two of the six points are the object sitting there unbound — deleting it after \"proving\" the behaviour scores zero for the behaviour."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "volumeBindingMode decides when a claim commits to a volume, and it is a property of the StorageClass alone — a claim cannot override it. Unset means Immediate, which binds and provisions the moment the claim exists; WaitForFirstConsumer delays both until a Pod using the claim is created, so the volume is provisioned to fit that Pod's scheduling constraints. For a driver whose volumes are reachable only from one node, that is the difference between working storage and a Pod that can never run. The field is immutable, along with provisioner, parameters and reclaimPolicy, so a class created with the wrong mode is deleted and re-created — safe here because nothing references it yet, and worth checking with kubectl get pvc -A before you delete anything in a real cluster. The unconsumed claim is the whole exam: with Immediate, used still binds and reader still runs, so only spare sitting Pending with an empty spec.volumeName distinguishes the two modes — which is why making it bind, moving it to fast, or deleting it all score 0. One more trap comes from the docs: spec.nodeName bypasses the scheduler, and delayed binding is waiting for a scheduling decision, so the claim stays Pending forever with no FailedScheduling event to explain it; use nodeSelector on kubernetes.io/hostname instead. See kubernetes.io/docs/concepts/storage/storage-classes/ and kubernetes.io/docs/concepts/storage/persistent-volumes/."
+  },
+  "exam-var-gaps-q08": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "file",
+            "title": "The Corefile you were given",
+            "text": ".:53 {\n    errors\n    health {\n       lameduck 5s\n    }\n    ready\n    kubernetes cluster.local in-addr.arpa ip6.arpa {\n       pods insecure\n       fallthrough in-addr.arpa ip6.arpa\n       ttl 30\n    }\n    prometheus :9153\n    forward . /etc/resolv.conf\n    cache 30\n    loop\n    reload\n    loadbalance\n}"
+          },
+          {
+            "type": "terminal",
+            "title": "Today the zone resolves nowhere",
+            "text": "$ kubectl -n kube-system get deploy coredns\nNAME      READY   UP-TO-DATE   AVAILABLE   AGE\ncoredns   2/2     2            2           40d\n\n$ kubectl -n probe exec dig -- nslookup db.corp.internal\nServer:\t\t10.96.0.10\nAddress:\t10.96.0.10:53\n\n** server can't find db.corp.internal: NXDOMAIN\ncommand terminated with exit code 1"
+          }
+        ],
+        "prompt": "Every Pod must resolve corp.internal through 10.96.90.53, and everything else must keep working exactly as it does. What shape of change is that?",
+        "options": [
+          {
+            "label": "A second server block for zone corp.internal beside .:53, holding a forward to 10.96.90.53",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "file",
+                  "title": "What you will append, after the closing brace of .:53",
+                  "text": "corp.internal:53 {\n    errors\n    cache 30\n    forward . 10.96.90.53\n}"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  ConfigMap kube-system/coredns holds A SECOND SERVER BLOCK for zone corp.internal, and that block holds a forward line whose destination is 10.96.90.53. The .:53 block matches the snapshot line for line."
+                }
+              ],
+              "teach": "CoreDNS routes each query to the server block whose zone is the longest match for the name, then runs that block's plugin chain. A stub domain is therefore a block of its own: names under <code>corp.internal</code> never reach <code>.:53</code>, and every other name never reaches the new block. Inside it, <code>forward . 10.96.90.53</code> means \"everything this block was given\" — which is already only <code>corp.internal</code>."
+            }
+          },
+          {
+            "label": "Change the .:53 block's forward to 10.96.90.53, since that resolver knows the zone",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The new name works and the internet stops",
+                  "text": "$ kubectl -n probe exec dig -- nslookup db.corp.internal\nServer:\t\t10.96.0.10\nAddress:\t10.96.0.10:53\n\nName:\tdb.corp.internal\nAddress: 10.20.4.31\n\n$ kubectl -n probe exec dig -- dig +short registry.k8s.io\n;; communications error to 10.96.0.10#53: timed out"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading lines",
+                  "text": "The .:53 block is unchanged. Checkable: that block in the live Corefile matches the snapshot LINE FOR LINE.\n2 pts  ...a name that only the node resolver can answer — a public name — still resolves."
+                }
+              ],
+              "teach": "This is the failure the third pair exists to catch, and it is seductive because the name you were asked about starts working. <code>forward . /etc/resolv.conf</code> in the default block means \"send everything else where the node sends it\"; repointing it sends the whole internet to a resolver that is authoritative for one zone. A grader that only tested the new name would pass this."
+            }
+          },
+          {
+            "label": "Add fallthrough corp.internal to the kubernetes plugin so unmatched names go on to the stub resolver",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Same NXDOMAIN",
+                  "text": "$ kubectl -n probe exec dig -- nslookup db.corp.internal\n** server can't find db.corp.internal: NXDOMAIN"
+                },
+                {
+                  "type": "note",
+                  "title": "What fallthrough does",
+                  "text": "fallthrough hands a name the kubernetes plugin could not answer to the NEXT PLUGIN IN THE SAME BLOCK — here that is forward . /etc/resolv.conf. It never chooses a different resolver, and it never leaves the block."
+                }
+              ],
+              "teach": "The existing <code>fallthrough in-addr.arpa ip6.arpa</code> line is exactly this: reverse lookups the cluster cannot answer are passed along the chain. Plugin order inside a block and zone matching between blocks are two different mechanisms, and only the second one routes a zone somewhere else."
+            }
+          },
+          {
+            "label": "Give Pod dig a dnsConfig with nameserver 10.96.90.53 and a search entry for corp.internal",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "One Pod fixed, every other Pod unchanged",
+                  "text": "$ kubectl -n probe exec dig -- nslookup db.corp.internal\nServer:\t\t10.96.90.53\nAddress:\t10.96.90.53:53\n\nName:\tdb.corp.internal\nAddress: 10.20.4.31\n\n$ kubectl -n default exec check -- nslookup db.corp.internal\n** server can't find db.corp.internal: NXDOMAIN"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "No Pod's DNS settings changed. Checkable: every Pod's dnsPolicy and dnsConfig match the snapshot."
+                }
+              ],
+              "teach": "The task says <em>every Pod in the cluster</em>, and per-Pod resolver settings do not generalise — you would be editing every workload, forever. Cluster-wide DNS behaviour belongs in CoreDNS. Note the giveaway in the output: the SERVER line changed, which is the visible sign that this Pod stopped asking cluster DNS."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Suppose the new block went inside the braces",
+            "text": "The corp.internal:53 block pasted before the closing brace of .:53, rather than after it."
+          },
+          {
+            "type": "terminal",
+            "title": "CoreDNS refuses the file",
+            "text": "$ kubectl -n kube-system get pods -l k8s-app=kube-dns\nNAME                       READY   STATUS             RESTARTS      AGE\ncoredns-7d9b4c8f6d-4nmvz   0/1     CrashLoopBackOff   3 (22s ago)   40d\ncoredns-7d9b4c8f6d-vk8rt   0/1     CrashLoopBackOff   3 (18s ago)   40d\n\n$ kubectl -n kube-system logs coredns-7d9b4c8f6d-4nmvz\nplugin/corefile: Corefile:15 - Error during parsing: Unknown directive 'corp.internal:53'\n\n$ kubectl -n kube-system get deploy coredns\nNAME      READY   UP-TO-DATE   AVAILABLE   AGE\ncoredns   0/2     2            0           40d"
+          }
+        ],
+        "prompt": "Cluster DNS is now down. What do you do?",
+        "options": [
+          {
+            "label": "Move the block after the closing brace of .:53 and apply — the log names the line",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "file",
+                  "title": "The correct nesting",
+                  "text": ".:53 {\n    ...\n    loadbalance\n}\n\ncorp.internal:53 {\n    errors\n    cache 30\n    forward . 10.96.90.53\n}"
+                },
+                {
+                  "type": "terminal",
+                  "title": "They come back",
+                  "text": "$ kubectl -n kube-system get pods -l k8s-app=kube-dns\nNAME                       READY   STATUS    RESTARTS      AGE\ncoredns-7d9b4c8f6d-4nmvz   1/1     Running   4 (65s ago)   40d\ncoredns-7d9b4c8f6d-vk8rt   1/1     Running   4 (61s ago)   40d"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  ...Deployment coredns reports 2 ready replicas. And: CoreDNS is healthy. Checkable: Deployment kube-system/coredns reports 2 ready replicas."
+                }
+              ],
+              "teach": "Inside a server block, the parser expects plugin names, so a zone label there is an unknown directive. The log gives you the file, the line number and the token — always read it before changing anything else. Note the replicas recovered on their own: a CrashLooping Pod keeps restarting, so fixing the ConfigMap is enough."
+            }
+          },
+          {
+            "label": "kubectl rollout restart the coredns Deployment to clear the crash loop",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "New Pods, same file",
+                  "text": "$ kubectl -n kube-system rollout restart deployment coredns\ndeployment.apps/coredns restarted\n\n$ kubectl -n kube-system get pods -l k8s-app=kube-dns\nNAME                       READY   STATUS             RESTARTS     AGE\ncoredns-6f8c5d7b49-2q7lw   0/1     CrashLoopBackOff   2 (14s ago)  45s\ncoredns-6f8c5d7b49-x4bzd   0/1     CrashLoopBackOff   2 (11s ago)  43s"
+                }
+              ],
+              "teach": "The Pods are reading a ConfigMap that is still invalid, so restarting them just moves the crash to fresh Pods. Restart is how you make CoreDNS pick up a <em>good</em> file sooner; it is never a fix for a bad one."
+            }
+          },
+          {
+            "label": "Scale coredns to 0 and back to 2 so the ConfigMap is re-mounted cleanly",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Cluster DNS fully down in between",
+                  "text": "$ kubectl -n kube-system scale deploy coredns --replicas=0\ndeployment.apps/coredns scaled\n\n$ kubectl -n probe exec dig -- nslookup kubernetes.default\n;; connection timed out; no servers could be reached\ncommand terminated with exit code 1"
+                }
+              ],
+              "teach": "A CrashLooping CoreDNS is already an outage; scaling to zero guarantees it and removes the Pods whose logs were telling you the answer. Nothing is cached or stale here — the mounted ConfigMap updates in place, which is exactly why the <code>reload</code> plugin can work at all."
+            }
+          },
+          {
+            "label": "Restore the saved Corefile and abandon the stub domain approach",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Service restored, task unfinished",
+                  "text": "$ kubectl -n kube-system apply -f /tmp/coredns-backup.yaml\nconfigmap/coredns configured\n\n$ kubectl -n kube-system get deploy coredns\nNAME      READY   UP-TO-DATE   AVAILABLE   AGE\ncoredns   2/2     2            2           40d\n\n$ kubectl -n probe exec dig -- nslookup db.corp.internal\n** server can't find db.corp.internal: NXDOMAIN"
+                }
+              ],
+              "teach": "Right instinct, wrong stopping point — having a copy of the working Corefile before you edit is the discipline that makes this recoverable, and restoring it is the correct first move if you cannot see the mistake. The approach was never wrong, only the placement. Restore, then re-apply the block in the right position."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "The block is in the right place. Now the forward line inside it.",
+            "text": "Grading accepts either zone argument: forward . 10.96.90.53 and forward corp.internal 10.96.90.53 are both valid inside the corp.internal block, and both serve the zone."
+          }
+        ],
+        "prompt": "Which forward line do you write?",
+        "options": [
+          {
+            "label": "forward . 10.96.90.53",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It serves the zone",
+                  "text": "$ kubectl -n probe exec dig -- dig +short db.corp.internal\n10.20.4.31\n\n$ kubectl -n probe exec dig -- dig +short app.corp.internal\n10.20.4.44"
+                },
+                {
+                  "type": "note",
+                  "title": "Why the dot is not a catch-all here",
+                  "text": "The zone argument of forward is relative to the queries this BLOCK receives, and the block only ever receives names under corp.internal."
+                }
+              ],
+              "teach": "This is the form the upstream stub-domain example uses, and it reads correctly once you see the scoping: <code>.</code> means \"everything reaching this block\". Writing <code>forward corp.internal 10.96.90.53</code> instead is equally valid and slightly more explicit — the exam accepts both, because inside this block they route identically."
+            }
+          },
+          {
+            "label": "forward . ns.corp.internal",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "CoreDNS will not start",
+                  "text": "$ kubectl -n kube-system logs coredns-7d9b4c8f6d-4nmvz\nplugin/forward: Corefile:17 - Error during parsing: not an IP address or file: \"ns.corp.internal\""
+                },
+                {
+                  "type": "note",
+                  "title": "Documented limit",
+                  "text": "CoreDNS does not support FQDNs for stub-domains and nameservers (e.g. \"ns.foo.com\")."
+                }
+              ],
+              "teach": "A forwarding destination must be an IP address or a resolv.conf file, and the reason is circularity: resolving the nameserver's own name would need a resolver. The task hands you <code>10.96.90.53</code> for this reason — use the address you were given."
+            }
+          },
+          {
+            "label": "forward . 10.96.90.53 /etc/resolv.conf, so public names still work from inside this block",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It parses, and it sends corp.internal to the node resolver half the time",
+                  "text": "$ kubectl -n probe exec dig -- dig +short db.corp.internal\n\n$ kubectl -n probe exec dig -- dig +short db.corp.internal\n10.20.4.31"
+                }
+              ],
+              "teach": "Multiple upstreams are for redundancy between resolvers that answer the same zone, and CoreDNS load-balances across them — so half your queries go to a resolver that knows nothing about <code>corp.internal</code> and return empty. Public names were never at risk: they are handled by the <code>.:53</code> block, which this one does not touch."
+            }
+          },
+          {
+            "label": "proxy . 10.96.90.53",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The plugin is gone",
+                  "text": "$ kubectl -n kube-system logs coredns-7d9b4c8f6d-4nmvz\nplugin/corefile: Corefile:17 - Error during parsing: Unknown directive 'proxy'"
+                }
+              ],
+              "teach": "<code>proxy</code> was the old forwarding plugin and was removed from CoreDNS years ago in favour of <code>forward</code>, which is faster and speaks more protocols. Tutorials that use it are old enough that their other advice is suspect too."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The ConfigMap now holds both blocks",
+            "text": "$ kubectl -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' | tail -8\n    loadbalance\n}\n\ncorp.internal:53 {\n    errors\n    cache 30\n    forward . 10.96.90.53\n}\n\n$ kubectl -n probe exec dig -- nslookup db.corp.internal\n** server can't find db.corp.internal: NXDOMAIN"
+          }
+        ],
+        "prompt": "The file is right and the lookup still fails. What do you do?",
+        "options": [
+          {
+            "label": "Wait for the reload plugin — allow two minutes — or force it with kubectl rollout restart deployment coredns -n kube-system",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The Pods say when they took it",
+                  "text": "$ kubectl -n kube-system logs -l k8s-app=kube-dns --tail=2\n[INFO] Reloading\n[INFO] Reloading complete\n\n$ kubectl -n probe exec dig -- nslookup db.corp.internal\nServer:\t\t10.96.0.10\nAddress:\t10.96.0.10:53\n\nName:\tdb.corp.internal\nAddress: 10.20.4.31"
+                },
+                {
+                  "type": "note",
+                  "title": "Both routes score",
+                  "text": "Editing the ConfigMap and waiting for reload reaches the end state. So does editing it and then running kubectl rollout restart deployment coredns -n kube-system. Both leave the Pods serving the new zone, which is what the second pair reads."
+                }
+              ],
+              "teach": "The <code>reload</code> plugin polls the mounted file, and the kubelet's own ConfigMap refresh adds delay on top — the documented allowance is two minutes. A restart is the deterministic version and is safe here, because the file has already been proved parseable by nothing crashing. Testing at ten seconds and concluding failure is the trap."
+            }
+          },
+          {
+            "label": "The zone name must need a trailing dot — change the header to corp.internal.:53",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Both forms parse, and neither was the problem",
+                  "text": "$ kubectl -n kube-system logs -l k8s-app=kube-dns --tail=1\n[INFO] Reloading complete\n\n$ kubectl -n probe exec dig -- dig +short db.corp.internal\n10.20.4.31"
+                }
+              ],
+              "teach": "CoreDNS treats zone names as fully qualified whether or not you write the dot. Changing a line that was already correct, at the moment the reload was about to happen, is how people convince themselves a wrong fix worked. Change one thing, then wait long enough to know."
+            }
+          },
+          {
+            "label": "Create a second ConfigMap coredns-custom holding the new block",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Nothing mounts it",
+                  "text": "$ kubectl -n kube-system get deploy coredns -o jsonpath='{.spec.template.spec.volumes}{\"\\n\"}'\n[{\"configMap\":{\"items\":[{\"key\":\"Corefile\",\"path\":\"Corefile\"}],\"name\":\"coredns\"},\"name\":\"config-volume\"}]"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "2 pts  ConfigMap kube-system/coredns holds a second server block for zone corp.internal..."
+                }
+              ],
+              "teach": "Some distributions ship a CoreDNS whose Corefile <code>import</code>s a custom ConfigMap — that is a property of those installations, not of CoreDNS. Read the Deployment's volumes to see which ConfigMap is actually mounted before inventing a second one."
+            }
+          },
+          {
+            "label": "Restart the Pod in probe so it picks up the new DNS configuration",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The client had nothing to pick up",
+                  "text": "$ kubectl -n probe exec dig -- cat /etc/resolv.conf\nsearch probe.svc.cluster.local svc.cluster.local cluster.local\nnameserver 10.96.0.10\noptions ndots:5"
+                }
+              ],
+              "teach": "The Pod's resolver config points at the cluster DNS Service and never changes — all of the new behaviour is on the server side. Restarting clients to fix a server-side change wastes time and, on a real cluster, restarts workloads for nothing."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Last check before you move on",
+            "text": "2 pts  the ConfigMap holds a corp.internal server block forwarding to 10.96.90.53, and .:53 matches the snapshot line for line\n2 pts  the running Pods serve it: db.corp.internal is answered from probe/dig, and coredns reports 2 ready replicas\n2 pts  kubernetes.default.svc.cluster.local still resolves to the kubernetes Service ClusterIP, a public name still resolves, and Pod DNS settings and kube-dns match the snapshot"
+          }
+        ],
+        "prompt": "What do you run?",
+        "options": [
+          {
+            "label": "Diff the .:53 block against your saved copy, then run all three lookups from probe/dig and check the replica count",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The default block is untouched",
+                  "text": "$ kubectl -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' > /tmp/now.corefile\n$ sed -n '/^\\.:53 {/,/^}/p' /tmp/now.corefile | diff /tmp/coredns-backup.corefile - && echo IDENTICAL\nIDENTICAL\n\n$ kubectl -n kube-system get deploy coredns\nNAME      READY   UP-TO-DATE   AVAILABLE   AGE\ncoredns   2/2     2            2           40d"
+                },
+                {
+                  "type": "terminal",
+                  "title": "Three lookups, one client",
+                  "text": "$ kubectl -n probe exec dig -- dig +short db.corp.internal\n10.20.4.31\n\n$ kubectl -n probe exec dig -- dig +short kubernetes.default.svc.cluster.local\n10.96.0.1\n\n$ kubectl -n probe exec dig -- dig +short registry.k8s.io\n34.107.244.51"
+                }
+              ],
+              "teach": "The third pair is two negative-space checks — the things that must <em>still</em> work — and they are the ones a repointed default <code>forward</code> would have broken. Diffing the block you were told not to touch is cheap and turns \"I did not change it\" into evidence."
+            }
+          },
+          {
+            "label": "kubectl -n probe exec dig -- nslookup db.corp.internal and confirm it answers",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The answer a broken cluster also gives",
+                  "text": "$ kubectl -n probe exec dig -- nslookup db.corp.internal\nServer:\t\t10.96.0.10\nAddress:\t10.96.0.10:53\n\nName:\tdb.corp.internal\nAddress: 10.20.4.31"
+                }
+              ],
+              "teach": "This is the second pair, and it is exactly the output produced by the wrong route that repoints the default block's <code>forward</code> — where public names now time out. Testing only the name you were asked to add is how that route passes a careless check."
+            }
+          },
+          {
+            "label": "Read the SERVER line in the nslookup output to confirm the query went to 10.96.90.53",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It always says cluster DNS",
+                  "text": "$ kubectl -n probe exec dig -- nslookup db.corp.internal\nServer:\t\t10.96.0.10\nAddress:\t10.96.0.10:53\n\nName:\tdb.corp.internal\nAddress: 10.20.4.31"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not read the client's SERVER line: every Pod queries the cluster DNS address, so dig and nslookup report 10.96.0.10 on a CORRECT answer."
+                }
+              ],
+              "teach": "The SERVER line names the resolver your client asked, not the resolver that ultimately answered — your Pod always asks cluster DNS, and cluster DNS decides which block handles the name. A SERVER line reading <code>10.96.90.53</code> would actually be bad news: it would mean someone changed the Pod's <code>dnsConfig</code>."
+            }
+          },
+          {
+            "label": "kubectl -n kube-system get cm coredns -o yaml and read the two blocks",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The desired state only",
+                  "text": "$ kubectl -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' | grep -c ':53 {'\n2"
+                }
+              ],
+              "teach": "Good for the first pair and blind to the second: a ConfigMap the Pods have not reloaded — or one that makes them CrashLoop — reads exactly the same. The file is the intent; the answered lookup and the ready replicas are the fact."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "CoreDNS picks the server block whose zone best matches the query, so a stub domain is its own block placed beside .:53, not a line inside it: corp.internal:53 { errors, cache 30, forward . 10.96.90.53 }. Inside that block the forward zone argument is scoped to names the block already received, which is why forward . and forward corp.internal are both correct there. Everything else in this question is a way of confusing that routing with something else. Repointing the default block's forward . /etc/resolv.conf makes db.corp.internal resolve and sends every public name to a resolver that is not authoritative for it. The kubernetes plugin's fallthrough passes a name to the next plugin in the same block and never to another resolver. A Pod dnsConfig fixes one Pod, changes the SERVER line, and violates a constraint. Nesting the new block inside .:53 gives 'Unknown directive' and CrashLoopBackOff, so save a copy of the Corefile first and read the log line number. Forwarding destinations must be IP addresses — FQDN nameservers are unsupported — and proxy was replaced by forward. Finally, changes are not instant: the reload plugin needs up to two minutes, or restart the Deployment; and never judge by the client's SERVER line, which always reads the cluster DNS address. See kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/."
+  },
+  "exam-var-diffs-v01": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "What you were handed",
+            "text": "$ kubectl config current-context\nmesa\n\n$ kubectl -n mill get deploy\nNAME     READY   UP-TO-DATE   AVAILABLE   AGE\nhopper   2/2     2            2           9d\npress    0/1     1            0           12m\n\n$ kubectl -n mill get pods -o wide\nNAME                     READY   STATUS    RESTARTS   AGE   IP          NODE      NOMINATED NODE   READINESS GATES\nhopper-6c4d8f9b7-4x2ln   1/1     Running   0          9d    10.1.1.21   mesa-w1   <none>           <none>\nhopper-6c4d8f9b7-9mkqz   1/1     Running   0          9d    10.1.2.33   mesa-w2   <none>           <none>\npress-7d9c5b6f8-cq4tv    0/1     Pending   0          12m   <none>      <none>    <none>           <none>"
+          },
+          {
+            "type": "note",
+            "title": "The constraints that shape every answer",
+            "text": "Do not add, change, or delete Node labels or taints. Do not set spec.nodeName in the pod template; the Pod must have a Scheduled event from default-scheduler. Do not touch hopper. The container must keep a nonzero request for both CPU and memory."
+          }
+        ],
+        "prompt": "One Pod has been Pending for twelve minutes with no NODE. What is your first move?",
+        "options": [
+          {
+            "label": "kubectl -n mill describe pod press-7d9c5b6f8-cq4tv — read the FailedScheduling census",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The scheduler says why, three nodes at a time",
+                  "text": "$ kubectl -n mill describe pod press-7d9c5b6f8-cq4tv | tail -6\nEvents:\n  Type     Reason            Age                    From               Message\n  ----     ------            ----                   ----               -------\n  Warning  FailedScheduling  12m                    default-scheduler  0/3 nodes are available: 3 Insufficient cpu. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod.\n  Warning  FailedScheduling  2m14s (x3 over 11m)    default-scheduler  0/3 nodes are available: 3 Insufficient cpu. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod."
+                }
+              ],
+              "teach": "A Pending Pod always carries its own diagnosis. The scheduler writes a census: how many Nodes it looked at, and how many it rejected for each reason. Read it as arithmetic — <code>0/3 nodes are available</code> and then <code>3 Insufficient cpu</code> accounts for all three, with no second clause. One reason covering every Node means one question: does the Pod fit?"
+            }
+          },
+          {
+            "label": "Add a toleration for node-role.kubernetes.io/control-plane:NoSchedule to the pod template",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "There is nothing to tolerate",
+                  "text": "$ kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints\nNAME      TAINTS\nmesa-w1   <none>\nmesa-w2   <none>\nmesa-w3   <none>"
+                },
+                {
+                  "type": "terminal",
+                  "title": "And the census never mentioned one",
+                  "text": "$ kubectl -n mill describe pod press-7d9c5b6f8-cq4tv | grep FailedScheduling | tail -1\n  Warning  FailedScheduling  2m14s (x3 over 11m)  default-scheduler  0/3 nodes are available: 3 Insufficient cpu. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod.\n\n$ kubectl -n mill patch deploy press --type=json -p='[{\"op\":\"add\",\"path\":\"/spec/template/spec/tolerations\",\"value\":[{\"key\":\"node-role.kubernetes.io/control-plane\",\"operator\":\"Exists\",\"effect\":\"NoSchedule\"}]}]'\ndeployment.apps/press patched\n\n$ kubectl -n mill get pods -l app=press\nNAME                     READY   STATUS    RESTARTS   AGE\npress-5b6d7c8f9-t8xrp    0/1     Pending   0          20s"
+                }
+              ],
+              "teach": "This is the named trap, and it is a memory of a different question: the last Pending Pod you met could not be placed because a control-plane Node carried <code>node-role.kubernetes.io/control-plane:NoSchedule</code>, and a toleration was the whole answer. Compare the two censuses word for word. An untolerated taint reads <code>1 node(s) had untolerated taint {...}</code>; yours reads <code>3 Insufficient cpu</code> and nothing else. The control plane here is managed, so no Node object even exists to be tainted. A toleration says \"I accept a Node that repels me\" — it never creates capacity."
+            }
+          },
+          {
+            "label": "Set spec.nodeName: mesa-w1 in the pod template so it stops waiting on the scheduler",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The kubelet rejects what the scheduler refused",
+                  "text": "$ kubectl -n mill get pods -l app=press\nNAME                    READY   STATUS      RESTARTS   AGE\npress-79c4f6b58-2rqhd   0/1     OutOfcpu    0          6s\n\n$ kubectl -n mill describe pod press-79c4f6b58-2rqhd | sed -n '/^Status:/p;/^Reason:/p;/^Message:/p'\nStatus:   Failed\nReason:   OutOfcpu\nMessage:  Node didn't have enough resource: cpu, requested: 3000, used: 1900, capacity: 4000"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "spec.nodeName is unset in the pod template, and the Pod has a Scheduled event whose reporting component is default-scheduler. spec.nodeName: mesa-w1 scores 0 on that pair."
+                }
+              ],
+              "teach": "Writing <code>nodeName</code> does not bypass the fit check, it moves it. The scheduler is skipped, so no <code>Scheduled</code> event is ever written and two points are gone; then the kubelet on <code>mesa-w1</code> runs its own admission and rejects the Pod with <code>OutOfcpu</code>. The rejection message is the same arithmetic the scheduler did, printed in millicores: 3000 requested against 4000 capacity with 1900 already used. Forcing placement only changes which component tells you no."
+            }
+          },
+          {
+            "label": "kubectl -n mill get events --sort-by=.metadata.creationTimestamp",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Same fact, less context",
+                  "text": "$ kubectl -n mill get events --sort-by=.metadata.creationTimestamp | tail -3\n12m   Warning   FailedScheduling   pod/press-7d9c5b6f8-cq4tv   0/3 nodes are available: 3 Insufficient cpu. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod.\n11m   Warning   FailedScheduling   pod/press-7d9c5b6f8-cq4tv   0/3 nodes are available: 3 Insufficient cpu. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod.\n2m14s Warning   FailedScheduling   pod/press-7d9c5b6f8-cq4tv   0/3 nodes are available: 3 Insufficient cpu. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod."
+                }
+              ],
+              "teach": "This works and it costs nothing, so take it when you do not know which object is at fault. Once you do, <code>describe pod</code> is strictly better: it prints the same events plus the Pod's own requests, its conditions and its node assignment, which are the three things you are about to compare. Events tell you what happened; the object tells you what it asked for."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The census in full, and what the Pod asks for",
+            "text": "$ kubectl -n mill describe pod press-7d9c5b6f8-cq4tv | sed -n '/^Containers:/,/^Conditions:/p'\nContainers:\n  press:\n    Image:      nginx:1.27-alpine\n    Port:       80/TCP\n    Requests:\n      cpu:        3\n      memory:     64Mi\n\nConditions:\n  Type           Status\n  PodScheduled   False"
+          },
+          {
+            "type": "terminal",
+            "title": "Nothing is repelling this Pod",
+            "text": "$ kubectl -n mill get pod press-7d9c5b6f8-cq4tv -o jsonpath='{.spec.nodeSelector}{\"|\"}{.spec.affinity}{\"|\"}{.spec.tolerations[*].key}{\"\\n\"}'\n||node.kubernetes.io/not-ready node.kubernetes.io/unreachable"
+          }
+        ],
+        "prompt": "One reason accounts for all three Nodes, and it is a resource name. What kind of answer is that?",
+        "options": [
+          {
+            "label": "A capacity answer — compare the Pod's request against each Node's free allocatable CPU",
+            "verdict": "right",
+            "feedback": {
+              "teach": "Sort every Pending cause into two piles. Placement causes name a relationship between this Pod and that Node — an untolerated taint, an unmatched <code>nodeSelector</code>, a failed affinity rule, an unbound volume with a topology constraint — and they usually split the census, because Nodes differ. Capacity causes name a resource, and they tend to hit every Node at once, because the Pod's request is a single number compared everywhere. <code>3 Insufficient cpu</code> is the second pile, and the only two numbers that matter now are what the Pod requests and what each Node has left. The two tolerations listed are the default not-ready and unreachable ones the API server adds to every Pod; they are not yours."
+            }
+          },
+          {
+            "label": "A placement answer — add node affinity that steers the Pod to the emptiest Node",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The emptiest Node is still too small",
+                  "text": "$ kubectl -n mill patch deploy press --type=merge -p '{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":{\"kubernetes.io/hostname\":\"mesa-w3\"}}}}}'\ndeployment.apps/press patched\n\n$ kubectl -n mill describe pod -l app=press | grep FailedScheduling | tail -1\n  Warning  FailedScheduling  8s  default-scheduler  0/3 nodes are available: 1 Insufficient cpu, 2 node(s) didn't match Pod's node affinity/selector."
+                }
+              ],
+              "teach": "Watch what the edit did to the census. It did not fix the CPU shortfall on <code>mesa-w3</code>; it added a second reason for the other two Nodes and left the first one standing. Affinity, selectors and tolerations all narrow or widen the set of Nodes the scheduler will consider. None of them changes what a Node has free, so none of them can turn <code>Insufficient cpu</code> into a fit."
+            }
+          },
+          {
+            "label": "The scheduler is not running, which is why the Pod is stuck",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It is running, and it is talking to you",
+                  "text": "$ kubectl -n mill get event --field-selector involvedObject.name=press-7d9c5b6f8-cq4tv -o custom-columns=FROM:.source.component,REASON:.reason,AGE:.lastTimestamp\nFROM               REASON             AGE\ndefault-scheduler  FailedScheduling   2026-08-17T09:41:12Z"
+                }
+              ],
+              "teach": "The event's <code>From</code> column is <code>default-scheduler</code>. Something wrote that, so the scheduler saw the Pod, ran every filter plugin against every Node, and reported the outcome. A dead scheduler looks completely different: the Pod sits Pending with <b>no events at all</b>, because nobody is there to write one. Silence and a complaint are different diagnoses."
+            }
+          },
+          {
+            "label": "Preemption should have evicted a hopper Pod to make room, so raise the Pod's priority",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The second half of the census already answered this",
+                  "text": "preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod.\n\n$ kubectl -n mill get pods -o custom-columns=NAME:.metadata.name,PRIORITY:.spec.priority,PCLASS:.spec.priorityClassName\nNAME                     PRIORITY   PCLASS\nhopper-6c4d8f9b7-4x2ln   0          <none>\nhopper-6c4d8f9b7-9mkqz   0          <none>\npress-7d9c5b6f8-cq4tv    0          <none>"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not delete, scale, or change Deployment hopper or any other workload in mill. Those objects must match the snapshot."
+                }
+              ],
+              "teach": "The scheduler already tried. After every filter fails it runs the preemption pass and appends the result, which is the <code>preemption:</code> half you have been skipping. Both workloads sit at priority 0, so there is no lower-priority victim to take. And preemption here would be self-defeating anyway: evicting <code>hopper</code> by priority breaks the same snapshot check that deleting it by hand would."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "One Node, read end to end",
+            "text": "$ kubectl describe node mesa-w1 | sed -n '/^Capacity:/,/^Events:/p'\nCapacity:\n  cpu:                4\n  memory:             8039152Ki\n  pods:               110\nAllocatable:\n  cpu:                4\n  memory:             7434352Ki\n  pods:               110\n\nAllocated resources:\n  (Total limits may be over 100 percent, i.e., overcommitted.)\n  Resource           Requests      Limits\n  --------           --------      ------\n  cpu                1900m (47%)   2 (50%)\n  memory             1200Mi (16%)  2Gi (27%)"
+          },
+          {
+            "type": "terminal",
+            "title": "The other two, in one line each",
+            "text": "$ kubectl describe node mesa-w2 mesa-w3 | grep -A3 '^Allocated resources' | grep '^  cpu'\n  cpu                2100m (52%)   2 (50%)\n  cpu                1800m (45%)   1 (25%)"
+          }
+        ],
+        "prompt": "Allocatable is 4 CPU per Node. The Pod requests cpu: 3. Which comparison decides the answer?",
+        "options": [
+          {
+            "label": "Request against free allocatable on a single Node: 3 needs more than the 2.2 free on the emptiest one",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The subtraction, on all three",
+                  "text": "$ kubectl get nodes -o custom-columns=NAME:.metadata.name,ALLOC_CPU:.status.allocatable.cpu\nNAME      ALLOC_CPU\nmesa-w1   4\nmesa-w2   4\nmesa-w3   4\n\n# free = allocatable - requested\n# mesa-w1: 4000m - 1900m = 2100m\n# mesa-w2: 4000m - 2100m = 1900m\n# mesa-w3: 4000m - 1800m = 2200m\n# press wants 3000m"
+                }
+              ],
+              "teach": "The scheduler fits a Pod into one Node, never into the cluster. For each Node it subtracts the sum of the <b>requests</b> of the Pods already assigned there from <code>allocatable</code>, and asks whether this Pod's request still fits. Note that it compares against requests, not against live usage: a Node whose CPU is idle can still be full, because reservations are what were promised. 3000m does not fit in 2200m, so all three Nodes fail and the census reads <code>3 Insufficient cpu</code>."
+            }
+          },
+          {
+            "label": "Cluster total: 12 CPU with about 5.8 requested, so there is room and the scheduler is wrong",
+            "verdict": "wrong",
+            "feedback": {
+              "teach": "Adding the Nodes up describes a cluster nobody can schedule onto. A Pod runs on exactly one machine, so the free CPU on the emptiest Node is the only ceiling that matters; the other 4.2 free CPU exists on machines this Pod cannot be split across. This is the arithmetic behind bin packing, and it is why a cluster at 50 percent utilisation can still refuse a large Pod."
+            }
+          },
+          {
+            "label": "Limits, not requests — the scheduler adds up limits, so lowering limits.cpu will let it fit",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The header on the Node's own table says it",
+                  "text": "Allocated resources:\n  (Total limits may be over 100 percent, i.e., overcommitted.)\n  Resource           Requests      Limits\n  --------           --------      ------\n  cpu                1900m (47%)   2 (50%)"
+                }
+              ],
+              "teach": "Requests are scheduling; limits are runtime. The scheduler only ever reads <code>requests</code>, which is why the Node's own table can admit that limits exceed capacity and nothing is wrong. A limit is enforced later by the kernel's cgroup on the Node that already accepted the Pod: CPU is throttled, memory is OOM-killed. Editing the limit here changes nothing the scheduler is looking at."
+            }
+          },
+          {
+            "label": "cpu: 3 is three millicores, so the request is tiny and the real fault is elsewhere",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The API normalises it for you",
+                  "text": "$ kubectl -n mill get pod press-7d9c5b6f8-cq4tv -o jsonpath='{.spec.containers[0].resources.requests}{\"\\n\"}'\n{\"cpu\":\"3\",\"memory\":\"64Mi\"}\n\n$ kubectl -n mill get pod press-7d9c5b6f8-cq4tv -o jsonpath='{.spec.containers[0].resources.requests.cpu}{\"\\n\"}' | numfmt --from=si 2>/dev/null; echo '3 CPU = 3000m'\n3 CPU = 3000m"
+                }
+              ],
+              "teach": "A bare number is whole CPUs. <code>3</code> means three cores; three thousandths would be written <code>3m</code>. This is the single most expensive typo in the resource model, and it runs both ways — <code>cpu: 500</code> when you meant <code>500m</code> asks for five hundred cores and pends forever. When a request looks absurd, read the suffix before you go looking for a cluster fault."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Grading notes, quoted",
+            "text": "Two routes score. Lower requests.cpu to a value that fits the free allocatable CPU on one Node. Or lower it and set an equal limit, which also makes the Pod Guaranteed. Both end with a Running Pod and a nonzero CPU request.\nDeleting the requests block scores 0 on the last pair: the Pod runs, but it now requests nothing."
+          }
+        ],
+        "prompt": "You must lower the request without breaking a constraint. What do you apply?",
+        "options": [
+          {
+            "label": "Patch requests.cpu to 500m, keep requests.memory, and leave everything else alone",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "One field, one rollout",
+                  "text": "$ kubectl -n mill patch deploy press --type=merge -p '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"press\",\"resources\":{\"requests\":{\"cpu\":\"500m\",\"memory\":\"64Mi\"}}}]}}}}'\ndeployment.apps/press patched\n\n$ kubectl -n mill rollout status deploy press --timeout=60s\ndeployment \"press\" successfully rolled out\n\n$ kubectl -n mill get pods -l app=press -o wide\nNAME                    READY   STATUS    RESTARTS   AGE   IP          NODE      NOMINATED NODE   READINESS GATES\npress-84f7d9c6b-lm9wq   1/1     Running   0          9s    10.1.3.14   mesa-w3   <none>           <none>"
+                }
+              ],
+              "teach": "Any value that fits the free allocatable CPU on one Node works — 500m, 1, 2 — so pick one with headroom rather than one that exactly fills the gap, because <code>hopper</code> could grow. A strategic-merge patch on the container list must name the container, otherwise the API cannot tell which entry you meant. If you also set <code>limits.cpu: 500m</code> and an equal memory limit, the Pod becomes Guaranteed; the grader accepts either shape as long as both requests stay nonzero."
+            }
+          },
+          {
+            "label": "Remove the resources block entirely so the Pod has nothing left to be short of",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It schedules, and it costs two points",
+                  "text": "$ kubectl -n mill get pods -l app=press\nNAME                    READY   STATUS    RESTARTS   AGE\npress-6bb9f4c77-x2kdz   1/1     Running   0          11s\n\n$ kubectl -n mill get pod press-6bb9f4c77-x2kdz -o jsonpath='{.spec.containers[0].resources}{\"  \"}{.status.qosClass}{\"\\n\"}'\n{}  BestEffort"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "The container's requests.cpu and requests.memory are both present and nonzero. Deleting the requests block scores 0 on the last pair."
+                }
+              ],
+              "teach": "It is the fastest way to make the symptom go away and it gives up the point of the exercise. A Pod with no requests is BestEffort: the scheduler treats it as free and packs it anywhere, and under pressure the kubelet evicts it first and the kernel's OOM killer picks it first. The task asks for a request that fits, not for no request."
+            }
+          },
+          {
+            "label": "Scale hopper down to one replica to free CPU, then leave press as it is",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It does not even work",
+                  "text": "$ kubectl -n mill scale deploy hopper --replicas=1\ndeployment.apps/hopper scaled\n\n$ kubectl -n mill describe pod -l app=press | grep FailedScheduling | tail -1\n  Warning  FailedScheduling  5s  default-scheduler  0/3 nodes are available: 3 Insufficient cpu. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod."
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Node labels and taints, and every other workload in mill, match the snapshot. Deleting hopper to free CPU fails the last pair."
+                }
+              ],
+              "teach": "Two failures for the price of one. The freed 900m still leaves every Node short of 3000m, so the census does not move; and the snapshot check on <code>hopper</code> fails whether or not it helped. Making room for an oversized request by removing someone else's workload is the production version of the same mistake: you moved the shortage rather than fixing the number that caused it."
+            }
+          },
+          {
+            "label": "Patch requests.cpu to 2500m — under a whole Node's 4 CPU, so it must fit somewhere",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Still short, on all three",
+                  "text": "$ kubectl -n mill describe pod -l app=press | grep FailedScheduling | tail -1\n  Warning  FailedScheduling  7s  default-scheduler  0/3 nodes are available: 3 Insufficient cpu. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod."
+                }
+              ],
+              "teach": "You compared against the wrong number. Allocatable is what a Node has in total; free allocatable is what is left after existing requests, and the best Node here has 2200m. 2500m is smaller than a Node and larger than any gap in it. When the census comes back unchanged after an edit, that is the message: your new value is still above the largest hole."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The Deployment is Available",
+            "text": "$ kubectl -n mill get deploy press\nNAME    READY   UP-TO-DATE   AVAILABLE   AGE\npress   1/1     1            1           21m\n\n$ kubectl -n mill describe pod -l app=press | tail -5\nEvents:\n  Type    Reason     Age   From               Message\n  ----    ------     ----  ----               -------\n  Normal  Scheduled  62s   default-scheduler  Successfully assigned mill/press-84f7d9c6b-lm9wq to mesa-w3\n  Normal  Pulled     61s   kubelet            Container image \"nginx:1.27-alpine\" already present on machine"
+          },
+          {
+            "type": "note",
+            "title": "How the six points split",
+            "text": "2 pts  mill/press has the snapshot uid, image nginx:1.27-alpine, replicas 1, and 1 ready and 1 available replica.\n2 pts  Its Pod is Running on a Node, spec.nodeName is unset in the template, and the Pod has a Scheduled event from default-scheduler.\n2 pts  requests.cpu and requests.memory are both present and nonzero; Node labels and taints and every other workload in mill match the snapshot."
+          }
+        ],
+        "prompt": "press is 1/1. Which checks finish the question?",
+        "options": [
+          {
+            "label": "Read the three graded facts off the live objects: uid and image, the Scheduled event and an empty template nodeName, and both requests",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "All three, from the API",
+                  "text": "$ kubectl -n mill get deploy press -o custom-columns=UID:.metadata.uid,IMG:.spec.template.spec.containers[0].image,REPL:.spec.replicas,NODENAME:.spec.template.spec.nodeName\nUID                                    IMG                 REPL   NODENAME\n4f2b9c1e-7a08-4d3c-9f61-0b5a2d7e6c14   nginx:1.27-alpine   1      <none>\n\n$ kubectl -n mill get pod -l app=press -o jsonpath='{.items[0].spec.containers[0].resources.requests}{\"\\n\"}'\n{\"cpu\":\"500m\",\"memory\":\"64Mi\"}\n\n$ kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints\nNAME      TAINTS\nmesa-w1   <none>\nmesa-w2   <none>\nmesa-w3   <none>"
+                }
+              ],
+              "teach": "Grade yourself the way the grader will: from the live object, not from memory of what you typed. The <code>Scheduled</code> event with <code>default-scheduler</code> in its From column is the proof that you solved the fit rather than bypassed it, and the empty template <code>nodeName</code> is the other half of that pair. The Node taint listing is worth five seconds because it proves you never took the toleration branch."
+            }
+          },
+          {
+            "label": "Pin the Pod with spec.nodeName: mesa-w3 now that you know which Node has room",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It replaces the working Pod with an unscheduled one",
+                  "text": "$ kubectl -n mill get pod -l app=press -o jsonpath='{.items[0].spec.nodeName}{\"  \"}{range .items[0].status.conditions[?(@.type==\"PodScheduled\")]}{.status}{end}{\"\\n\"}'\nmesa-w3  True\n\n$ kubectl -n mill describe pod -l app=press | grep -c Scheduled\n0"
+                }
+              ],
+              "teach": "The Pod is already on <code>mesa-w3</code> because the scheduler put it there, and <code>PodScheduled</code> is True. Writing <code>nodeName</code> triggers a new rollout whose Pod skips the scheduler entirely, so the <code>Scheduled</code> event disappears and two points with it. Freezing a placement that the scheduler chose also removes the only component that would move the Pod when <code>mesa-w3</code> fills up."
+            }
+          },
+          {
+            "label": "Add limits.cpu: 100m to cap the container now that it is scheduled",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The API refuses an inverted pair",
+                  "text": "$ kubectl -n mill patch deploy press --type=merge -p '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"press\",\"resources\":{\"limits\":{\"cpu\":\"100m\"}}}]}}}}'\nThe Deployment \"press\" is invalid: spec.template.spec.containers[0].resources.requests: Invalid value: \"500m\": must be less than or equal to cpu limit"
+                }
+              ],
+              "teach": "A limit below the request is rejected at admission, because the pair would be nonsense: the scheduler would reserve 500m that the cgroup then forbids the container to use. If you want a limit, make it equal to or greater than the request — equal on both CPU and memory is what makes the Pod Guaranteed, which the grading notes call out as the second scoring route."
+            }
+          },
+          {
+            "label": "Delete and recreate the Deployment so the FailedScheduling events stop showing in describe",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Deployment mill/press has the snapshot uid. Gate the last four points on the uid pair."
+                }
+              ],
+              "teach": "Events are history, not state. They carry their own age and count, they expire on their own, and no check reads them except as evidence for you. Recreating the object to clean a log gives the Deployment a new uid, which is the gate on four of the six points — the most expensive tidying you can do in this exam."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "A Pending Pod carries its own diagnosis, and the FailedScheduling census is the whole of it. Read it as arithmetic: 0/3 nodes are available: 3 Insufficient cpu. accounts for every Node with one resource name and no second clause, which is a capacity answer, not a placement answer. That distinction is the question. The Pending Pod you met before was repelled by node-role.kubernetes.io/control-plane:NoSchedule and a toleration fixed it; here no Node carries a taint, the census never mentions one, and a toleration, nodeSelector or affinity only changes which Nodes are considered — never what they have free. Do the subtraction per Node, because a Pod fits into one machine and not into a cluster total: allocatable minus the sum of assigned requests, which on the emptiest Node leaves 2200m against a request of cpu: 3, and a bare 3 is three whole cores, not three millicores. Lower requests.cpu to something that fits and keep both requests nonzero; an equal limit is fine and makes the Pod Guaranteed. Do not delete the requests block — the Pod runs BestEffort and forfeits two points — do not scale hopper, and do not write spec.nodeName, which skips the scheduler, loses the Scheduled event and gets the Pod rejected by the kubelet as OutOfcpu with the same arithmetic. See kubernetes.io/docs/tasks/debug/debug-application/debug-pods/ and kubernetes.io/docs/concepts/architecture/nodes/#node-status."
+  },
+  "exam-var-diffs-v02": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "What you were handed",
+            "text": "$ kubectl config current-context\nmesa\n\n$ kubectl -n archive get pod ledger -o wide\nNAME     READY   STATUS    RESTARTS   AGE   IP       NODE     NOMINATED NODE   READINESS GATES\nledger   0/1     Pending   0          17m   <none>   <none>   <none>           <none>\n\n$ kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints\nNAME      TAINTS\nmesa-w1   <none>\nmesa-w2   <none>\nmesa-w3   <none>"
+          },
+          {
+            "type": "note",
+            "title": "The constraints that shape every answer",
+            "text": "archive must end with exactly one Pod named ledger on nginx:1.27-alpine, mounting ledger-data at /var/lib/ledger. Do not create, change, or delete any StorageClass. archive must end with exactly one PersistentVolumeClaim, named ledger-data, Bound to at least 2Gi ReadWriteOnce."
+          }
+        ],
+        "prompt": "A second Pending Pod, on the same cluster as the last one. Where do you start?",
+        "options": [
+          {
+            "label": "kubectl -n archive describe pod ledger — read the census before assuming which kind of Pending this is",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "A different sentence entirely",
+                  "text": "$ kubectl -n archive describe pod ledger | tail -5\nEvents:\n  Type     Reason            Age                 From               Message\n  ----     ------            ----                ----               -------\n  Warning  FailedScheduling  17m                 default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.\n  Warning  FailedScheduling  2m1s (x4 over 16m)  default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling."
+                }
+              ],
+              "teach": "Pending is a phase, not a cause, and the census is where the causes differ. This one names no resource and no Node property: it says the Pod holds a claim that is not bound. That is a pre-filter gate — the scheduler refuses to consider any Node until the volume question is settled, which is why the count is <code>0/3</code> with a single sentence rather than a tally of per-Node reasons."
+            }
+          },
+          {
+            "label": "Add a toleration and node affinity — the last Pending Pod needed help finding a Node",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Nothing is repelling it and nothing is full",
+                  "text": "$ kubectl -n archive describe pod ledger | grep FailedScheduling | tail -1\n  Warning  FailedScheduling  2m1s (x4 over 16m)  default-scheduler  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.\n\n$ kubectl describe node mesa-w1 | grep -A4 '^Allocated resources' | grep -E 'cpu|memory'\n  cpu                1900m (47%)   2 (50%)\n  memory             1200Mi (16%)  2Gi (27%)"
+                }
+              ],
+              "teach": "This is the named trap and it is the reflex from the previous two questions: a Pending Pod means the scheduler could not choose a Node, so help it choose. Compare the censuses. A taint census names the taint; a capacity census names a resource and counts Nodes; this one names a claim. The scheduler never got as far as looking at a Node, so no Node-facing edit can change the outcome — and the Nodes are neither tainted nor full."
+            }
+          },
+          {
+            "label": "Lower the container's CPU request, as in the Insufficient cpu question",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The words are not the same words",
+                  "text": "# V01, for comparison:\n#   0/3 nodes are available: 3 Insufficient cpu.\n# Here:\n    0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims."
+                }
+              ],
+              "teach": "Both start with <code>0/3 nodes are available:</code> and there the resemblance ends. The half of the message after the colon is the diagnosis, and skimming to the number is how two unrelated faults get the same fix applied. Read the clause, then decide."
+            }
+          },
+          {
+            "label": "kubectl -n archive get pvc — the census mentions a claim, so look at the claim",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It is the right next object",
+                  "text": "$ kubectl -n archive get pvc\nNAME          STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE\nledger-data   Pending                                      standrd-rwo    17m"
+                }
+              ],
+              "teach": "Right destination, one step early — you got there by reading the same census you had not printed yet, which works when you are lucky and hides the branch when you are not. Print the census first so you can say which of the three Pending shapes you are in, then follow it to the claim. On the way you already picked up the important column: <code>STORAGECLASS</code> reads <code>standrd-rwo</code>."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The claim, and the classes the cluster has",
+            "text": "$ kubectl -n archive get pvc\nNAME          STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE\nledger-data   Pending                                      standrd-rwo    17m\n\n$ kubectl get storageclass\nNAME                    PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE\nstandard-rwo (default)  pd.csi.storage.gke.io   Delete          WaitForFirstConsumer   true                   31d"
+          }
+        ],
+        "prompt": "The claim is Pending and its class column reads standrd-rwo. What is the next check?",
+        "options": [
+          {
+            "label": "kubectl -n archive describe pvc ledger-data — make the claim say why nothing has provisioned it",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The controller names the missing object",
+                  "text": "$ kubectl -n archive describe pvc ledger-data | tail -6\nEvents:\n  Type     Reason              Age                 From                         Message\n  ----     ------              ----                ----                         -------\n  Warning  ProvisioningFailed  17m                 persistentvolume-controller  storageclass.storage.k8s.io \"standrd-rwo\" not found\n  Warning  ProvisioningFailed  92s (x9 over 17m)   persistentvolume-controller  storageclass.storage.k8s.io \"standrd-rwo\" not found"
+                }
+              ],
+              "teach": "Every object in the chain explains its own failure, and the chain here is Pod, claim, class, volume. The Pod said \"my claim is unbound\"; the claim says the class it asks for does not exist. A StorageClass is a real API object, so a claim naming one that was never created has nobody watching it: no provisioner is subscribed to that class name, and the claim will sit Pending forever without any other error."
+            }
+          },
+          {
+            "label": "Wait — the class is WaitForFirstConsumer, so the claim binds only once a Pod needs it, and the Pod is Pending",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "That is a different event, and it is not the one you have",
+                  "text": "# What a healthy delayed-binding claim looks like:\n  Normal   WaitForFirstConsumer  3s   persistentvolume-controller  waiting for first consumer to be created before binding\n\n# What this claim actually reports:\n  Warning  ProvisioningFailed    92s (x9 over 17m)  persistentvolume-controller  storageclass.storage.k8s.io \"standrd-rwo\" not found"
+                }
+              ],
+              "teach": "The deadlock you are imagining is real in shape and does not exist in Kubernetes: with <code>WaitForFirstConsumer</code> the claim waits for a Pod to <b>exist</b>, not for it to be Running, and the scheduler then binds them together. <code>ledger</code> already exists, so a healthy delayed claim would show the Normal <code>WaitForFirstConsumer</code> event above. Yours shows a Warning naming a missing class — and note that the scheduler called it an <code>immediate</code> claim, precisely because no class object exists to declare it delayed."
+            }
+          },
+          {
+            "label": "Create a StorageClass named standrd-rwo pointing at the same provisioner",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It works, and it fails the question",
+                  "text": "$ kubectl apply -f standrd-rwo.yaml\nstorageclass.storage.k8s.io/standrd-rwo created\n\n$ kubectl get storageclass\nNAME                    PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE\nstandard-rwo (default)  pd.csi.storage.gke.io   Delete          WaitForFirstConsumer   true                   31d\nstandrd-rwo             pd.csi.storage.gke.io   Delete          Immediate              false                  4s"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "The StorageClass list and specs match the snapshot. Creating a StorageClass with the name the claim already uses fails the last triple: it binds the volume and keeps the typo as cluster configuration."
+                }
+              ],
+              "teach": "This is the second named trap, and it is worth understanding rather than just avoiding: it does bind the volume, the Pod does start, and the symptom is gone. What you have done is promote a typo into cluster-wide configuration that the next person will have to explain. Fix the object with the mistake in it, not the world around the mistake."
+            }
+          },
+          {
+            "label": "kubectl patch pvc ledger-data to correct storageClassName in place",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The API will not take it",
+                  "text": "$ kubectl -n archive patch pvc ledger-data --type=merge \\\n    -p '{\"spec\":{\"storageClassName\":\"standard-rwo\"}}'\nThe PersistentVolumeClaim \"ledger-data\" is invalid: spec: Forbidden: spec is immutable after creation except resources.requests and volumeAttributesClassName for bound claims"
+                }
+              ],
+              "teach": "A claim is a request for storage, and requests are frozen once made — otherwise a namespace could quietly re-aim a bound volume or dodge a quota. The only spec fields you may change afterwards are <code>resources.requests</code> for expansion and the volume attributes class. A wrong class name therefore means a replacement object, and replacing this one is the part of the question with teeth."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The two strings, side by side",
+            "text": "$ kubectl -n archive get pvc ledger-data -o jsonpath='{.spec.storageClassName}{\"\\n\"}'\nstandrd-rwo\n\n$ kubectl get storageclass -o name\nstorageclass.storage.k8s.io/standard-rwo\n\n# standrd-rwo\n# standard-rwo\n#      ^ one character"
+          },
+          {
+            "type": "terminal",
+            "title": "The claim as written",
+            "text": "$ kubectl -n archive get pvc ledger-data -o yaml | sed -n '/^spec:/,/^status:/p'\nspec:\n  accessModes:\n  - ReadWriteOnce\n  resources:\n    requests:\n      storage: 2Gi\n  storageClassName: standrd-rwo\n  volumeMode: Filesystem"
+          }
+        ],
+        "prompt": "You will rewrite the claim. What should the replacement say about its class?",
+        "options": [
+          {
+            "label": "storageClassName: standard-rwo — the name of the class that exists, spelled the way the cluster spells it",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading notes, quoted",
+                  "text": "Two routes score. Replace the claim with one that names the existing class standard-rwo, which provisions the volume dynamically. Or create a 2Gi ReadWriteOnce PersistentVolume yourself and replace the claim with one that has storageClassName: \"\" and binds to it. Both end Bound, and both leave the class list untouched."
+                }
+              ],
+              "teach": "Name the class and the existing provisioner does the rest: it creates a 2Gi ReadWriteOnce volume on demand, and because the class is <code>WaitForFirstConsumer</code> it waits until a Pod is scheduled so the disk lands in the right topology. The second scoring route is the static one — build the PersistentVolume yourself and give the claim <code>storageClassName: \"\"</code> — but it is more objects and more ways to mismatch. Either way you leave the class list exactly as you found it."
+            }
+          },
+          {
+            "label": "storageClassName: \"\" — an empty class lets the default class take over",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Empty means none, and nothing provisions it",
+                  "text": "$ kubectl -n archive get pvc ledger-data\nNAME          STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE\nledger-data   Pending                                      <none>         40s\n\n$ kubectl -n archive describe pvc ledger-data | tail -2\nEvents:  <none>"
+                }
+              ],
+              "teach": "Two different things look alike in YAML. <b>Omitting</b> <code>storageClassName</code> means \"give me the default class\", and the default here would be <code>standard-rwo</code>. Setting it to the empty string means \"no class at all\", which switches off dynamic provisioning and asks to bind against a pre-existing volume with the same empty class. Notice the silence in the events: nothing failed, because nothing is watching. That is the second scoring route only if you create the matching PersistentVolume yourself."
+            }
+          },
+          {
+            "label": "Rename the StorageClass to standrd-rwo so it matches the claim already on the cluster",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not create, change, or delete any StorageClass. Checkable: the StorageClass list and specs match the snapshot."
+                },
+                {
+                  "type": "terminal",
+                  "title": "And a name is not editable anyway",
+                  "text": "$ kubectl get storageclass standard-rwo -o yaml | sed 's/standard-rwo/standrd-rwo/' | kubectl apply -f -\nstorageclass.storage.k8s.io/standrd-rwo created\n\n$ kubectl get storageclass\nNAME                    PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE\nstandard-rwo (default)  pd.csi.storage.gke.io   Delete          WaitForFirstConsumer   true                   31d\nstandrd-rwo             pd.csi.storage.gke.io   Delete          WaitForFirstConsumer   true                   3s"
+                }
+              ],
+              "teach": "<code>metadata.name</code> is immutable on every Kubernetes object, so a rename is always a create plus a delete. Here the create alone already breaks the snapshot check, and the delete would strand every other claim in the cluster that names the real class. One namespace's typo does not get to rewrite a cluster-scoped object."
+            }
+          },
+          {
+            "label": "Move the storageclass.kubernetes.io/is-default-class annotation so the default applies to this claim",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The default only fills a blank",
+                  "text": "$ kubectl get storageclass standard-rwo -o jsonpath='{.metadata.annotations}{\"\\n\"}'\n{\"storageclass.kubernetes.io/is-default-class\":\"true\"}\n\n$ kubectl -n archive get pvc ledger-data -o jsonpath='{.spec.storageClassName}{\"\\n\"}'\nstandrd-rwo"
+                }
+              ],
+              "teach": "The default class is applied by an admission plugin at creation time, and only to a claim that left <code>storageClassName</code> unset. This claim set it explicitly, so no default will ever be substituted, and <code>standard-rwo</code> is already marked default anyway. Annotations on the class cannot reach into a claim that named something else."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "You saved the Pod, then deleted the claim, and the shell has not come back",
+            "text": "$ kubectl -n archive get pod ledger -o yaml > /tmp/ledger.yaml\n\n$ kubectl -n archive delete pvc ledger-data\npersistentvolumeclaim \"ledger-data\" deleted\n^C\n\n$ kubectl -n archive get pvc\nNAME          STATUS        VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE\nledger-data   Terminating                                      standrd-rwo    19m"
+          },
+          {
+            "type": "terminal",
+            "title": "Who is holding it",
+            "text": "$ kubectl -n archive describe pvc ledger-data | sed -n '/^Name:/p;/^Status:/p;/^Finalizers:/p;/^Used By:/p'\nName:          ledger-data\nStatus:        Terminating\nFinalizers:    [kubernetes.io/pvc-protection]\nUsed By:       ledger"
+          }
+        ],
+        "prompt": "The claim is Terminating and will not go. What do you do?",
+        "options": [
+          {
+            "label": "Delete Pod ledger first — the claim finishes deleting the moment no Pod uses it",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "One delete releases the other",
+                  "text": "$ kubectl -n archive delete pod ledger\npod \"ledger\" deleted\n\n$ kubectl -n archive get pvc\nNo resources found in archive namespace."
+                }
+              ],
+              "teach": "Storage Object in Use Protection puts the <code>kubernetes.io/pvc-protection</code> finalizer on every claim and refuses to complete the delete while a Pod object references it. Read the rule exactly: <b>a Pod object exists that uses the claim</b> — it does not have to be Running, and a Pending Pod counts, which is the whole surprise here. The API server has already stamped a deletion timestamp, so as soon as the last user disappears the finalizer is removed by its controller and the object goes on its own. You saved the Pod manifest first, so recreating it afterwards costs nothing: the grader reads the end state, not the uid."
+            }
+          },
+          {
+            "label": "Strip the finalizer: kubectl patch pvc ledger-data -p '{\"metadata\":{\"finalizers\":null}}'",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It disappears, and so does the guarantee",
+                  "text": "$ kubectl -n archive patch pvc ledger-data --type=merge -p '{\"metadata\":{\"finalizers\":null}}'\npersistentvolumeclaim/ledger-data patched\n\n$ kubectl -n archive get pvc\nNo resources found in archive namespace.\n\n$ kubectl -n archive get pod ledger -o jsonpath='{.spec.volumes[0].persistentVolumeClaim.claimName}{\"\\n\"}'\nledger-data"
+                }
+              ],
+              "teach": "This is the fourth named trap, and it is a habit that costs data exactly once. The finalizer is not stuck; it is doing its job, and its job is to stop a live volume being deleted out from under a running Pod. Removing it by hand is telling the cluster you know better, and on a claim whose Pod is actually writing, the volume goes and the data with it. The Pod is still referencing a claim that no longer exists, so you have to delete the Pod anyway — you paid a real risk for nothing. Delete the user, never the guard."
+            }
+          },
+          {
+            "label": "kubectl delete pvc ledger-data --force --grace-period=0",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Force is about grace periods, not finalizers",
+                  "text": "$ kubectl -n archive delete pvc ledger-data --force --grace-period=0\nWarning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.\npersistentvolumeclaim \"ledger-data\" force deleted\n\n$ kubectl -n archive get pvc\nNAME          STATUS        VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE\nledger-data   Terminating                                      standrd-rwo    20m"
+                }
+              ],
+              "teach": "Read the output: kubectl says \"force deleted\" and the object is still there. <code>--grace-period=0</code> shortens the termination window that applies to Pods; it does not touch finalizers, which are a separate contract between the API server and a controller. Nothing on the client side can shorten a finalizer — only the controller that owns it can clear it, and this one clears when the last Pod user is gone."
+            }
+          },
+          {
+            "label": "Wait it out — a Terminating object clears itself after the grace period",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Five minutes later",
+                  "text": "$ kubectl -n archive get pvc\nNAME          STATUS        VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE\nledger-data   Terminating                                      standrd-rwo    25m"
+                }
+              ],
+              "teach": "There is no timeout on a finalizer, by design: a deadline would defeat the protection it provides. <code>Terminating</code> with a finalizer means \"waiting for a condition\", not \"waiting for a clock\", so the only useful question is which condition — and <code>Used By: ledger</code> in the describe output names it."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "file",
+            "title": "The replacement claim you are about to apply",
+            "text": "apiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: ledger-data\n  namespace: archive\nspec:\n  accessModes:\n  - ReadWriteOnce\n  resources:\n    requests:\n      storage: 2Gi\n  storageClassName: standard-rwo"
+          },
+          {
+            "type": "terminal",
+            "title": "Applied, and still Pending",
+            "text": "$ kubectl apply -f ledger-data.yaml\npersistentvolumeclaim/ledger-data created\n\n$ kubectl -n archive get pvc\nNAME          STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE\nledger-data   Pending                                      standard-rwo   8s\n\n$ kubectl -n archive describe pvc ledger-data | tail -3\nEvents:\n  Type    Reason                Age   From                         Message\n  Normal  WaitForFirstConsumer  3s    persistentvolume-controller  waiting for first consumer to be created before binding"
+          }
+        ],
+        "prompt": "The new claim is Pending too, with a different event. Is this the bug again?",
+        "options": [
+          {
+            "label": "No — this class binds on first consumer. Recreate ledger from the saved manifest and the claim binds with it",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The Pod arrives and the volume follows",
+                  "text": "$ kubectl apply -f /tmp/ledger.yaml\npod/ledger created\n\n$ kubectl -n archive get pvc,pod\nNAME                                STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE\npersistentvolumeclaim/ledger-data   Bound    pvc-8c31a6d0-4f77-4b2e-9a15-6d0e2f7b3c48   2Gi        RWO            standard-rwo   36s\n\nNAME         READY   STATUS    RESTARTS   AGE\npod/ledger   1/1     Running   0          24s"
+                }
+              ],
+              "teach": "Compare the two events one more time. The first claim reported <code>Warning ProvisioningFailed</code> and a class that does not exist; this one reports <code>Normal WaitForFirstConsumer</code>, which is the class working as designed. Delayed binding exists so the volume is created in the same zone or on the same Node as the Pod that will use it — provisioning before a Pod is scheduled risks putting the disk somewhere the Pod cannot go. The Pending here is a state, not a fault, and the cure is the Pod."
+            }
+          },
+          {
+            "label": "Yes — create a second claim, ledger-data-2, with Immediate binding and point the Pod at it",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading lines",
+                  "text": "archive must end with exactly one PersistentVolumeClaim, named ledger-data. A second claim, such as ledger-data-2, fails the middle triple even when it is Bound: ledger still mounts ledger-data."
+                }
+              ],
+              "teach": "Two objects with the same job is how a workaround becomes permanent. The middle three points are scored on <code>ledger-data</code> specifically, so a Bound sibling earns nothing, and the Pod would have to be edited to point at it — which the first three points then grade against the mount path. Whenever the fix involves adding a second copy of the broken thing, stop and check what the task actually names."
+            }
+          },
+          {
+            "label": "Yes — remove the volume from ledger so the Pod can start without waiting on storage",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "ledger must mount ledger-data at /var/lib/ledger. A ledger that starts without the volume, or that mounts it anywhere but /var/lib/ledger, fails the first pair."
+                }
+              ],
+              "teach": "This is the fifth named trap, and it is the one that looks most like progress: the Pod turns Running, the dashboard turns green, and the workload has lost the storage it exists for. Running is the symptom you were asked about, not the goal. The goal is a Pod running <b>with</b> its 2Gi claim mounted where the task says."
+            }
+          },
+          {
+            "label": "Yes — the provisioner is broken; delete and reapply the claim until it binds",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Same event, every time",
+                  "text": "$ kubectl -n archive delete pvc ledger-data && kubectl apply -f ledger-data.yaml\npersistentvolumeclaim \"ledger-data\" deleted\npersistentvolumeclaim/ledger-data created\n\n$ kubectl -n archive describe pvc ledger-data | tail -2\n  Normal  WaitForFirstConsumer  2s  persistentvolume-controller  waiting for first consumer to be created before binding"
+                }
+              ],
+              "teach": "Retrying an operation that reports a Normal event is a coin flip with one side. The controller is not failing — it is telling you it is waiting for something you have not created yet. Read the Type column: <code>Warning</code> means something went wrong, <code>Normal</code> means a state machine is where it expects to be."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The end state",
+            "text": "$ kubectl -n archive get pod,pvc\nNAME         READY   STATUS    RESTARTS   AGE\npod/ledger   1/1     Running   0          2m\n\nNAME                                STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE\npersistentvolumeclaim/ledger-data   Bound    pvc-8c31a6d0-4f77-4b2e-9a15-6d0e2f7b3c48   2Gi        RWO            standard-rwo   2m"
+          },
+          {
+            "type": "note",
+            "title": "How the eight points split",
+            "text": "2 pts  archive holds exactly one Pod, named ledger, Running, one container on nginx:1.27-alpine, mounting ledger-data at /var/lib/ledger.\n3 pts  ledger-data is the only claim in archive; Bound, ReadWriteOnce, bound PV at least 2Gi.\n3 pts  The StorageClass list and specs match the snapshot, and kubectl exec ledger -n archive -- touch /var/lib/ledger/probe succeeds."
+          }
+        ],
+        "prompt": "Bound and Running. What proves the last three points?",
+        "options": [
+          {
+            "label": "Write to the mount and re-list the classes: the touch probe plus an unchanged StorageClass list",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Both halves",
+                  "text": "$ kubectl exec ledger -n archive -- touch /var/lib/ledger/probe\n\n$ kubectl exec ledger -n archive -- ls -l /var/lib/ledger\ntotal 16\ndrwx------    2 root     root         16384 Aug 17 09:58 lost+found\n-rw-r--r--    1 root     root             0 Aug 17 10:01 probe\n\n$ kubectl get storageclass\nNAME                    PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE\nstandard-rwo (default)  pd.csi.storage.gke.io   Delete          WaitForFirstConsumer   true                   31d"
+                }
+              ],
+              "teach": "Bound is a control-plane claim about a control-plane object; the touch is the only check that the volume was attached, mounted and is writable by the container. The <code>lost+found</code> directory is a small bonus witness — it means a real filesystem was made on a real block device rather than a directory appearing by accident. The class listing closes the loop on the trap: exactly one class, unchanged, with the typo nowhere in the cluster."
+            }
+          },
+          {
+            "label": "kubectl get pv — as long as a 2Gi volume exists, the storage points are safe",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It shows the binding from the other side",
+                  "text": "$ kubectl get pv\nNAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                     STORAGECLASS   AGE\npvc-8c31a6d0-4f77-4b2e-9a15-6d0e2f7b3c48   2Gi        RWO            Delete           Bound    archive/ledger-data       standard-rwo   2m"
+                }
+              ],
+              "teach": "Useful and incomplete. It confirms the capacity and access mode the middle three points ask for, and the <code>CLAIM</code> column proves this volume belongs to your claim rather than to something left over. It still says nothing about whether the container can write, which is where the last three points are."
+            }
+          },
+          {
+            "label": "Delete the old typo'd claim's PersistentVolume to tidy up",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "There never was one",
+                  "text": "$ kubectl get pv\nNAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                  STORAGECLASS   AGE\npvc-8c31a6d0-4f77-4b2e-9a15-6d0e2f7b3c48   2Gi        RWO            Delete           Bound    archive/ledger-data    standard-rwo   2m"
+                }
+              ],
+              "teach": "The original claim never bound, so no volume was ever provisioned for it — that was the entire fault. The only PersistentVolume on the cluster is the one backing your working claim, and its reclaim policy is <code>Delete</code>, so removing it would destroy the storage you just proved writable. Before you tidy an object, check that it is not the one holding the data."
+            }
+          },
+          {
+            "label": "Nothing more — Bound plus Running is the end state the task described",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "kubectl exec ledger -n archive -- touch /var/lib/ledger/probe succeeds."
+                }
+              ],
+              "teach": "The grader runs a write, so run it first. A Pod can be Running with a Bound claim and still fail this: a read-only mount, a wrong mount path, or a filesystem the container's user cannot write all produce exactly the state you are looking at. Thirty seconds of verification against the grader's own probe is the cheapest three points in the question."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "Pending is a phase with several causes, and the census separates them: 0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. names a claim, not a taint and not a resource, so the scheduler stopped before it ever looked at a Node and no toleration, nodeSelector or CPU edit can move it. Follow the chain — Pod, claim, class, volume — and each object explains its own failure: the claim reports Warning ProvisioningFailed from persistentvolume-controller with storageclass.storage.k8s.io \"standrd-rwo\" not found, and the cluster's one class is standard-rwo, one character apart. Do not create a class with the typo'd name; it binds and leaves the mistake as cluster configuration. A claim's spec is immutable, so this is a replacement, and the replacement is where the real lesson lives: deleting the claim while any Pod object references it leaves it Terminating behind the kubernetes.io/pvc-protection finalizer, and a Pending Pod counts as a user. Delete Pod ledger first — never strip the finalizer, which is the guard that stops a live volume vanishing under a running workload, and which --force does not touch anyway. Recreate the claim naming standard-rwo, then recreate ledger from the manifest you saved; the Normal WaitForFirstConsumer event is delayed binding working, not the bug returning. Finish with the grader's own probe, touch /var/lib/ledger/probe, and confirm exactly one Pod, one claim, and an unchanged StorageClass list. See kubernetes.io/docs/concepts/storage/persistent-volumes/#storage-object-in-use-protection and kubernetes.io/docs/concepts/storage/storage-classes/#volume-binding-mode."
+  },
+  "exam-var-diffs-v03": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The reported symptom",
+            "text": "$ kubectl config current-context\nverdigris\n\n$ kubectl -n relay exec caller -- wget -q -T2 -O- http://beacon-svc/\nwget: can't connect to remote host (10.96.31.77): Connection refused\ncommand terminated with exit code 1\n\n$ kubectl -n relay get svc beacon-svc\nNAME         TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE\nbeacon-svc   ClusterIP   10.96.31.77    <none>        80/TCP    5d\n\n$ kubectl -n relay get deploy beacon\nNAME     READY   UP-TO-DATE   AVAILABLE   AGE\nbeacon   3/3     3            3           5d"
+          },
+          {
+            "type": "note",
+            "title": "The constraints that shape every answer",
+            "text": "beacon-svc must keep its uid, its ClusterIP and port 80. Do not change Deployment beacon, its Pods, or any Pod label in relay. No NetworkPolicy exists in the cluster."
+          }
+        ],
+        "prompt": "The name resolves, the backend is Available, and every request is refused at once. What do you look at first?",
+        "options": [
+          {
+            "label": "kubectl -n relay get endpointslice -l kubernetes.io/service-name=beacon-svc",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Membership is right and the port is not",
+                  "text": "$ kubectl -n relay get endpointslice -l kubernetes.io/service-name=beacon-svc\nNAME               ADDRESSTYPE   PORTS   ENDPOINTS                            AGE\nbeacon-svc-9tk4c   IPv4          9090    10.1.1.31,10.1.2.44,10.1.3.19        5d"
+                }
+              ],
+              "teach": "The EndpointSlice is the Service's answer to two separate questions, and it prints them in two columns. <code>ENDPOINTS</code> is membership: which Pod addresses the selector found and marked ready. <code>PORTS</code> is delivery: which port on those Pods traffic is sent to. Three addresses means the selector, the labels and readiness are all fine, so whatever is broken is on the delivery side."
+            }
+          },
+          {
+            "label": "The Service selector must match nothing — compare it with the Pod labels and fix it",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It matches all three Pods",
+                  "text": "$ kubectl -n relay get svc beacon-svc -o jsonpath='{.spec.selector}{\"\\n\"}'\n{\"app\":\"beacon\"}\n\n$ kubectl -n relay get pods -l app=beacon --show-labels\nNAME                      READY   STATUS    RESTARTS   AGE   LABELS\nbeacon-6d7f9c845b-2wq8t   1/1     Running   0          5d    app=beacon,pod-template-hash=6d7f9c845b\nbeacon-6d7f9c845b-hn4pz   1/1     Running   0          5d    app=beacon,pod-template-hash=6d7f9c845b\nbeacon-6d7f9c845b-x9lrv   1/1     Running   0          5d    app=beacon,pod-template-hash=6d7f9c845b"
+                },
+                {
+                  "type": "terminal",
+                  "title": "And the slice is populated, not empty",
+                  "text": "$ kubectl -n relay get endpointslice -l kubernetes.io/service-name=beacon-svc \\\n    -o custom-columns=ADDRS:.endpoints[*].addresses,READY:.endpoints[*].conditions.ready\nADDRS                                    READY\n[10.1.1.31] [10.1.2.44] [10.1.3.19]      true true true"
+                }
+              ],
+              "teach": "This is the named trap, and it comes from the last unreachable Service you fixed: that one had a selector matching no Pod, the Endpoints list was empty, and relabelling solved it. Here the slice already lists three ready addresses, so the selector did its job. The two faults even produce the same word from wget — \"Connection refused\" — which is why you have to look at the slice rather than at the error. Editing the selector or relabelling Pods is also a direct constraint violation: the Pod labels are graded."
+            }
+          },
+          {
+            "label": "kubectl -n relay rollout restart deploy beacon — the backends must have stopped listening",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The Pods are answering right now",
+                  "text": "$ kubectl -n relay exec caller -- wget -q -T2 -O- http://10.1.1.31:8080/\nbeacon-6d7f9c845b-2wq8t\n\n$ kubectl -n relay get pods -l app=beacon\nNAME                      READY   STATUS    RESTARTS   AGE\nbeacon-6d7f9c845b-2wq8t   1/1     Running   0          5d\nbeacon-6d7f9c845b-hn4pz   1/1     Running   0          5d\nbeacon-6d7f9c845b-x9lrv   1/1     Running   0          5d"
+                }
+              ],
+              "teach": "Go around the Service before you blame it or the Pods: one request straight to a Pod IP on its container port returns 200 and the Pod's name. That single command splits the problem in half — the application works, so the fault is in the path between the ClusterIP and the container. Restarting healthy Pods with zero restarts and 5 days of uptime is motion, not diagnosis."
+            }
+          },
+          {
+            "label": "kubectl -n relay describe svc beacon-svc",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It shows both fields at once",
+                  "text": "$ kubectl -n relay describe svc beacon-svc\nName:              beacon-svc\nNamespace:         relay\nSelector:          app=beacon\nType:              ClusterIP\nIP:                10.96.31.77\nPort:              <unset>  80/TCP\nTargetPort:        9090/TCP\nEndpoints:         10.1.1.31:9090,10.1.2.44:9090,10.1.3.19:9090\nSession Affinity:  None\nEvents:            <none>"
+                }
+              ],
+              "teach": "A good move that nearly ends the question: <code>describe svc</code> prints Port, TargetPort and the resolved Endpoints together, and the <code>:9090</code> suffix on every endpoint is the fault in plain sight. It is marked partial only because <code>Endpoints</code> here is a rendered summary; when the two disagree it is the EndpointSlice objects that the proxy actually reads. Use describe to form the theory, the slice to confirm it."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The Service, as stored",
+            "text": "$ kubectl -n relay get svc beacon-svc -o yaml | sed -n '/^spec:/,/^status:/p'\nspec:\n  clusterIP: 10.96.31.77\n  ports:\n  - port: 80\n    protocol: TCP\n    targetPort: 9090\n  selector:\n    app: beacon\n  type: ClusterIP"
+          },
+          {
+            "type": "terminal",
+            "title": "What the container declares",
+            "text": "$ kubectl -n relay get pod -l app=beacon -o jsonpath='{.items[0].spec.containers[*].ports}{\"\\n\"}'\n[{\"name\":\"http\",\"containerPort\":8080,\"protocol\":\"TCP\"}]\n\n$ kubectl -n relay exec beacon-6d7f9c845b-2wq8t -- netstat -ltn | head -3\nActive Internet connections (only servers)\nProto Recv-Q Send-Q Local Address           Foreign Address         State\ntcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN"
+          }
+        ],
+        "prompt": "Service port 80, targetPort 9090, container listening on 8080. Which field is wrong?",
+        "options": [
+          {
+            "label": "targetPort — it is the port on the Pod, and no beacon container holds 9090",
+            "verdict": "right",
+            "feedback": {
+              "teach": "Three ports, three jobs. <code>port</code> is what callers dial on the ClusterIP. <code>targetPort</code> is what the proxy rewrites the destination to before sending the packet to a Pod IP — it is a port on the Pod, and it is the number that lands in the slice's PORTS column. <code>containerPort</code> is documentation and is not consulted, except to resolve a <b>named</b> targetPort. The task freezes <code>port</code> at 80 for the caller's sake, so the only field left to change is the one that is genuinely wrong."
+            }
+          },
+          {
+            "label": "port — set it to 8080 so the Service matches the container",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The caller loses its address",
+                  "text": "$ kubectl -n relay patch svc beacon-svc -p '{\"spec\":{\"ports\":[{\"port\":8080,\"targetPort\":8080}]}}'\nservice/beacon-svc patched\n\n$ kubectl -n relay exec caller -- wget -q -T2 -O- http://beacon-svc/\nwget: can't connect to remote host (10.96.31.77): Connection refused"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Service relay/beacon-svc publishes port 80. Changing port to 8080 fails the first and third pairs: the caller asks for port 80."
+                }
+              ],
+              "teach": "This is the third named trap. Moving <code>port</code> renames the front door: every existing caller dials 80 and now nothing is published there, so the refusal survives the fix. A Service's <code>port</code> is a contract with clients and a <code>targetPort</code> is an implementation detail of the backend — when they disagree, the one that changes is the detail."
+            }
+          },
+          {
+            "label": "Neither — the container is bound to 0.0.0.0:8080 but the app is not answering HTTP on it",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It answers, on 8080",
+                  "text": "$ kubectl -n relay exec caller -- wget -q -T2 -O- http://10.1.2.44:8080/\nbeacon-6d7f9c845b-hn4pz"
+                }
+              ],
+              "teach": "The listen address is worth checking and it is already checked: <code>netstat</code> shows <code>0.0.0.0:8080</code>, not <code>127.0.0.1:8080</code>, and a direct request over the Pod network returns content. A process bound to loopback fails in exactly this way and would be the answer if the address column read <code>127.0.0.1</code> — a good habit to keep for the next Service that refuses on a port something is supposedly serving."
+            }
+          },
+          {
+            "label": "A NetworkPolicy is rejecting the connection on the way in",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "There are none, and policies do not refuse",
+                  "text": "$ kubectl get networkpolicy -A\nNo resources found"
+                }
+              ],
+              "teach": "Two reasons to drop this theory. There is no policy anywhere in the cluster, and the question's context says so. And a denied packet under a NetworkPolicy is <b>dropped</b>, so the caller waits and times out; an immediate TCP reset is the opposite signature. Learn the two shapes now — the next question turns on exactly this difference."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "Where the packet actually goes",
+            "text": "$ kubectl -n relay exec caller -- wget -q -T2 -O- http://10.96.31.77:80/\nwget: can't connect to remote host (10.96.31.77): Connection refused\n\n$ kubectl -n relay exec caller -- wget -q -T2 -O- http://10.1.1.31:9090/\nwget: can't connect to remote host (10.1.1.31): Connection refused\n\n$ kubectl -n relay exec caller -- wget -q -T2 -O- http://10.1.1.31:8080/\nbeacon-6d7f9c845b-2wq8t"
+          }
+        ],
+        "prompt": "Why is the failure an instant refusal rather than a hang?",
+        "options": [
+          {
+            "label": "The packet is delivered — rewritten to a Pod IP on 9090, where nothing is listening, so the Pod's own stack sends a reset",
+            "verdict": "right",
+            "feedback": {
+              "teach": "The three probes above are the proof, in order: the ClusterIP refuses, the Pod IP on 9090 refuses identically, and the Pod IP on 8080 answers. So routing works, the Pod is reachable, and the refusal is generated by the destination kernel because no socket is bound to that port. Refused is the friendliest failure you can get — it means the whole path worked and the last hop had nowhere to hand the connection. A hang would have meant a packet disappearing silently, and a name error would have meant DNS."
+            }
+          },
+          {
+            "label": "The proxy rejects it locally, because a Service with a wrong targetPort has no valid endpoints",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The endpoints are valid and populated",
+                  "text": "$ kubectl -n relay get endpointslice -l kubernetes.io/service-name=beacon-svc -o jsonpath='{.items[0].endpoints[*].addresses}{\"\\n\"}{.items[0].ports[*].port}{\"\\n\"}'\n[\"10.1.1.31\"] [\"10.1.2.44\"] [\"10.1.3.19\"]\n9090"
+                }
+              ],
+              "teach": "Half right about the mechanism and wrong about this case, which is worth separating. A ClusterIP with <b>zero</b> ready endpoints is rejected on the caller's own Node, and that also reads \"Connection refused\" — the trap you met in the earlier Service question. Here the slice has three endpoints and a port, so the proxy is happy to forward; nothing validates that a target port has a listener. The refusal is generated at the far end, not the near end."
+            }
+          },
+          {
+            "label": "wget gave up after its two-second timeout",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What a timeout looks like instead",
+                  "text": "$ kubectl -n relay exec caller -- time wget -q -T2 -O- http://10.1.1.31:8080/\nbeacon-6d7f9c845b-2wq8t\nreal\t0m 0.01s\n\n# a dropped packet, for comparison:\n$ kubectl -n relay exec caller -- wget -q -T2 -O- http://198.51.100.9/\nwget: download timed out"
+                }
+              ],
+              "teach": "Read the message, not the outcome. <code>-T2</code> produces \"download timed out\" after two seconds; \"can't connect to remote host ... Connection refused\" comes back in milliseconds with a reason. Those are different code paths in the client and different events on the wire, and telling them apart is most of network debugging in a cluster."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Grading notes, quoted",
+            "text": "Two routes score. Set targetPort: 8080, or set targetPort: http and let the name resolve against the container port. Both put 8080 in the EndpointSlice.\nDeleting and recreating the Service fails the first pair: the ClusterIP changes."
+          }
+        ],
+        "prompt": "You have one field to change. How do you change it?",
+        "options": [
+          {
+            "label": "kubectl -n relay patch svc beacon-svc with targetPort 8080, leaving port 80 and everything else alone",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The slice re-writes itself",
+                  "text": "$ kubectl -n relay patch svc beacon-svc --type=json \\\n    -p='[{\"op\":\"replace\",\"path\":\"/spec/ports/0/targetPort\",\"value\":8080}]'\nservice/beacon-svc patched\n\n$ kubectl -n relay get endpointslice -l kubernetes.io/service-name=beacon-svc\nNAME               ADDRESSTYPE   PORTS   ENDPOINTS                       AGE\nbeacon-svc-9tk4c   IPv4          8080    10.1.1.31,10.1.2.44,10.1.3.19   5d\n\n$ kubectl -n relay exec caller -- wget -q -T2 -O- http://beacon-svc/\nbeacon-6d7f9c845b-x9lrv"
+                }
+              ],
+              "teach": "A JSON patch on the exact path changes one number and leaves the ClusterIP, the uid and <code>port: 80</code> untouched, which is what three of the six points are for. Watch the PORTS column flip from 9090 to 8080 within a second: the EndpointSlice controller recomputes the slice from the Service and the Pods whenever either changes. <code>targetPort: http</code> is the other scoring route and is arguably better, because the name follows the container if its number ever moves."
+            }
+          },
+          {
+            "label": "Delete the Service and recreate it from a corrected manifest",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "A new object with a new address",
+                  "text": "$ kubectl -n relay delete svc beacon-svc && kubectl apply -f beacon-svc.yaml\nservice \"beacon-svc\" deleted\nservice/beacon-svc created\n\n$ kubectl -n relay get svc beacon-svc -o custom-columns=UID:.metadata.uid,IP:.spec.clusterIP\nUID                                    IP\n1a7d4e93-0c2f-4c88-b3d1-77e9a0b5f612   10.96.208.14"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "beacon-svc.metadata.uid and spec.clusterIP match the snapshot."
+                }
+              ],
+              "teach": "This is the fourth named trap. The ClusterIP is allocated at creation, so a recreated Service almost always gets a different address — and in a real cluster that address is cached in resolvers, baked into config and sitting in long-lived connections. You can pin it by writing the old <code>clusterIP</code> into the manifest, but the uid still changes and the grader reads both. Patch the field you meant to change."
+            }
+          },
+          {
+            "label": "Set targetPort: web so it follows the container's named port",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "An unmatched name leaves the port unset",
+                  "text": "$ kubectl -n relay patch svc beacon-svc --type=json \\\n    -p='[{\"op\":\"replace\",\"path\":\"/spec/ports/0/targetPort\",\"value\":\"web\"}]'\nservice/beacon-svc patched\n\n$ kubectl -n relay get endpointslice -l kubernetes.io/service-name=beacon-svc\nNAME               ADDRESSTYPE   PORTS     ENDPOINTS                       AGE\nbeacon-svc-9tk4c   IPv4          <unset>   10.1.1.31,10.1.2.44,10.1.3.19   5d"
+                }
+              ],
+              "teach": "The idea is right and the string is wrong: the container declares <code>name: http</code>, not <code>web</code>. A named <code>targetPort</code> is resolved per Pod against that container's declared port names, and a name that matches nothing resolves to nothing — the endpoints stay listed and the PORTS column goes <code>&lt;unset&gt;</code>. Note the failure is silent: no event, no rejection. If you use names, read them from the Pod first."
+            }
+          },
+          {
+            "label": "Add a second port entry on 9090 so both are published",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The API wants names once there are two",
+                  "text": "$ kubectl -n relay patch svc beacon-svc --type=json \\\n    -p='[{\"op\":\"add\",\"path\":\"/spec/ports/-\",\"value\":{\"port\":9090,\"targetPort\":8080}}]'\nThe Service \"beacon-svc\" is invalid: spec.ports[0].name: Required value"
+                }
+              ],
+              "teach": "Multi-port Services require every entry to be named, so the patch is rejected before you find out it would not have helped: the caller still dials 80, and 80 still points at 9090. Adding a path beside a broken one leaves the broken one in place. Fix the entry that exists."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The end state",
+            "text": "$ kubectl -n relay exec caller -- sh -c 'for i in 1 2 3; do wget -q -T2 -O- http://beacon-svc/; echo; done'\nbeacon-6d7f9c845b-x9lrv\nbeacon-6d7f9c845b-2wq8t\nbeacon-6d7f9c845b-hn4pz"
+          },
+          {
+            "type": "note",
+            "title": "How the six points split",
+            "text": "2 pts  relay/beacon-svc has the snapshot uid and clusterIP, type ClusterIP, and publishes port 80.\n2 pts  The EndpointSlices list the three ready beacon Pod addresses, and every port entry they carry is 8080.\n2 pts  From a Pod in relay, a request to beacon-svc:80 returns 200 from a beacon Pod; Deployment beacon and the Pod labels match the snapshot."
+          }
+        ],
+        "prompt": "Requests are answered. Which checks close the question?",
+        "options": [
+          {
+            "label": "uid and clusterIP unchanged, port still 80, PORTS 8080 with three addresses, and the beacon Pod labels untouched",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Every graded field, from the live objects",
+                  "text": "$ kubectl -n relay get svc beacon-svc \\\n    -o custom-columns=UID:.metadata.uid,IP:.spec.clusterIP,TYPE:.spec.type,PORT:.spec.ports[0].port,TARGET:.spec.ports[0].targetPort\nUID                                    IP            TYPE        PORT   TARGET\n7b3c9d21-58ae-4f60-9c07-2a1e5f8d4b93   10.96.31.77   ClusterIP   80     8080\n\n$ kubectl -n relay get pods -l app=beacon --show-labels | wc -l\n4\n\n$ kubectl -n relay get endpointslice -l kubernetes.io/service-name=beacon-svc\nNAME               ADDRESSTYPE   PORTS   ENDPOINTS                       AGE\nbeacon-svc-9tk4c   IPv4          8080    10.1.1.31,10.1.2.44,10.1.3.19   5d"
+                }
+              ],
+              "teach": "Four of the six points are for what you did <b>not</b> change, so verify those as deliberately as the fix: same uid, same ClusterIP, same published port, same Pod labels. Three different responder names across three requests is also worth the ten seconds — it proves all three endpoints are really being used rather than one lucky backend."
+            }
+          },
+          {
+            "label": "Also relabel the beacon Pods with a tidier app.kubernetes.io/name key",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Deployment beacon and the Pod labels match the snapshot. Editing the selector, or relabelling the beacon Pods to match it, fails the last pair."
+                }
+              ],
+              "teach": "Improving something you were told to freeze costs points for no gain, and relabelling live Pods is riskier than it looks: change a key the Deployment's own selector uses and the ReplicaSet stops recognising its Pods and creates three more. Leave the labels."
+            }
+          },
+          {
+            "label": "Nothing more — the wget returned content, which is the whole task",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "One thing the request cannot tell you",
+                  "text": "$ kubectl -n relay get svc beacon-svc -o jsonpath='{.spec.ports[0].port}{\"\\n\"}'\n80"
+                }
+              ],
+              "teach": "A working request proves the third pair and implies the second, and it says nothing about the first — a Service you deleted and recreated with a fresh ClusterIP would also answer. Two of the six points live entirely in fields no probe can see, so read them from the object before you move on."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "Refused is not the same as unreachable, and the EndpointSlice separates the two halves of a Service: ENDPOINTS is membership, PORTS is delivery. The earlier unreachable Service had a selector matching nothing and an empty slice, and relabelling fixed it; here the slice already lists three ready addresses, so the selector is right and the fault is in delivery — PORTS reads 9090 while the container declares http = 8080 and listens on 0.0.0.0:8080. Prove it with three probes: the ClusterIP refuses, the Pod IP on 9090 refuses the same way, and the Pod IP on 8080 answers. That is a delivered packet meeting a closed port, so the far-end kernel sends a reset; a NetworkPolicy deny would have hung instead, and there are no policies here anyway. Change targetPort, not port: port 80 is the contract with the caller, targetPort is the port on the Pod, and containerPort is documentation that matters only for resolving a named target. targetPort: 8080 or targetPort: http both score; targetPort with a name the container does not declare silently leaves PORTS unset, and deleting and recreating the Service loses the ClusterIP and the uid that four of the six points depend on. See kubernetes.io/docs/tasks/debug/debug-application/debug-service/ and kubernetes.io/docs/concepts/services-networking/service/#defining-a-service."
+  },
+  "exam-var-diffs-v04": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The reported symptom, and the control case",
+            "text": "$ kubectl config current-context\nverdigris\n\n$ kubectl -n dispatch exec deploy/courier -- wget -q -T5 -O- http://parcel-svc.depot.svc.cluster.local/\nwget: download timed out\ncommand terminated with exit code 1\n\n$ kubectl -n ops exec probe -- wget -q -T5 -O- http://parcel-svc.depot.svc.cluster.local/\nparcel-6f8b7d9c4-kt2vn"
+          },
+          {
+            "type": "note",
+            "title": "The constraints that shape every answer",
+            "text": "Do not change Service parcel-svc, Deployment parcel, or any label in depot. Do not change any NetworkPolicy in depot. courier Pods must keep working DNS and must stay unable to open any other connection, including strongbox on 8443. Do not widen access beyond what the task needs."
+          }
+        ],
+        "prompt": "One namespace gets 200 and another hangs on the same name. What does that tell you to check first?",
+        "options": [
+          {
+            "label": "The backend is already proven good — confirm it once with the EndpointSlice, then work on the difference between the two callers",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Service and backends are healthy",
+                  "text": "$ kubectl -n depot get endpointslice -l kubernetes.io/service-name=parcel-svc\nNAME               ADDRESSTYPE   PORTS   ENDPOINTS                       AGE\nparcel-svc-4xn8q   IPv4          8080    10.1.1.52,10.1.2.61,10.1.3.28   7d\n\n$ kubectl -n depot get svc parcel-svc\nNAME         TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE\nparcel-svc   ClusterIP   10.96.44.120   <none>        80/TCP    7d"
+                }
+              ],
+              "teach": "A working control case is the most valuable evidence in the question, and it is handed to you: the same name, the same ClusterIP, the same three backends, answered for a Pod in <code>ops</code>. Anything shared by both callers — the Service, the endpoints, the Pods, DNS, the ClusterIP — cannot be the cause, because it would have failed for <code>ops</code> too. That leaves what differs, and what differs is the namespace the caller sits in. The slice check takes five seconds and closes the shared half for good."
+            }
+          },
+          {
+            "label": "The Service must be misconfigured — check parcel-svc's targetPort against the parcel container port",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "They already agree, and ops proves it end to end",
+                  "text": "$ kubectl -n depot get svc parcel-svc -o jsonpath='{.spec.ports[0].port}{\" -> \"}{.spec.ports[0].targetPort}{\"\\n\"}'\n80 -> 8080\n\n$ kubectl -n depot get pod -l app=parcel -o jsonpath='{.items[0].spec.containers[0].ports[0].containerPort}{\"\\n\"}'\n8080\n\n$ kubectl -n ops exec probe -- wget -q -T5 -O- http://parcel-svc.depot.svc.cluster.local/\nparcel-6f8b7d9c4-kt2vn"
+                }
+              ],
+              "teach": "This is the named trap: the last two unreachable Services were both faults on the server side — a selector that matched nothing, then a <code>targetPort</code> pointing at a port no container held — so the reflex is to go and read the Service again. A server-side fault cannot be selective about who it fails. <code>ops</code> gets 200 through the same Service object, so <code>parcel-svc</code> is correct, and the constraints forbid touching it in any case."
+            }
+          },
+          {
+            "label": "DNS in dispatch is broken — the courier Pods cannot resolve the name",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It resolves, to the right address",
+                  "text": "$ kubectl -n dispatch exec deploy/courier -- nslookup parcel-svc.depot.svc.cluster.local\nServer:    10.96.0.10\nAddress 1: 10.96.0.10 kube-dns.kube-system.svc.cluster.local\n\nName:      parcel-svc.depot.svc.cluster.local\nAddress 1: 10.96.44.120 parcel-svc.depot.svc.cluster.local"
+                }
+              ],
+              "teach": "The question states the name resolves, and one command confirms it. Keep the distinction sharp: a DNS failure returns a name error in milliseconds and never prints an address; what you have is a resolved address followed by a connection that goes nowhere. The lookup working is also a clue about what comes next — whatever is blocking this Pod is not blocking its UDP 53 traffic."
+            }
+          },
+          {
+            "label": "kubectl -n depot logs deploy/parcel — read the backend's logs for rejected requests",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Only the ops request ever arrived",
+                  "text": "$ kubectl -n depot logs deploy/parcel --tail=3\n10.1.4.9 - - [17/Aug/2026:10:22:41 +0000] \"GET / HTTP/1.1\" 200 24 \"-\" \"Wget\"\n10.1.4.9 - - [17/Aug/2026:10:24:03 +0000] \"GET / HTTP/1.1\" 200 24 \"-\" \"Wget\"\n10.1.4.9 - - [17/Aug/2026:10:25:55 +0000] \"GET / HTTP/1.1\" 200 24 \"-\" \"Wget\"\n\n$ kubectl -n dispatch get pod -l app=courier -o jsonpath='{.items[0].status.podIP}{\"\\n\"}'\n10.1.2.77"
+                }
+              ],
+              "teach": "This is worth doing once, and the answer is an absence: every logged client IP is the <code>ops</code> prober, and no line ever comes from a <code>courier</code> Pod IP. The server never saw the request. That single fact moves the whole investigation off the backend and onto the path, and it agrees with the hang — a request that arrived and was rejected would have produced a log line and a fast error."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "Three failure shapes, from the same Pod",
+            "text": "$ kubectl -n dispatch exec deploy/courier -- sh -c 'nslookup parcel-svc.depot.svc.cluster.local >/dev/null && echo DNS-OK'\nDNS-OK\n\n$ kubectl -n dispatch exec deploy/courier -- wget -q -T5 -O- http://parcel-svc.depot.svc.cluster.local/\nwget: download timed out\n\n$ kubectl -n dispatch exec deploy/courier -- wget -q -T5 -O- http://10.1.1.52:8080/\nwget: download timed out"
+          }
+        ],
+        "prompt": "The name resolves, the connection hangs, and a direct Pod IP hangs too. What shape of fault is that?",
+        "options": [
+          {
+            "label": "Packets are being dropped on the path out of this Pod — silently, with no reply of any kind",
+            "verdict": "right",
+            "feedback": {
+              "teach": "Learn the three signatures and most cluster networking becomes lookup rather than guesswork. A <b>name error</b> means DNS. An <b>immediate refusal</b> means the packet arrived somewhere with no listener — a wrong port, or a ClusterIP with no endpoints. A <b>hang</b> means nothing answered at all, which is what a firewall does when it drops rather than rejects. Dropping is exactly what a NetworkPolicy deny does, and the fact that DNS still works while HTTP does not is the strongest hint yet: something is filtering selectively, so something is written down somewhere."
+            }
+          },
+          {
+            "label": "The backend is overloaded and slow to accept new connections",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It answers instantly for someone else",
+                  "text": "$ kubectl -n ops exec probe -- time wget -q -T5 -O- http://10.1.1.52:8080/\nparcel-6f8b7d9c4-kt2vn\nreal\t0m 0.01s\n\n$ kubectl -n depot top pod -l app=parcel\nNAME                      CPU(cores)   MEMORY(bytes)\nparcel-6f8b7d9c4-kt2vn    1m           12Mi\nparcel-6f8b7d9c4-p9wxs    1m           11Mi\nparcel-6f8b7d9c4-z4hbd    1m           12Mi"
+                }
+              ],
+              "teach": "Load is symmetric — a saturated backend is slow for everybody. The same Pod IP answers a request from <code>ops</code> in ten milliseconds while the request from <code>dispatch</code> never arrives, and the Pods are idle. When one client hangs and another does not, look at what is between them, not at the destination."
+            }
+          },
+          {
+            "label": "The CNI is broken between the two Nodes involved",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Same Node pair, opposite outcome",
+                  "text": "$ kubectl get pods -A -o wide | grep -E 'courier|probe|parcel-6f8b7d9c4-kt2vn'\ndispatch  courier-58d9c7b64-jf2qm   1/1  Running  0  6d  10.1.2.77   mesa-w2\nops       probe                     1/1  Running  0  6d  10.1.4.9    mesa-w2\ndepot     parcel-6f8b7d9c4-kt2vn    1/1  Running  0  7d  10.1.1.52   mesa-w1"
+                }
+              ],
+              "teach": "Both callers run on <code>mesa-w2</code> and the backend runs on <code>mesa-w1</code>, so the two requests traverse the same pair of Nodes over the same overlay. A broken data path between those Nodes would fail both. When two Pods on one Node get different answers, the difference is policy applied per Pod, not plumbing shared by the Node."
+            }
+          },
+          {
+            "label": "Nothing conclusive — a hang can mean anything, so start by restarting the courier Pods",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "New Pods, same silence",
+                  "text": "$ kubectl -n dispatch rollout restart deploy courier\ndeployment.apps/courier restarted\n\n$ kubectl -n dispatch exec deploy/courier -- wget -q -T5 -O- http://parcel-svc.depot.svc.cluster.local/\nwget: download timed out"
+                }
+              ],
+              "teach": "A hang is not ambiguous, it is one of three specific shapes, and it rules out both of the others. Restarting also cannot help by construction: a NetworkPolicy selects Pods by label, so every replacement Pod inherits the same treatment the moment it comes up. Reach for a restart only when you have a theory that involves in-Pod state."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "Every policy in the cluster",
+            "text": "$ kubectl get networkpolicy -A\nNAMESPACE   NAME                POD-SELECTOR    AGE\ndispatch    courier-lockdown    app=courier     6d\n\n$ kubectl -n depot get networkpolicy\nNo resources found in depot namespace."
+          },
+          {
+            "type": "file",
+            "title": "dispatch/courier-lockdown, as stored",
+            "text": "apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: courier-lockdown\n  namespace: dispatch\nspec:\n  podSelector:\n    matchLabels:\n      app: courier\n  policyTypes:\n  - Ingress\n  - Egress\n  egress:\n  - to:\n    - namespaceSelector:\n        matchLabels:\n          kubernetes.io/metadata.name: kube-system\n      podSelector:\n        matchLabels:\n          k8s-app: kube-dns\n    ports:\n    - protocol: UDP\n      port: 53\n    - protocol: TCP\n      port: 53"
+          }
+        ],
+        "prompt": "One policy exists, in the caller's namespace. What is its effect on the courier Pods?",
+        "options": [
+          {
+            "label": "It denies all egress except DNS — an egress policy that selects a Pod permits only what it lists",
+            "verdict": "right",
+            "feedback": {
+              "teach": "This is the rule that explains everything you have seen. A Pod not selected by any policy is unrestricted. The moment a policy selects it and lists <code>Egress</code> in <code>policyTypes</code>, that Pod's outbound traffic is default-deny and the union of every matching rule is the allowlist. The single rule here permits port 53 to the kube-dns Pods, which is exactly why DNS answers and everything else hangs. Note where the deny lives: in <code>dispatch</code>, on the caller. <code>depot</code> has no policy at all, so it accepts ingress from anywhere — and from <code>ops</code> it visibly does."
+            }
+          },
+          {
+            "label": "Write a NetworkPolicy in depot that allows ingress from app=courier",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Adding permission where nothing is denied",
+                  "text": "$ kubectl -n depot apply -f allow-courier-ingress.yaml\nnetworkpolicy.networking.k8s.io/allow-courier-ingress created\n\n$ kubectl -n dispatch exec deploy/courier -- wget -q -T5 -O- http://parcel-svc.depot.svc.cluster.local/\nwget: download timed out"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not change any NetworkPolicy in depot. The policy list and specs in depot match the snapshot. A new ingress policy in depot fails the constraint check and does not help: nothing in depot denies ingress."
+                }
+              ],
+              "teach": "This is the trap the question is built on, and it is a subtle one because the YAML is correct — it is aimed at the wrong end. Traffic must pass two independent checks: egress policy in the sender's namespace and ingress policy in the receiver's. <code>depot</code> had no policy, so its ingress check was already \"allow\"; your new policy makes <code>depot</code> default-deny for ingress on <code>app=parcel</code> and then allows courier back in, leaving the cluster more restricted and the symptom untouched. The deny that matters is the one in the caller's namespace. It also breaks a stated constraint."
+            }
+          },
+          {
+            "label": "Delete courier-lockdown — it is the thing blocking the traffic",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Everything works, including what must not",
+                  "text": "$ kubectl -n dispatch delete networkpolicy courier-lockdown\nnetworkpolicy.networking.k8s.io \"courier-lockdown\" deleted\n\n$ kubectl -n dispatch exec deploy/courier -- wget -q -T5 -O- http://parcel-svc.depot.svc.cluster.local/\nparcel-6f8b7d9c4-p9wxs\n\n$ kubectl -n dispatch exec deploy/courier -- nc -z -w2 10.1.1.61 8443 && echo STRONGBOX-OPEN\nSTRONGBOX-OPEN"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "From a courier Pod, a TCP connection to the strongbox Pod address on 8443 does not complete, and a connection to any address outside the cluster does not complete. Deleting the policy in dispatch fails the negative triple."
+                }
+              ],
+              "teach": "It is the second named trap and it scores three points out of eight while destroying the other three. The policy is not a bug, it is the containment the cluster was given on purpose; the task says so twice, once as a requirement and once as a live negative probe. When a security control blocks something legitimate, you extend the allowlist by the minimum, you do not remove the control."
+            }
+          },
+          {
+            "label": "It denies ingress to the courier Pods, so the reply from parcel cannot get back",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The request never leaves in the first place",
+                  "text": "$ kubectl -n depot logs deploy/parcel --tail=2 | grep 10.1.2.77 | wc -l\n0"
+                }
+              ],
+              "teach": "A tempting misreading of a real field. <code>policyTypes</code> does list Ingress, so inbound connections to <code>courier</code> are denied — but NetworkPolicy is stateful: the return packets of a connection the egress rules allowed are always permitted, and are never evaluated as new ingress. And the backend's log shows nothing from the courier IP, so there is no reply to be blocked. Ingress rules govern connections opened <b>towards</b> the selected Pods."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "From the NetworkPolicy reference",
+            "text": "ports: List of ports which should be made accessible on the pods selected for this rule. Each item in this list is combined using a logical OR.\nto: List of destinations for outgoing traffic of pods selected for this rule. Items in this list are combined using a logical OR operation. If this field is empty or missing, this rule matches all destinations."
+          },
+          {
+            "type": "terminal",
+            "title": "The two ports in play",
+            "text": "$ kubectl -n depot get svc parcel-svc -o jsonpath='{.spec.ports[0].port}{\" -> \"}{.spec.ports[0].targetPort}{\"\\n\"}'\n80 -> 8080\n\n$ kubectl -n depot get pod -l app=parcel -o jsonpath='{.items[0].spec.containers[0].ports[0].containerPort}{\"\\n\"}'\n8080"
+          }
+        ],
+        "prompt": "Your egress rule needs a port. Which number, and why?",
+        "options": [
+          {
+            "label": "8080 — ports names a port on the peer Pods the rule selects, and the parcel Pods listen on 8080",
+            "verdict": "right",
+            "feedback": {
+              "teach": "A NetworkPolicy never sees a Service. <code>to</code> selects Pods and namespaces and has no way to name a Service, and <code>ports</code> names a port on the peer Pods the rule selects, not a Service port. The parcel Pods listen on 8080, so that is the number the rule must say, regardless of what the Service publishes."
+            }
+          },
+          {
+            "label": "80 — that is the port the caller dials, so that is what leaves the Pod",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Allowing 80 changes nothing",
+                  "text": "$ kubectl -n dispatch apply -f allow-parcel-80.yaml\nnetworkpolicy.networking.k8s.io/allow-parcel created\n\n$ kubectl -n dispatch exec deploy/courier -- wget -q -T5 -O- http://parcel-svc.depot.svc.cluster.local/\nwget: download timed out"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "An egress rule that allows TCP 80 instead of 8080 fails the first triple. ports in a NetworkPolicy names a port on the Pods the rule selects, and the parcel Pods listen on 8080. The Service publishes 80; the policy never sees a Service."
+                }
+              ],
+              "teach": "This is the fourth named trap, and it is the most reasonable-looking wrong answer in the question: the caller really does dial 80. But <code>ports</code> in a NetworkPolicy names a port on the Pods the rule selects, and the parcel Pods listen on 8080, not 80 — the Service publishes 80, the policy never sees a Service. A rule permitting 80 to those Pods matches nothing and the packet is still dropped. The tell is that the symptom does not change at all after you apply a policy that looks correct."
+            }
+          },
+          {
+            "label": "Both 80 and 8080, to cover the translation either way",
+            "verdict": "wrong",
+            "feedback": {
+              "teach": "It would work, and it is the wrong instinct to practise. The task says not to widen access beyond what it needs, and \"I am not sure which one, so allow both\" is how allowlists rot into permit-all one honest guess at a time. Find out which port is evaluated — 8080 — and allow exactly that. An allowlist you cannot justify line by line is not containment."
+            }
+          },
+          {
+            "label": "Neither — omit ports and let the peer selector do the restricting",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It opens every port on those Pods",
+                  "text": "$ kubectl -n dispatch exec deploy/courier -- nc -z -w2 10.1.1.52 8080 && echo OPEN-8080\nOPEN-8080\n\n$ kubectl -n dispatch exec deploy/courier -- nc -z -w2 10.1.1.52 22 && echo OPEN-22\nOPEN-22"
+                }
+              ],
+              "teach": "An omitted <code>ports</code> means all ports on the selected peers, which is wider than the task allows even though the peer set is right. It happens to leave <code>strongbox</code> blocked, so the negative probes may still pass, but you have granted the <code>courier</code> Pods every port on the <code>parcel</code> Pods including anything a sidecar or debug endpoint exposes later. Name the port."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Grading notes, quoted",
+            "text": "Two routes score. Add an egress rule to the existing policy, or create a second NetworkPolicy in dispatch that selects app=courier and adds only that rule. Policies are additive, so both end with the same effective permission.\nAn egress rule with an empty to fails the negative triple."
+          },
+          {
+            "type": "terminal",
+            "title": "The label the namespaceSelector must use",
+            "text": "$ kubectl get ns depot --show-labels\nNAME    STATUS   AGE   LABELS\ndepot   Active   7d    kubernetes.io/metadata.name=depot"
+          }
+        ],
+        "prompt": "Which rule do you add?",
+        "options": [
+          {
+            "label": "One to item holding both namespaceSelector depot and podSelector app=parcel, plus ports TCP 8080",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "file",
+                  "title": "The rule, appended to courier-lockdown",
+                  "text": "  egress:\n  - to:                                   # existing DNS rule, untouched\n    - namespaceSelector:\n        matchLabels:\n          kubernetes.io/metadata.name: kube-system\n      podSelector:\n        matchLabels:\n          k8s-app: kube-dns\n    ports:\n    - protocol: UDP\n      port: 53\n    - protocol: TCP\n      port: 53\n  - to:                                   # new rule\n    - namespaceSelector:\n        matchLabels:\n          kubernetes.io/metadata.name: depot\n      podSelector:\n        matchLabels:\n          app: parcel\n    ports:\n    - protocol: TCP\n      port: 8080"
+                },
+                {
+                  "type": "terminal",
+                  "title": "All three probes",
+                  "text": "$ kubectl -n dispatch apply -f courier-lockdown.yaml\nnetworkpolicy.networking.k8s.io/courier-lockdown configured\n\n$ kubectl -n dispatch exec deploy/courier -- wget -q -T5 -O- http://parcel-svc.depot.svc.cluster.local/\nparcel-6f8b7d9c4-z4hbd\n\n$ kubectl -n dispatch exec deploy/courier -- nslookup parcel-svc.depot.svc.cluster.local | tail -2\nName:      parcel-svc.depot.svc.cluster.local\nAddress 1: 10.96.44.120 parcel-svc.depot.svc.cluster.local\n\n$ kubectl -n dispatch exec deploy/courier -- nc -z -w2 10.1.1.61 8443 || echo STRONGBOX-BLOCKED\nSTRONGBOX-BLOCKED"
+                }
+              ],
+              "teach": "Two keys under one list item is an AND: this namespace <b>and</b> these Pods in it. That is the shape the task's \"do not widen\" clause demands, and it is the single most error-prone piece of NetworkPolicy syntax. The new rule sits beside the DNS rule rather than replacing it, because rules within a policy are ORed and policies are additive — which is also why the second scoring route, a separate policy object in <code>dispatch</code>, ends up equivalent. Run all three probes every time, not just the one you were asked to fix."
+            }
+          },
+          {
+            "label": "A to list with namespaceSelector depot and podSelector app=parcel as two separate items",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The containment leaks",
+                  "text": "$ kubectl -n dispatch exec deploy/courier -- wget -q -T5 -O- http://parcel-svc.depot.svc.cluster.local/\nparcel-6f8b7d9c4-kt2vn\n\n$ kubectl -n dispatch exec deploy/courier -- nc -z -w2 10.1.1.61 8443 && echo STRONGBOX-OPEN\nSTRONGBOX-OPEN"
+                }
+              ],
+              "teach": "The dash is the whole difference. Two items in <code>to</code> are ORed, so the rule now reads \"any Pod in namespace depot, <b>or</b> any Pod labelled app=parcel in any namespace\" — and <code>strongbox</code> lives in <code>depot</code>, so its 8443 is now open on your allowed port list. The positive probe passes and the negative triple fails, which is the worst kind of error: it looks finished. Whenever a peer needs two conditions, put both keys under one dash."
+            }
+          },
+          {
+            "label": "An egress rule with an empty to and ports TCP 8080, so any 8080 anywhere is allowed",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "From the reference, quoted above",
+                  "text": "to: ... If this field is empty or missing, this rule matches all destinations."
+                },
+                {
+                  "type": "terminal",
+                  "title": "Including destinations outside the cluster",
+                  "text": "$ kubectl -n dispatch exec deploy/courier -- nc -z -w2 203.0.113.10 8080 && echo INTERNET-OPEN\nINTERNET-OPEN"
+                }
+              ],
+              "teach": "An empty <code>to</code> is not \"no restriction on the peer\", it is \"every peer\", including everything outside the cluster. The negative triple explicitly probes an external address for this reason. Empty selectors in NetworkPolicy consistently mean \"all\", which is the opposite of what an empty field usually implies in Kubernetes."
+            }
+          },
+          {
+            "label": "Replace the egress list with the new rule — the courier Pods only need parcel",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "DNS goes with it",
+                  "text": "$ kubectl -n dispatch exec deploy/courier -- nslookup parcel-svc.depot.svc.cluster.local\n;; connection timed out; no servers could be reached\n\n$ kubectl -n dispatch exec deploy/courier -- wget -q -T5 -O- http://10.1.1.52:8080/\nparcel-6f8b7d9c4-kt2vn"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "From a courier Pod, a DNS lookup of that same name still returns the Service ClusterIP. Two of the eight points."
+                }
+              ],
+              "teach": "Look closely at what survived: the Pod IP still answers, so your new rule works, and the name no longer resolves, so the request through the Service name fails anyway. Overwriting an allowlist instead of appending to it removes permissions you never examined. Two points ride on DNS still working, and in production this is how a policy edit takes out a whole namespace's name resolution."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "How the eight points split",
+            "text": "3 pts  From a courier Pod, a request to parcel-svc.depot.svc.cluster.local:80 returns 200 from a parcel Pod.\n2 pts  From a courier Pod, a DNS lookup of that name still returns the Service ClusterIP.\n3 pts  From a courier Pod, TCP to strongbox on 8443 does not complete and no external address completes; every object and NetworkPolicy in depot, and every Pod label, matches the snapshot."
+          }
+        ],
+        "prompt": "The three probes pass. What is left to check before you call it done?",
+        "options": [
+          {
+            "label": "That depot is untouched — no policy added, no label changed, parcel-svc and parcel exactly as snapshotted",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The other half of the last triple",
+                  "text": "$ kubectl -n depot get networkpolicy\nNo resources found in depot namespace.\n\n$ kubectl -n depot get svc parcel-svc -o custom-columns=UID:.metadata.uid,PORT:.spec.ports[0].port,TARGET:.spec.ports[0].targetPort\nUID                                    PORT   TARGET\nc0a4e7f2-9b13-4d5e-8a26-3f7c1b9d0e58   80     8080\n\n$ kubectl -n depot get pods --show-labels | awk '{print $NF}'\nLABELS\napp=parcel,pod-template-hash=6f8b7d9c4\napp=parcel,pod-template-hash=6f8b7d9c4\napp=parcel,pod-template-hash=6f8b7d9c4\napp=strongbox"
+                }
+              ],
+              "teach": "The last three points are half probe and half snapshot, and it is easy to earn the probe and lose the snapshot on an experiment you forgot to undo — a trial ingress policy in <code>depot</code>, a label added while testing a selector. List the namespace you were told not to change and confirm it is empty of your work. The whole fix should be one file in <code>dispatch</code>."
+            }
+          },
+          {
+            "label": "Add a second egress rule for the strongbox Pod on 8443 so the courier can be monitored",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "From a courier Pod, a TCP connection to the strongbox Pod address on 8443 does not complete. courier Pods must stay denied everywhere else."
+                }
+              ],
+              "teach": "That connection is the one the task names as forbidden, and the grader probes it live. Any capability you add that the task did not ask for is a point deduction here and a finding in a real review. Stop at the minimum that satisfies the requirement."
+            }
+          },
+          {
+            "label": "Change parcel-svc's targetPort to 80 so the Service port and the policy port agree",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not change Service parcel-svc, Deployment parcel, or any label in depot. Changing parcel-svc.targetPort fails the last triple."
+                },
+                {
+                  "type": "terminal",
+                  "title": "And it would break the Service for everyone",
+                  "text": "$ kubectl -n ops exec probe -- wget -q -T5 -O- http://parcel-svc.depot.svc.cluster.local/\nwget: can't connect to remote host (10.96.44.120): Connection refused"
+                }
+              ],
+              "teach": "Making the two numbers match by moving the Service points it at a port no <code>parcel</code> container listens on — the exact fault from the previous question — and breaks every other caller including the <code>ops</code> prober. The Service port and the policy port are not supposed to agree: they describe different hops. Leave the Service alone."
+            }
+          },
+          {
+            "label": "Nothing — three green probes is the definition of done",
+            "verdict": "partial",
+            "feedback": {
+              "teach": "The probes are five of the eight points and they are the hard part, so this is close. The last three are shared with a snapshot check on <code>depot</code>, and snapshot checks are where exploratory edits get caught. Thirty seconds listing the namespace you were told not to touch protects work you have already done."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "A working control case decides this question before any theory does: the same name, the same ClusterIP and the same three endpoints return 200 for a Pod in ops and hang for a Pod in dispatch, so nothing shared can be the cause and the Service you would reflexively re-read after the last two questions is correct. Read the failure shape too — a name error means DNS, an instant refusal means a delivered packet with no listener, and a hang means packets are dropped, which is what a NetworkPolicy deny does. The policy list shows one object, in the caller's namespace: courier-lockdown selects app=courier with policyTypes Ingress and Egress and one egress rule for port 53, and an egress policy that selects a Pod turns that Pod default-deny outbound, which is why DNS answers and nothing else does. depot has no policy, so its ingress is already open and an ingress policy there would only restrict the cluster further while breaking a constraint. Add the minimum: one to item carrying namespaceSelector kubernetes.io/metadata.name: depot and podSelector app: parcel together — two keys under one dash, because sibling items are ORed and would open strongbox — with ports TCP 8080, the port the parcel Pods listen on — ports in a NetworkPolicy names a Pod port, and the policy never sees the Service's 80. Append beside the DNS rule rather than replacing it, then run all three probes: 200 from parcel, DNS still resolving, strongbox:8443 and the internet still silent. See kubernetes.io/docs/concepts/services-networking/network-policies/#behavior-of-to-and-from-selectors and kubernetes.io/docs/tasks/administer-cluster/declare-network-policy/."
+  },
+  "exam-var-diffs-v05": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "What you were handed",
+            "text": "$ kubectl config current-context\nslate\n\n$ kubectl get nodes\nNAME        STATUS     ROLES           AGE   VERSION\nslate-cp1   Ready      control-plane   62d   v1.36.0\nslate-w1    Ready      <none>          62d   v1.36.0\nslate-w2    NotReady   <none>          62d   v1.36.0\n\n$ ssh slate-w2 'systemctl is-active kubelet; systemctl show kubelet -p ActiveEnterTimestamp -p NRestarts'\nactive\nActiveEnterTimestamp=Mon 2026-08-17 09:41:55 UTC\nNRestarts=0"
+          },
+          {
+            "type": "note",
+            "title": "The constraints that shape every answer",
+            "text": "No reboot, no package installs, no binary copies. Do not edit the kubelet unit, its drop-ins, or its configuration file — those files are compared byte for byte. Do not delete or recreate the Node object. Do not cordon, drain, or taint any Node. The fix must survive daemon-reload, a kubelet restart, and a later restart of the Node's services."
+          }
+        ],
+        "prompt": "One Node has been NotReady for twenty minutes while the kubelet on it is up. What do you read first?",
+        "options": [
+          {
+            "label": "kubectl describe node slate-w2 — read the Ready condition's reason and message",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The Node states its own diagnosis",
+                  "text": "$ kubectl describe node slate-w2 | sed -n '/^Conditions:/,/^Addresses:/p'\nConditions:\n  Type             Status  LastHeartbeatTime                 LastTransitionTime                Reason                       Message\n  ----             ------  -----------------                 ------------------                ------                       -------\n  MemoryPressure   False   Mon, 17 Aug 2026 10:01:48 +0000   Mon, 17 Aug 2026 09:42:10 +0000   KubeletHasSufficientMemory   kubelet has sufficient memory available\n  DiskPressure     False   Mon, 17 Aug 2026 10:01:48 +0000   Mon, 17 Aug 2026 09:42:10 +0000   KubeletHasNoDiskPressure     kubelet has no disk pressure\n  PIDPressure      False   Mon, 17 Aug 2026 10:01:48 +0000   Mon, 17 Aug 2026 09:42:10 +0000   KubeletHasSufficientPID      kubelet has sufficient PID available\n  Ready            False   Mon, 17 Aug 2026 10:01:48 +0000   Mon, 17 Aug 2026 09:42:10 +0000   KubeletNotReady              container runtime is down,PLEG is not healthy: pleg was last seen active 19m52s ago; threshold is 3m0s"
+                }
+              ],
+              "teach": "Two facts sit in that block and both matter. The <code>LastHeartbeatTime</code> is seconds old, so the kubelet is alive, watching and posting status — a dead kubelet's conditions go stale and are marked <code>Unknown</code> by the node lifecycle controller after forty seconds. And the Ready message is an aggregate the kubelet builds from its own runtime health checks: <code>container runtime is down</code> plus a PLEG complaint. The Node is not silent; it is telling you exactly which of its dependencies is missing."
+            }
+          },
+          {
+            "label": "SSH in and restart the kubelet — its unit is what breaks on a NotReady Node",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The kubelet is already running, and restarting changes nothing",
+                  "text": "$ ssh slate-w2 'systemctl restart kubelet; sleep 20; systemctl is-active kubelet'\nactive\n\n$ kubectl get node slate-w2\nNAME       STATUS     ROLES    AGE   VERSION\nslate-w2   NotReady   <none>   62d   v1.36.0\n\n$ kubectl describe node slate-w2 | grep -A1 '^  Ready'\n  Ready   False   ...   KubeletNotReady   container runtime is down,PLEG is not healthy: pleg was last seen active 20m12s ago; threshold is 3m0s"
+                }
+              ],
+              "teach": "This is the named trap, and it is the memory of the previous NotReady question: there the kubelet unit's <code>ExecStart</code> pointed at a binary that did not exist, the unit was failing, and fixing the path plus <code>daemon-reload</code> was the answer. Check the premise before you reuse the answer. Here <code>systemctl is-active</code> says <code>active</code>, <code>NRestarts</code> is 0, and the process has been up for twenty minutes — the same twenty minutes the Node has been NotReady. A component that is running and reporting a fault is not the fault; restarting it just restarts the same complaint."
+            }
+          },
+          {
+            "label": "Delete the Node object so the kubelet re-registers cleanly",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not delete or recreate the Node object. Checkable: slate-w2.metadata.uid matches the snapshot. Deleting the Node object so the kubelet re-registers fails the uid check, and it does not make the Node Ready."
+                },
+                {
+                  "type": "terminal",
+                  "title": "It comes back with the same condition",
+                  "text": "$ kubectl delete node slate-w2\nnode \"slate-w2\" deleted\n\n$ sleep 15; kubectl get node slate-w2\nNAME       STATUS     ROLES    AGE   VERSION\nslate-w2   NotReady   <none>   12s   v1.36.0"
+                }
+              ],
+              "teach": "The Node object is a report, not a configuration. Deleting it evicts every Pod bound to it and the kubelet simply re-registers within seconds — carrying the same Ready condition, because the condition describes the machine and the machine has not changed. You lose the uid the grader checks and gain a fresh object saying exactly what the old one said."
+            }
+          },
+          {
+            "label": "ssh slate-w2 'journalctl -u kubelet -n 50' before anything else",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It works, and it is the second step",
+                  "text": "$ ssh slate-w2 'journalctl -u kubelet -n 4 --no-pager'\nAug 17 10:01:12 slate-w2 kubelet[1188]: E0817 10:01:12.884213    1188 kubelet.go:2431] \"Skipping pod synchronization\" err=\"container runtime is down\"\nAug 17 10:01:14 slate-w2 kubelet[1188]: E0817 10:01:14.113907    1188 remote_runtime.go:222] \"Version from runtime service failed\" err=\"rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial unix /run/containerd/containerd.sock: connect: no such file or directory\\\"\""
+                }
+              ],
+              "teach": "Nothing wrong with it — the logs say the same thing the Node object says, in more detail. It is marked partial only because it costs an SSH hop to learn what one <code>kubectl describe</code> already prints, and on an exam the cluster-side read is faster and safer. Work outside in: the Node condition tells you which subsystem, the journal tells you which socket."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "On the Node: the kubelet is healthy and unhappy",
+            "text": "$ ssh slate-w2 'systemctl status kubelet --no-pager | head -6'\n● kubelet.service - kubelet: The Kubernetes Node Agent\n     Loaded: loaded (/usr/lib/systemd/system/kubelet.service; enabled; preset: disabled)\n    Drop-In: /usr/lib/systemd/system/kubelet.service.d\n             └─10-kubeadm.conf\n     Active: active (running) since Mon 2026-08-17 09:41:55 UTC; 20min ago\n   Main PID: 1188 (kubelet)"
+          },
+          {
+            "type": "terminal",
+            "title": "And the same two errors, over and over",
+            "text": "$ ssh slate-w2 'journalctl -u kubelet --since -3min --no-pager | tail -5'\nAug 17 10:01:12 slate-w2 kubelet[1188]: E0817 10:01:12.884213    1188 kubelet.go:2431] \"Skipping pod synchronization\" err=\"container runtime is down\"\nAug 17 10:01:14 slate-w2 kubelet[1188]: E0817 10:01:14.113907    1188 remote_runtime.go:222] \"Version from runtime service failed\" err=\"rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial unix /run/containerd/containerd.sock: connect: no such file or directory\\\"\"\nAug 17 10:01:17 slate-w2 kubelet[1188]: E0817 10:01:17.226554    1188 generic.go:250] \"GenericPLEG: Unable to retrieve pods\" err=\"rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial unix /run/containerd/containerd.sock: connect: no such file or directory\\\"\""
+          }
+        ],
+        "prompt": "Every error names the same unix socket. What is the kubelet telling you?",
+        "options": [
+          {
+            "label": "It cannot reach the container runtime over CRI — nothing at /run/containerd/containerd.sock is accepting connections",
+            "verdict": "right",
+            "feedback": {
+              "teach": "The kubelet does not run containers. It speaks the Container Runtime Interface over a unix socket to a runtime that does, and every job it has flows through that connection: creating a sandbox, pulling an image, listing what is running. PLEG — the Pod Lifecycle Event Generator — is the loop that relists containers on a schedule to notice changes, so when the socket is gone PLEG goes stale within its three-minute threshold and the kubelet marks itself not ready. <code>no such file or directory</code> on a unix socket is specific: the socket file is not there, which is what happens when the runtime that creates it is not running."
+            }
+          },
+          {
+            "label": "The kubelet's configured CRI endpoint is wrong — correct containerRuntimeEndpoint in its config file",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not edit the kubelet unit, its drop-ins, or its configuration file. Checkable: those files match the snapshot byte for byte. Editing the kubelet unit fails the last pair, however Ready the Node looks."
+                },
+                {
+                  "type": "terminal",
+                  "title": "The endpoint matches what the runtime is supposed to serve",
+                  "text": "$ ssh slate-w2 'grep -i endpoint /var/lib/kubelet/config.yaml; grep -i ExecStart /usr/lib/systemd/system/containerd.service'\ncontainerRuntimeEndpoint: unix:///run/containerd/containerd.sock\nExecStart=/usr/bin/containerd\n\n$ ssh slate-w2 'grep -n \"^address\" /etc/containerd/config.toml || grep -n \"address\" /etc/containerd/config.toml | head -2'\n12:  address = \"/run/containerd/containerd.sock\""
+                }
+              ],
+              "teach": "Worth checking and it checks out: the kubelet dials the same path containerd is configured to serve, so the two agree. This is the right question in the wrong order — when a client cannot reach a socket, confirm the server is running before you suspect the address. And the task freezes all three kubelet files byte for byte, so an edit here forfeits two points even if the Node turns Ready."
+            }
+          },
+          {
+            "label": "The CNI plugin is missing — that is the usual cause of KubeletNotReady",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "A network fault says so in the message",
+                  "text": "# What a missing CNI looks like in the Ready condition:\n  Ready   False   ...   KubeletNotReady   container runtime network not ready: NetworkReady=false reason:NetworkPluginNotReady message:Network plugin returns error: cni plugin not initialized\n\n# What this Node actually reports:\n  Ready   False   ...   KubeletNotReady   container runtime is down,PLEG is not healthy: pleg was last seen active 19m52s ago; threshold is 3m0s"
+                }
+              ],
+              "teach": "<code>KubeletNotReady</code> is the reason for a whole family of faults, so the message is what distinguishes them and it is worth memorising the two most common. A network fault names <code>container runtime network not ready</code> and the CNI. Yours names the runtime itself being down. Read to the end of the message before you pick a subsystem."
+            }
+          },
+          {
+            "label": "The kubelet's client certificate expired, so it cannot post status",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It is posting status right now",
+                  "text": "$ kubectl get node slate-w2 -o jsonpath='{range .status.conditions[?(@.type==\"Ready\")]}{.lastHeartbeatTime}{\"\\n\"}{end}'\n2026-08-17T10:01:48Z\n\n$ date -u +%Y-%m-%dT%H:%M:%SZ\n2026-08-17T10:01:57Z"
+                }
+              ],
+              "teach": "The heartbeat is nine seconds old, so the kubelet is authenticating to the API server and writing to it successfully. An expired credential fails much louder and differently: the journal fills with <code>Unauthorized</code>, the Node stops updating, and the lifecycle controller flips its conditions to <code>Unknown</code> rather than a specific <code>False</code>. A precise False condition is proof that something is still reporting."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "Ask the runtime about itself",
+            "text": "$ ssh slate-w2 'systemctl status containerd --no-pager | head -5'\n○ containerd.service - containerd container runtime\n     Loaded: masked (Reason: Unit containerd.service is masked.)\n     Active: inactive (dead)\n\n$ ssh slate-w2 'systemctl is-enabled containerd; ls -l /run/containerd/containerd.sock'\nmasked\nls: cannot access '/run/containerd/containerd.sock': No such file or directory"
+          },
+          {
+            "type": "terminal",
+            "title": "The same question on the healthy Node, for contrast",
+            "text": "$ ssh slate-w1 'systemctl is-active containerd; systemctl is-enabled containerd'\nactive\nenabled"
+          }
+        ],
+        "prompt": "containerd is inactive and masked. What does masked mean for your fix?",
+        "options": [
+          {
+            "label": "A masked unit is linked to /dev/null and cannot be started at all — unmask it first, then enable and start it",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "What systemd says if you skip the unmask",
+                  "text": "$ ssh slate-w2 'systemctl start containerd'\nFailed to start containerd.service: Unit containerd.service is masked."
+                }
+              ],
+              "teach": "Masking is the strongest off switch systemd has: the unit name is symlinked to <code>/dev/null</code>, so it cannot be started manually, by a dependency, or at boot, and <code>enable</code> will not override it either. That also tells you something about the incident — masking is a deliberate act, so this Node was disabled by a person or a script, not by a crash. Undo it in order: unmask, then enable, then start."
+            }
+          },
+          {
+            "label": "It means the unit file is missing — reinstall containerd",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The unit and the binary are both present",
+                  "text": "$ ssh slate-w2 'ls -l /etc/systemd/system/containerd.service; ls -l /usr/lib/systemd/system/containerd.service; /usr/bin/containerd --version'\nlrwxrwxrwx 1 root root 9 Aug 17 09:40 /etc/systemd/system/containerd.service -> /dev/null\n-rw-r--r-- 1 root root 1229 Jul 2 2026 /usr/lib/systemd/system/containerd.service\ncontainerd github.com/containerd/containerd/v2 v2.1.4 fb4c30d4ede3531652d86197bf3fc9515e5276d9"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "No package installs and no binary copies."
+                }
+              ],
+              "teach": "The symlink to <code>/dev/null</code> in <code>/etc/systemd/system</code> is the mask itself, and it shadows the real unit that is still sitting in <code>/usr/lib/systemd/system</code>. The binary runs and prints its version. Nothing is missing, so nothing needs installing — and the task forbids it, precisely to stop you papering over a two-command fix."
+            }
+          },
+          {
+            "label": "Start it now with systemctl start containerd and confirm the Node goes Ready",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Refused, because of the mask",
+                  "text": "$ ssh slate-w2 'systemctl start containerd; echo rc=$?'\nFailed to start containerd.service: Unit containerd.service is masked.\nrc=1"
+                }
+              ],
+              "teach": "The right instinct in the wrong order, and systemd is explicit about why. Even on a Node where it succeeded, a bare <code>start</code> would leave the unit disabled, so the Node would be Ready now and NotReady after the next boot — which the task calls out as a graded requirement. Read the <code>Loaded:</code> line before you act on the <code>Active:</code> line."
+            }
+          },
+          {
+            "label": "Run crictl to confirm the runtime is really down before touching systemd",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It agrees, from the client side",
+                  "text": "$ ssh slate-w2 'crictl --runtime-endpoint unix:///run/containerd/containerd.sock version'\nE0817 10:03:41.552184    2210 remote_runtime.go:73] \"Version from runtime service failed\" err=\"rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial unix /run/containerd/containerd.sock: connect: no such file or directory\\\"\"\nFATAL[0000] getting the runtime version: rpc error: code = Unavailable desc = connection error"
+                }
+              ],
+              "teach": "A good confirmation and a habit worth keeping, because <code>crictl</code> talks to the runtime the same way the kubelet does — same socket, same protocol — so it reproduces the kubelet's own experience without restarting anything. It is partial here only because <code>systemctl status</code> already showed <code>masked</code> and <code>inactive (dead)</code>, which is the cause rather than another view of the symptom. Save <code>crictl</code> for after the fix, where the task requires it."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Grading notes, quoted",
+            "text": "Two routes score. systemctl enable --now containerd, or systemctl start containerd followed by systemctl enable containerd. A masked unit must be unmasked first. Any route that ends active and enabled passes.\nStarting the runtime without enabling it fails the second pair: the Node is Ready now and NotReady after the next service restart."
+          }
+        ],
+        "prompt": "Which sequence do you run on slate-w2?",
+        "options": [
+          {
+            "label": "systemctl unmask containerd, then systemctl enable --now containerd",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Two commands, and the socket comes back",
+                  "text": "$ ssh slate-w2 'systemctl unmask containerd && systemctl enable --now containerd'\nRemoved \"/etc/systemd/system/containerd.service\".\nCreated symlink /etc/systemd/system/multi-user.target.wants/containerd.service → /usr/lib/systemd/system/containerd.service.\n\n$ ssh slate-w2 'systemctl is-active containerd; systemctl is-enabled containerd; ls -l /run/containerd/containerd.sock'\nactive\nenabled\nsrw-rw---- 1 root root 0 Aug 17 10:04 /run/containerd/containerd.sock"
+                },
+                {
+                  "type": "terminal",
+                  "title": "The Node follows within a heartbeat",
+                  "text": "$ kubectl get node slate-w2 -w\nNAME       STATUS     ROLES    AGE   VERSION\nslate-w2   NotReady   <none>   62d   v1.36.0\nslate-w2   Ready      <none>   62d   v1.36.0"
+                }
+              ],
+              "teach": "<code>--now</code> makes <code>enable</code> also start the unit, which is the two graded properties in one command: <code>active</code> satisfies today and <code>enabled</code> satisfies the next boot. Notice you never touched the kubelet — it has been retrying the CRI connection on a backoff the whole time, so it reconnects on its own, PLEG relists successfully and the next status post flips the Node to Ready. Fixing a dependency almost always beats restarting the thing that depends on it."
+            }
+          },
+          {
+            "label": "systemctl unmask containerd, then systemctl start containerd, and stop there",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Ready now, and a time bomb",
+                  "text": "$ ssh slate-w2 'systemctl is-active containerd; systemctl is-enabled containerd'\nactive\ndisabled\n\n$ ssh slate-w2 'systemctl reboot' # or the next planned maintenance\n$ kubectl get node slate-w2\nNAME       STATUS     ROLES    AGE   VERSION\nslate-w2   NotReady   <none>   62d   v1.36.0"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "On slate-w2, the container runtime service is active and enabled. Starting the runtime without enabling it fails the second pair."
+                }
+              ],
+              "teach": "This is the second named trap and the most common real-world version of it: the incident closes, the Node is green, and the fault comes back at the worst possible moment weeks later. <code>start</code> is the running state; <code>enable</code> is the boot state. Unmasking removes the block but does not restore the boot symlink, so you must enable explicitly. The task's \"must survive a later restart of the Node's services\" is that requirement written as a check."
+            }
+          },
+          {
+            "label": "Unmask and start containerd, then restart the kubelet so it picks up the runtime",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It reconnects without your help",
+                  "text": "$ ssh slate-w2 'journalctl -u kubelet --since -1min --no-pager | tail -3'\nAug 17 10:04:22 slate-w2 kubelet[1188]: I0817 10:04:22.771208    1188 kubelet.go:2417] \"SyncLoop (PLEG): relisting succeeded\"\nAug 17 10:04:23 slate-w2 kubelet[1188]: I0817 10:04:23.019442    1188 kubelet_node_status.go:544] \"Updating node status\" node=\"slate-w2\"\nAug 17 10:04:24 slate-w2 kubelet[1188]: I0817 10:04:24.882771    1188 setNodeStatus.go:81] \"Node became ready\" node=\"slate-w2\""
+                }
+              ],
+              "teach": "Harmless, and it teaches the wrong lesson. The kubelet's CRI client retries on a backoff of a few seconds forever, so it recovers by itself the moment the socket exists — the journal shows PLEG relisting and the Node flipping without anyone touching the kubelet. Restarting it briefly kills your only healthy component and, if you had reached for it earlier, would have hidden which of the two services was actually broken. Also: still enable containerd."
+            }
+          },
+          {
+            "label": "Add Requires=containerd.service to the kubelet unit so this cannot happen again",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not edit the kubelet unit, its drop-ins, or its configuration file. Checkable: those files match the snapshot byte for byte. Editing the kubelet unit fails the last pair, however Ready the Node looks."
+                }
+              ],
+              "teach": "A defensible engineering idea, forbidden here and worth arguing with anyway. A hard <code>Requires</code> couples the two lifecycles: stop containerd for maintenance and systemd stops the kubelet too, so the Node goes silent instead of reporting the runtime fault — the very message that solved this question. The kubelet is deliberately built to survive its runtime and to say so. Fix the state, not the dependency graph."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "Both sides agree",
+            "text": "$ ssh slate-w2 'crictl --runtime-endpoint unix:///run/containerd/containerd.sock version'\nVersion:  0.1.0\nRuntimeName:  containerd\nRuntimeVersion:  v2.1.4\nRuntimeApiVersion:  v1\n\n$ kubectl get nodes\nNAME        STATUS   ROLES           AGE   VERSION\nslate-cp1   Ready    control-plane   62d   v1.36.0\nslate-w1    Ready    <none>          62d   v1.36.0\nslate-w2    Ready    <none>          62d   v1.36.0"
+          },
+          {
+            "type": "note",
+            "title": "How the eight points split",
+            "text": "2 pts  slate-w2 Ready, with the snapshot uid.\n2 pts  The runtime service is active and enabled, and crictl version answers with the runtime name and version.\n2 pts  After daemon-reload and a kubelet restart, the runtime stays active and the Node returns to Ready.\n2 pts  A probe Pod with required node affinity on kubernetes.io/hostname=slate-w2 becomes Running there; the kubelet files, and every Node's taints and unschedulable flag, match the snapshot."
+          }
+        ],
+        "prompt": "The Node is Ready. What does the grader still do that you have not?",
+        "options": [
+          {
+            "label": "Restart things and schedule a Pod: daemon-reload plus a kubelet restart, then a probe Pod pinned to slate-w2 by affinity",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Survives the restart",
+                  "text": "$ ssh slate-w2 'systemctl daemon-reload && systemctl restart kubelet && sleep 15 && systemctl is-active containerd'\nactive\n\n$ kubectl get node slate-w2\nNAME       STATUS   ROLES    AGE   VERSION\nslate-w2   Ready    <none>   62d   v1.36.0"
+                },
+                {
+                  "type": "terminal",
+                  "title": "And accepts work",
+                  "text": "$ kubectl run probe --image=nginx:1.27-alpine --overrides='{\"spec\":{\"affinity\":{\"nodeAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":{\"nodeSelectorTerms\":[{\"matchExpressions\":[{\"key\":\"kubernetes.io/hostname\",\"operator\":\"In\",\"values\":[\"slate-w2\"]}]}]}}}}}'\npod/probe created\n\n$ kubectl get pod probe -o wide\nNAME    READY   STATUS    RESTARTS   AGE   IP          NODE       NOMINATED NODE   READINESS GATES\nprobe   1/1     Running   0          12s   10.1.2.88   slate-w2   <none>           <none>"
+                }
+              ],
+              "teach": "Ready is the control plane's opinion; a Running Pod is proof the runtime can actually pull an image and start a container. Run the grader's checks yourself, in its order. The <code>daemon-reload</code> is not ceremony either — it is the step that would expose a unit file you edited and forgot, and running it now means the durability claim is tested rather than assumed. Remember to delete the probe Pod when you are finished."
+            }
+          },
+          {
+            "label": "Cordon slate-w2 for a while so nothing schedules there until it has been stable overnight",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not cordon, drain, or taint any Node. Checkable: spec.unschedulable and the taints on every Node match the snapshot. The grader creates a probe Pod with required node affinity on kubernetes.io/hostname=slate-w2; it must become Running."
+                },
+                {
+                  "type": "terminal",
+                  "title": "The probe Pod would never run",
+                  "text": "$ kubectl cordon slate-w2\nnode/slate-w2 cordoned\n\n$ kubectl describe pod probe | grep FailedScheduling | tail -1\n  Warning  FailedScheduling  4s  default-scheduler  0/3 nodes are available: 1 node(s) were unschedulable, 2 node(s) didn't match Pod's node affinity/selector."
+                }
+              ],
+              "teach": "This is the fourth named trap: caution that scores zero. A cordon sets <code>spec.unschedulable</code>, which both breaks the snapshot check and stops the probe Pod the grader needs, so it costs four points to look careful. If a Node is Ready and its runtime is enabled, it is ready for work."
+            }
+          },
+          {
+            "label": "Nothing — the Node is Ready and crictl answers, which is the task",
+            "verdict": "partial",
+            "feedback": {
+              "teach": "Four of the eight points are already yours and the other four are for durability and for scheduling, both of which are one command each. The whole question is built around a fix that <b>looks</b> complete while being one <code>systemctl enable</code> short, so the cheapest insurance is to run the restart the grader will run before you leave."
+            }
+          },
+          {
+            "label": "Reboot slate-w2 to prove the fix survives a restart",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "No reboot. The check is: after systemctl daemon-reload and systemctl restart kubelet on slate-w2, the runtime stays active and the Node returns to Ready."
+                }
+              ],
+              "teach": "The instinct is exactly right and the method is banned, so use the one the task names. A <code>daemon-reload</code> plus a kubelet restart exercises the same two claims — the unit files are consistent and the runtime keeps running — in fifteen seconds, without evicting workloads or risking a Node that does not come back."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "A NotReady Node with a running kubelet is a different fault from a NotReady Node with a dead one, and the Ready condition says which you have. Here the heartbeat is seconds old — so the kubelet is alive and authenticated — and the reason is KubeletNotReady with the message container runtime is down, PLEG is not healthy. The previous NotReady question was a broken ExecStart in the kubelet unit, so the reflex is to restart or repair the kubelet; check the premise first, because systemctl is-active says active, NRestarts is 0, and the process has been up exactly as long as the Node has been NotReady. A component that is running and reporting a fault is not the fault. Follow the socket instead: the journal repeats dial unix /run/containerd/containerd.sock: connect: no such file or directory, and systemctl status containerd shows Loaded: masked and Active: inactive (dead) — a masked unit is symlinked to /dev/null and refuses to start until you unmask it. Run systemctl unmask containerd then systemctl enable --now containerd; the kubelet reconnects on its own backoff, PLEG relists and the Node flips to Ready without any kubelet action. Starting without enabling is the trap that returns after the next boot, editing the kubelet unit or config forfeits two points byte for byte, and cordoning or deleting the Node object costs points while fixing nothing. Finish the way the grader does: daemon-reload, restart the kubelet, confirm crictl version answers, and schedule a probe Pod onto slate-w2 by node affinity. See kubernetes.io/docs/concepts/architecture/nodes/#condition and kubernetes.io/docs/tasks/debug/debug-cluster/crictl/."
+  },
+  "exam-var-diffs-v06": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "What you were handed",
+            "text": "$ kubectl config current-context\nverdigris\n\n$ kubectl -n billing get deploy invoicer\nNAME       READY   UP-TO-DATE   AVAILABLE   AGE\ninvoicer   0/1     1            0           26m\n\n$ kubectl -n billing get pods\nNAME                        READY   STATUS                       RESTARTS   AGE\ninvoicer-6d84c9f7b5-w2ntq   0/1     CreateContainerConfigError   0          26m"
+          },
+          {
+            "type": "note",
+            "title": "The constraints that shape every answer",
+            "text": "Do not delete or recreate Deployment invoicer; its uid is checked. Keep nginx:1.27-alpine and one replica. API_KEY must come from the ConfigMap through valueFrom.configMapKeyRef naming invoicer-config, not from a literal. invoicer-config must keep LOG_LEVEL=info and REGION=eu-west-1."
+          }
+        ],
+        "prompt": "READY 0/1 with 0 restarts, twenty-six minutes in. What is your first move?",
+        "options": [
+          {
+            "label": "kubectl -n billing describe pod invoicer-6d84c9f7b5-w2ntq — the STATUS is already a specific reason, so read the event behind it",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The kubelet names the missing key",
+                  "text": "$ kubectl -n billing describe pod invoicer-6d84c9f7b5-w2ntq | sed -n '/^    State:/,/^    Ready:/p'\n    State:          Waiting\n      Reason:       CreateContainerConfigError\n    Last State:     <none>\n    Ready:          False\n\n$ kubectl -n billing describe pod invoicer-6d84c9f7b5-w2ntq | tail -4\nEvents:\n  Type     Reason     Age                    From     Message\n  ----     ------     ----                   ----     -------\n  Warning  Failed     78s (x121 over 26m)    kubelet  Error: couldn't find key api-key in ConfigMap billing/invoicer-config"
+                }
+              ],
+              "teach": "<code>CreateContainerConfigError</code> is one of the most informative statuses in Kubernetes, because it is raised at a very specific moment: the kubelet has the image and is assembling the container's configuration — environment variables, volumes, secrets — and something it must resolve does not exist. Nothing has been handed to the runtime yet, which is why <code>RESTARTS</code> is 0 and stays 0. The event completes the sentence with the exact key and the exact ConfigMap."
+            }
+          },
+          {
+            "label": "kubectl -n billing rollout restart deploy invoicer so the Pods pick up the current ConfigMap",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "A new Pod, the same error, immediately",
+                  "text": "$ kubectl -n billing rollout restart deploy invoicer\ndeployment.apps/invoicer restarted\n\n$ kubectl -n billing get pods\nNAME                        READY   STATUS                       RESTARTS   AGE\ninvoicer-7f5b8d64c9-qm4tz   0/1     CreateContainerConfigError   0          9s\n\n$ kubectl -n billing describe pod invoicer-7f5b8d64c9-qm4tz | tail -2\n  Warning  Failed  3s  kubelet  Error: couldn't find key api-key in ConfigMap billing/invoicer-config"
+                }
+              ],
+              "teach": "This is the named trap in its first form, and it is a memory of the credential-rotation question: there a Pod held a stale value because environment variables and <code>subPath</code> mounts are resolved once at container start, and a rollout was genuinely the way to re-read them. That fix assumes there is a value to re-read. Here the key does not exist, so every fresh Pod hits the same wall in under a second. A restart re-runs a failing step; it does not change what the step is looking for."
+            }
+          },
+          {
+            "label": "kubectl -n billing logs deploy/invoicer — read what the app says before it fails its probe",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "There is nothing to read from",
+                  "text": "$ kubectl -n billing logs deploy/invoicer\nError from server (BadRequest): container \"invoicer\" in pod \"invoicer-6d84c9f7b5-w2ntq\" is waiting to start: CreateContainerConfigError"
+                }
+              ],
+              "teach": "The trap's second form: reading 0/1 as a readiness-probe failure, because the last workload-down question was a probe that never passed. Logs are a fast way to disprove it — the API server refuses, because logs come from a container and no container was ever created. Line the three up: a failing probe shows STATUS <code>Running</code> with logs; a crashing process shows <code>CrashLoopBackOff</code> with a rising restart count and logs; a configuration failure shows a Waiting reason, zero restarts and nothing to read."
+            }
+          },
+          {
+            "label": "kubectl -n billing get events --sort-by=.lastTimestamp",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The same message, without the container state",
+                  "text": "$ kubectl -n billing get events --sort-by=.lastTimestamp | tail -3\n26m   Normal    Scheduled   pod/invoicer-6d84c9f7b5-w2ntq   Successfully assigned billing/invoicer-6d84c9f7b5-w2ntq to mesa-w1\n26m   Normal    Pulled      pod/invoicer-6d84c9f7b5-w2ntq   Container image \"nginx:1.27-alpine\" already present on machine\n78s   Warning   Failed      pod/invoicer-6d84c9f7b5-w2ntq   Error: couldn't find key api-key in ConfigMap billing/invoicer-config"
+                }
+              ],
+              "teach": "Perfectly good, and it even shows the useful ordering: <code>Scheduled</code>, then <code>Pulled</code>, then <code>Failed</code>. Placement and the image are fine, so the failure is later than both. <code>describe pod</code> gives you all of this plus the container's <code>State</code> block and the env references you are about to compare, which is why it is the better first command once you know which Pod is at fault."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The reference, as stored in the template",
+            "text": "$ kubectl -n billing get deploy invoicer -o jsonpath='{.spec.template.spec.containers[0].env}{\"\\n\"}'\n[{\"name\":\"API_KEY\",\"valueFrom\":{\"configMapKeyRef\":{\"name\":\"invoicer-config\",\"key\":\"api-key\"}}}]"
+          },
+          {
+            "type": "terminal",
+            "title": "The ConfigMap, as it exists",
+            "text": "$ kubectl -n billing get configmap invoicer-config -o yaml | sed -n '/^data:/,/^kind:/p'\ndata:\n  LOG_LEVEL: info\n  REGION: eu-west-1\n  apiKey: prod-77"
+          }
+        ],
+        "prompt": "The reference asks for api-key and the ConfigMap holds apiKey. Why does that stop the container starting?",
+        "options": [
+          {
+            "label": "Keys are matched byte for byte, and an unresolvable configMapKeyRef is a hard failure before the container is created",
+            "verdict": "right",
+            "feedback": {
+              "teach": "There is no normalisation anywhere in this path: <code>api-key</code>, <code>apiKey</code> and <code>API_KEY</code> are three different keys, and a hyphen is not a synonym for a capital letter. The environment variable's <b>name</b> is <code>API_KEY</code> and the ConfigMap <b>key</b> is whatever you point at; the two are independent strings. When a required reference cannot be resolved the kubelet refuses to create the container at all, which is a deliberate design: starting a workload with a silently missing credential is worse than not starting it."
+            }
+          },
+          {
+            "label": "The ConfigMap is in the wrong namespace, so the kubelet cannot see it",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The error names the namespace, and it is the right one",
+                  "text": "  Warning  Failed  78s  kubelet  Error: couldn't find key api-key in ConfigMap billing/invoicer-config\n\n$ kubectl -n billing get configmap invoicer-config\nNAME              DATA   AGE\ninvoicer-config   3      31d"
+                }
+              ],
+              "teach": "Read the message closely: it says <code>couldn't find key api-key <b>in</b> ConfigMap billing/invoicer-config</code>, which means the kubelet found the ConfigMap and looked inside it. A missing object produces a different sentence — <code>configmap \"invoicer-config\" not found</code> — and the same status. The preposition is the whole difference between a namespace problem and a key problem."
+            }
+          },
+          {
+            "label": "It does not — the container would start with API_KEY unset, so the real failure is elsewhere",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Only optional references are allowed to be missing",
+                  "text": "$ kubectl -n billing get deploy invoicer -o jsonpath='{.spec.template.spec.containers[0].env[0].valueFrom.configMapKeyRef.optional}{\"\\n\"}'\n\n$ kubectl -n billing get pod invoicer-6d84c9f7b5-w2ntq -o jsonpath='{.status.containerStatuses[0].state}{\"\\n\"}'\n{\"waiting\":{\"message\":\"couldn't find key api-key in ConfigMap billing/invoicer-config\",\"reason\":\"CreateContainerConfigError\"}}"
+                }
+              ],
+              "teach": "That is the behaviour of <code>optional: true</code>, and the field is unset here, so the default applies: the key is required and its absence blocks container creation. The container status carries the same message as the event, which is a useful place to read it when events have aged out after an hour."
+            }
+          },
+          {
+            "label": "The Deployment needs a checksum annotation so it notices ConfigMap changes",
+            "verdict": "wrong",
+            "feedback": {
+              "teach": "That pattern solves a different problem — forcing a rollout when a ConfigMap's <b>contents</b> change, since a Pod already running will not re-read an environment variable. It cannot help when the key has never existed, and nothing here is stale. Fix the mismatch first; think about propagation when there is a value to propagate."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Grading notes, quoted",
+            "text": "Two routes score. Point the reference at the key the ConfigMap already holds, apiKey. Or add the key the reference already names, api-key: prod-77, to the ConfigMap and let the kubelet's next create attempt pick it up. Both end with a running container that read the value from the ConfigMap.\nSetting optional: true on the reference fails the second pair: the container starts and the Deployment reports Available, but API_KEY is unset.\nA literal value: prod-77 fails the third pair."
+          }
+        ],
+        "prompt": "Which edit do you make?",
+        "options": [
+          {
+            "label": "Patch the configMapKeyRef's key from api-key to apiKey, leaving the env name API_KEY and the ConfigMap untouched",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "One string, and the Pod starts",
+                  "text": "$ kubectl -n billing patch deploy invoicer --type=json \\\n    -p='[{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/env/0/valueFrom/configMapKeyRef/key\",\"value\":\"apiKey\"}]'\ndeployment.apps/invoicer patched\n\n$ kubectl -n billing rollout status deploy invoicer --timeout=60s\ndeployment \"invoicer\" successfully rolled out\n\n$ kubectl -n billing exec deploy/invoicer -- printenv API_KEY\nprod-77"
+                }
+              ],
+              "teach": "The smallest edit that satisfies every constraint: the uid is preserved because you patched rather than replaced, the image and replica count are untouched, the value still arrives through <code>configMapKeyRef</code>, and <code>LOG_LEVEL</code> and <code>REGION</code> never moved. The other scoring route — adding <code>api-key: prod-77</code> to the ConfigMap — also works and needs no rollout at all, because the kubelet is retrying container creation every few seconds and will succeed on the next attempt. Prefer the one that leaves the data alone."
+            }
+          },
+          {
+            "label": "Set optional: true on the reference so a missing key stops blocking the container",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Available, and empty",
+                  "text": "$ kubectl -n billing get deploy invoicer\nNAME       READY   UP-TO-DATE   AVAILABLE   AGE\ninvoicer   1/1     1            1           28m\n\n$ kubectl -n billing exec deploy/invoicer -- printenv API_KEY\ncommand terminated with exit code 1\n\n$ kubectl -n billing exec deploy/invoicer -- sh -c 'echo \"API_KEY=[$API_KEY]\"'\nAPI_KEY=[]"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "kubectl exec deploy/invoicer -n billing -- printenv API_KEY prints prod-77."
+                }
+              ],
+              "teach": "This is the second named trap and the most dangerous answer in the question, because every dashboard turns green: 1/1, Available, no events. <code>optional: true</code> means \"start anyway and leave the variable unset\", so you have converted a loud startup failure into a silent runtime one, and the application now authenticates with an empty key at whatever moment it first tries. The strictness you disabled is the feature."
+            }
+          },
+          {
+            "label": "Replace the reference with a literal value: prod-77 — the value is right there in the ConfigMap",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "In the live pod template, API_KEY is set through valueFrom.configMapKeyRef whose name is invoicer-config. A literal value: prod-77 fails the third pair."
+                }
+              ],
+              "teach": "It runs, it prints the right value, and it fails two of the six points, which is the honest price of hardcoding. The reference exists so the value has one home: change it in the ConfigMap and the next Pod picks it up, with no template edit and no rebuild. Copying it into the template forks the truth, and the copy is the one nobody updates."
+            }
+          },
+          {
+            "label": "Replace the env entry with envFrom the whole ConfigMap so every key is exported",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The variable you need is not among them",
+                  "text": "$ kubectl -n billing exec deploy/invoicer -- printenv | grep -E 'LOG_LEVEL|REGION|apiKey|API_KEY'\nLOG_LEVEL=info\nREGION=eu-west-1\napiKey=prod-77"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "API_KEY is set through valueFrom.configMapKeyRef whose name is invoicer-config."
+                }
+              ],
+              "teach": "<code>envFrom</code> exports each key under its own name, so the container gets <code>apiKey</code> and never <code>API_KEY</code> — the rename is exactly what the single-key form exists to do. It also exports everything the ConfigMap will ever hold, which quietly grows the container's environment as the ConfigMap grows. And the graded check names <code>configMapKeyRef</code> specifically."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The end state",
+            "text": "$ kubectl -n billing get deploy invoicer\nNAME       READY   UP-TO-DATE   AVAILABLE   AGE\ninvoicer   1/1     1            1           29m\n\n$ kubectl -n billing get pods\nNAME                        READY   STATUS    RESTARTS   AGE\ninvoicer-5c8f7b9d64-r6vpk   1/1     Running   0          40s"
+          },
+          {
+            "type": "note",
+            "title": "How the six points split",
+            "text": "2 pts  billing/invoicer has the snapshot uid, image nginx:1.27-alpine, replicas 1, and 1 ready and 1 available replica.\n2 pts  kubectl exec deploy/invoicer -n billing -- printenv API_KEY prints prod-77.\n2 pts  The live template sets API_KEY through valueFrom.configMapKeyRef naming invoicer-config, and the ConfigMap still holds LOG_LEVEL=info and REGION=eu-west-1."
+          }
+        ],
+        "prompt": "1/1 and Available. Which checks finish the question?",
+        "options": [
+          {
+            "label": "printenv inside the container, the live template's env entry, the ConfigMap's other two keys, and the Deployment uid",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "All four, in three commands",
+                  "text": "$ kubectl -n billing exec deploy/invoicer -- printenv API_KEY\nprod-77\n\n$ kubectl -n billing get deploy invoicer -o jsonpath='{.metadata.uid}{\"  \"}{.spec.template.spec.containers[0].env[0].valueFrom.configMapKeyRef}{\"\\n\"}'\n2e6f8a41-93bd-4c0a-b7e5-1d4f6c8a2b70  {\"key\":\"apiKey\",\"name\":\"invoicer-config\"}\n\n$ kubectl -n billing get configmap invoicer-config -o jsonpath='{.data}{\"\\n\"}'\n{\"LOG_LEVEL\":\"info\",\"REGION\":\"eu-west-1\",\"apiKey\":\"prod-77\"}"
+                }
+              ],
+              "teach": "Two of the six points are for <b>how</b> the value arrives, not just that it does, so read the live template rather than trusting the patch you typed. <code>printenv</code> inside the running container is the only check that proves the whole chain worked end to end: ConfigMap key, reference, kubelet resolution, container environment. Confirming the other two ConfigMap keys takes one command and protects against an edit that rewrote <code>data</code> wholesale."
+            }
+          },
+          {
+            "label": "Rename the ConfigMap key to API_KEY so the key and the variable finally match",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Straight back to where you started",
+                  "text": "$ kubectl -n billing get pods\nNAME                        READY   STATUS                       RESTARTS   AGE\ninvoicer-5c8f7b9d64-r6vpk   0/1     CreateContainerConfigError   0          15s\n\n$ kubectl -n billing describe pod invoicer-5c8f7b9d64-r6vpk | tail -2\n  Warning  Failed  4s  kubelet  Error: couldn't find key apiKey in ConfigMap billing/invoicer-config"
+                }
+              ],
+              "teach": "Tidying one end of a reference breaks it, and the error message is the mirror image of the one you fixed. There is no rule that a ConfigMap key should look like the environment variable it feeds; the mapping is the point of <code>configMapKeyRef</code>. If you truly want both renamed, both sides change in the same apply — and here neither should, because the ConfigMap keys are graded."
+            }
+          },
+          {
+            "label": "Add optional: true now, so a future ConfigMap edit can never take the Deployment down",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Setting optional: true on the reference fails the second pair: the container starts and the Deployment reports Available, but API_KEY is unset."
+                }
+              ],
+              "teach": "It does not fail immediately, which is what makes it worth refusing on principle. The reference is required today and resolves today, so nothing changes — until someone edits the key, at which point the Pod starts happily with an empty credential instead of refusing to start. You would be trading a loud, instant, obvious failure for a quiet one in production."
+            }
+          },
+          {
+            "label": "Delete the Pod so the new environment is definitely picked up",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The rollout already replaced it",
+                  "text": "$ kubectl -n billing get pods -o jsonpath='{.items[0].metadata.name}{\"  \"}{.items[0].spec.containers[0].env[0].valueFrom.configMapKeyRef.key}{\"\\n\"}'\ninvoicer-5c8f7b9d64-r6vpk  apiKey"
+                }
+              ],
+              "teach": "A template change is a new ReplicaSet and a new Pod by definition — the Pod you are looking at already carries the corrected reference, and <code>printenv</code> proved it resolved. Deleting it is harmless here and is the habit that, in the ConfigMap-contents case, hides the real lesson: a running container never re-reads an environment variable, so a rollout is required there and pointless here."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "0/1 has several causes and the STATUS column already separates them. CreateContainerConfigError with RESTARTS 0 means the kubelet had the image, started assembling the container's configuration, and could not resolve something it needs — so no container was ever created, kubectl logs has nothing to return, and nothing has crashed. That rules out both of the workload-down questions this one is built against: a failing readiness probe shows STATUS Running with logs, and a stale mounted credential is fixed by a rollout because environment variables and subPath mounts resolve once at start. Restarting here just re-runs the same failing step, as the identical event on each new Pod shows. Read the event to its end: Error: couldn't find key api-key in ConfigMap billing/invoicer-config says the ConfigMap was found and the key inside it was not — a missing object would have said not found instead. The ConfigMap holds LOG_LEVEL, REGION and apiKey; the reference asks for api-key. Keys match byte for byte, and the environment variable's name API_KEY is a separate string from the key it reads. Point the reference at apiKey, or add api-key: prod-77 to the ConfigMap; both score. Do not set optional: true, which starts the container with an empty credential and turns a loud failure into a silent one, do not hardcode the literal, and do not switch to envFrom, which exports apiKey under its own name and never produces API_KEY. Verify with printenv inside the container and by reading the live template. See kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/#define-container-environment-variables-using-configmap-data and kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/."
+  },
+  "exam-var-diffs-v07": {
+    "steps": [
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "What you were handed",
+            "text": "$ kubectl config current-context\nslate\n\n$ kubectl -n mailroom exec sorter -- nslookup kubernetes.default.svc.cluster.local\n;; connection timed out; no servers could be reached\n\ncommand terminated with exit code 1\n\n$ kubectl -n mailroom exec sorter -- cat /etc/resolv.conf\nsearch mailroom.svc.cluster.local svc.cluster.local cluster.local\nnameserver 10.96.0.10\noptions ndots:5"
+          },
+          {
+            "type": "note",
+            "title": "The constraints that shape every answer",
+            "text": "Do not change Pod sorter — its uid and spec, including dnsPolicy and dnsConfig, are compared to the snapshot. Do not change ConfigMap kube-system/coredns. Do not change or replace Service kube-dns; its uid and clusterIP are checked. Every Pod must resolve in-cluster names through the address it already has."
+          }
+        ],
+        "prompt": "No in-cluster name resolves from sorter. What do you conclude from its resolv.conf?",
+        "options": [
+          {
+            "label": "The Pod's resolver is correct — cluster DNS address, cluster search list, ndots:5 — so the fault is upstream of the Pod",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "And the same failure everywhere else",
+                  "text": "$ kubectl -n default run t1 --image=busybox:1.36 --restart=Never -it --rm -- nslookup kubernetes.default\n;; connection timed out; no servers could be reached\npod \"t1\" deleted\n\n$ kubectl -n kube-system exec deploy/metrics-collector -- nslookup kubernetes.default\n;; connection timed out; no servers could be reached"
+                }
+              ],
+              "teach": "Three facts in four lines. The nameserver is <code>10.96.0.10</code>, the cluster DNS address the kubelet injects under <code>ClusterFirst</code>, so this Pod is pointed at the right server. The search list and <code>ndots:5</code> are the standard cluster set, so short names would be expanded correctly. And every other namespace fails identically, which turns a Pod question into a cluster question — a per-Pod misconfiguration cannot make someone else's Pod fail."
+            }
+          },
+          {
+            "label": "Set dnsPolicy: None with dnsConfig.nameservers on sorter so it queries a resolver that works",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading lines",
+                  "text": "Pod mailroom/sorter has the snapshot uid and its spec matches the snapshot exactly, including dnsPolicy and dnsConfig.\ndnsConfig.nameservers on sorter fails the same two pairs, and it would fix one Pod out of the whole cluster.\nThe grader then creates a Pod in a second namespace; the same lookup succeeds from it."
+                },
+                {
+                  "type": "terminal",
+                  "title": "And a public resolver cannot answer a cluster name",
+                  "text": "$ kubectl -n mailroom exec sorter-test -- nslookup kubernetes.default.svc.cluster.local\nServer:    192.0.2.53\nAddress 1: 192.0.2.53\n\nnslookup: can't resolve 'kubernetes.default.svc.cluster.local': Name or service not known"
+                }
+              ],
+              "teach": "This is the named trap, and it is the answer to a question you have already done: the earlier DNS exercise wanted one Pod to bypass cluster DNS, and <code>dnsPolicy: None</code> with explicit <code>dnsConfig.nameservers</code> was exactly right there. Two things make it wrong here. The scope is wrong — every namespace fails, and this edits one Pod. And the destination is wrong — <code>cluster.local</code> exists only inside CoreDNS, so an external resolver returns a name error for the very name you must resolve. The Pod's spec is graded byte for byte precisely to close this door."
+            }
+          },
+          {
+            "label": "Set dnsPolicy: Default so the Pod uses the Node's resolver, which the question says works",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The Node resolver has never heard of cluster.local",
+                  "text": "$ ssh slate-w1 'cat /etc/resolv.conf'\nnameserver 10.0.0.2\nsearch .\n\n$ ssh slate-w1 'nslookup kubernetes.default.svc.cluster.local 10.0.0.2'\nServer:\t\t10.0.0.2\nAddress:\t10.0.0.2#53\n\n** server can't find kubernetes.default.svc.cluster.local: NXDOMAIN"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "dnsPolicy: Default on sorter fails the first pair, and it fails the last pair too: the Node resolver cannot answer kubernetes.default.svc.cluster.local."
+                }
+              ],
+              "teach": "\"Node-level resolution works\" is true and it is about a different namespace of names. <code>Default</code> means \"inherit the Node's <code>/etc/resolv.conf</code>\", which points at the infrastructure resolver — excellent for <code>github.com</code>, and it returns NXDOMAIN for every Service in the cluster, because those records live only in CoreDNS. It is also the same scope error: one Pod out of a broken cluster."
+            }
+          },
+          {
+            "label": "The Pod's own network is broken — restart sorter and see if it comes back healthy",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Its network works fine",
+                  "text": "$ kubectl -n mailroom exec sorter -- wget -q -T3 -O- http://10.96.0.1:443/healthz 2>/dev/null; echo\n\n$ kubectl -n mailroom exec sorter -- nc -z -w2 10.96.0.1 443 && echo APISERVER-REACHABLE\nAPISERVER-REACHABLE\n\n$ kubectl -n mailroom get pod sorter\nNAME     READY   STATUS    RESTARTS   AGE\nsorter   1/1     Running   0          3h"
+                }
+              ],
+              "teach": "The Pod opens a TCP connection to the <code>kubernetes</code> Service ClusterIP, so its interface, its routes and the proxy layer all work — DNS is the only thing failing. And the constraint forbids changing <code>sorter</code> anyway; a delete would give it a new uid and cost two points. When one protocol fails and another succeeds from the same Pod, the fault is in the service that protocol depends on."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "From Debugging DNS Resolution",
+            "text": "Check the local DNS configuration first. Then check if the DNS pod is running, check for errors in the DNS pod, verify that the DNS service is up, and check whether DNS endpoints are exposed."
+          },
+          {
+            "type": "terminal",
+            "title": "The Service the resolver points at",
+            "text": "$ kubectl -n kube-system get svc kube-dns\nNAME       TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                  AGE\nkube-dns   ClusterIP   10.96.0.10   <none>        53/UDP,53/TCP,9153/TCP   62d"
+          }
+        ],
+        "prompt": "The Pod's resolver is fine and kube-dns exists at the right address. Where do you look next?",
+        "options": [
+          {
+            "label": "At the DNS Pods themselves — walk the chain the debugging page lays out, from server to Service to endpoints",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "There are none",
+                  "text": "$ kubectl -n kube-system get pods -l k8s-app=kube-dns\nNo resources found in kube-system namespace.\n\n$ kubectl -n kube-system get pods | head -5\nNAME                                READY   STATUS    RESTARTS   AGE\netcd-slate-cp1                      1/1     Running   0          62d\nkube-apiserver-slate-cp1            1/1     Running   0          62d\nkube-controller-manager-slate-cp1   1/1     Running   0          62d\nkube-proxy-4nx8k                    1/1     Running   0          62d"
+                }
+              ],
+              "teach": "The chain is short and each link is one command: the client's resolver, the server Pods, the Service, its endpoints. You have cleared the first link, and the second link is empty — no CoreDNS Pod exists in the cluster at all. That is a much simpler fault than a misbehaving one, and it explains the totality of the outage: not one namespace, not one record, everything."
+            }
+          },
+          {
+            "label": "At the CoreDNS Corefile — a bad zone or forward line would break resolution cluster-wide",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not change the CoreDNS configuration. Checkable: ConfigMap kube-system/coredns matches the snapshot. Editing the Corefile fails the endpoint pair."
+                },
+                {
+                  "type": "terminal",
+                  "title": "And it is the standard file",
+                  "text": "$ kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile}{\"\\n\"}'\n.:53 {\n    errors\n    health {\n       lameduck 5s\n    }\n    ready\n    kubernetes cluster.local in-addr.arpa ip6.arpa {\n       pods insecure\n       fallthrough in-addr.arpa ip6.arpa\n       ttl 30\n    }\n    prometheus :9153\n    forward . /etc/resolv.conf\n    cache 30\n    loop\n    reload\n    loadbalance\n}"
+                }
+              ],
+              "teach": "This is the second named trap: rewriting a configuration that was never wrong. A Corefile is only read by a running CoreDNS process, so it cannot be the cause when no process exists — and the file here is the default kubeadm Corefile, unmodified. A broken Corefile also fails visibly and differently: the Pods exist and crash-loop, and their logs print the parse error. Check that something is running before you debug what it is running."
+            }
+          },
+          {
+            "label": "At kube-proxy — the ClusterIP is not being programmed on the Nodes",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The proxy is healthy, and other ClusterIPs work",
+                  "text": "$ kubectl -n kube-system get ds kube-proxy\nNAME         DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   AGE\nkube-proxy   3         3         3       3            3           62d\n\n$ kubectl -n mailroom exec sorter -- nc -z -w2 10.96.0.1 443 && echo CLUSTERIP-ROUTING-OK\nCLUSTERIP-ROUTING-OK"
+                }
+              ],
+              "teach": "One test settles it: a different ClusterIP, the <code>kubernetes</code> Service on <code>10.96.0.1</code>, is reachable from the same Pod, so ClusterIP routing is being programmed. kube-proxy is fully available on all three Nodes. When one Service address misbehaves and others do not, the difference is behind that Service, not in the layer that serves all of them."
+            }
+          },
+          {
+            "label": "At the CNI — a broken overlay would drop the UDP queries",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Pod networking works across Nodes",
+                  "text": "$ kubectl get pods -A -o wide | grep -c Running\n24\n\n$ kubectl -n mailroom exec sorter -- wget -q -T3 -O- http://10.1.3.41:8080/ 2>&1 | head -1\nweb-5f7c9d8b64-2xltn"
+                }
+              ],
+              "teach": "This is the fourth named trap: reading the <b>shape</b> of the failure — a hang here, an instant error there — as evidence about the network. Pod-to-Pod traffic to another Node works from this very Pod. Keep the shape out of your reasoning for now; the next step shows why it cannot tell you what you want to know anyway."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "The Deployment behind those missing Pods",
+            "text": "$ kubectl -n kube-system get deployment coredns\nNAME      READY   UP-TO-DATE   AVAILABLE   AGE\ncoredns   0/0     0            0           62d\n\n$ kubectl -n kube-system get deployment coredns -o jsonpath='{.spec.replicas}{\"  \"}{.status.replicas}{\"\\n\"}'\n0  0\n\n$ kubectl -n kube-system get rs -l k8s-app=kube-dns\nNAME                 DESIRED   CURRENT   READY   AGE\ncoredns-7d9b8c4f6b   0         0         0       62d"
+          }
+        ],
+        "prompt": "READY 0/0. What does that number pair tell you?",
+        "options": [
+          {
+            "label": "The Deployment was scaled to zero — it wants no Pods, so none were ever created and nothing failed",
+            "verdict": "right",
+            "feedback": {
+              "teach": "Read <code>READY a/b</code> as \"a ready out of b desired\", and the second number is the one that names the fault. <code>0/2</code> would mean two Pods are wanted and none are ready, which is a failure to create or to become ready — image pulls, scheduling, crash loops, probes. <code>0/0</code> means nothing is wanted, so the controller is idle and correct, no events were generated, and nothing anywhere reports an error. This is why a scaled-to-zero workload is a genuinely quiet outage: every controller involved believes it is doing its job."
+            }
+          },
+          {
+            "label": "The Deployment is broken — delete it and reapply the CoreDNS manifest",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It is intact, only its replica count is zero",
+                  "text": "$ kubectl -n kube-system get deployment coredns -o jsonpath='{.spec.template.spec.containers[0].image}{\"  \"}{.spec.selector.matchLabels}{\"\\n\"}'\nregistry.k8s.io/coredns/coredns:v1.12.1  {\"k8s-app\":\"kube-dns\"}"
+                }
+              ],
+              "teach": "The template, the image and the selector are all present and correct — one integer in <code>spec.replicas</code> is the entire fault. Recreating a control-plane workload from a manifest you found somewhere risks a version mismatch with the cluster and loses whatever local customisation it carried. Change the field that is wrong."
+            }
+          },
+          {
+            "label": "The Pods cannot schedule — check the Nodes for capacity and taints",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "There is no Pending Pod to schedule",
+                  "text": "$ kubectl -n kube-system get pods -l k8s-app=kube-dns\nNo resources found in kube-system namespace.\n\n$ kubectl -n kube-system get events --field-selector reason=FailedScheduling | wc -l\n0"
+                }
+              ],
+              "teach": "A scheduling fault needs a Pod object to be stuck, and there is none — the ReplicaSet has never been asked to create one. This is the difference between <code>0/0</code> and <code>0/2</code> again, and it is worth internalising because the two look almost identical in a status column and lead to completely different investigations."
+            }
+          },
+          {
+            "label": "An admission webhook is blocking Pod creation in kube-system",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Nothing was rejected, because nothing was submitted",
+                  "text": "$ kubectl get validatingwebhookconfigurations\nNo resources found\n\n$ kubectl -n kube-system describe rs coredns-7d9b8c4f6b | tail -3\nEvents:  <none>"
+                }
+              ],
+              "teach": "A blocked creation is loud: the ReplicaSet records <code>FailedCreate</code> events with the rejection message, and its DESIRED column stays above zero. Here DESIRED is 0 and the event list is empty. When you suspect something is being blocked, look for the refusal — its absence is evidence too."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "What the Service fronts",
+            "text": "$ kubectl -n kube-system get endpointslice -l kubernetes.io/service-name=kube-dns\nNAME             ADDRESSTYPE   PORTS     ENDPOINTS   AGE\nkube-dns-t4b9c   IPv4          <unset>   <unset>     62d\n\n$ kubectl -n kube-system get endpoints kube-dns\nNAME       ENDPOINTS   AGE\nkube-dns   <none>      62d"
+          },
+          {
+            "type": "terminal",
+            "title": "Two clients, two different-looking failures",
+            "text": "$ kubectl -n mailroom exec sorter -- nslookup kubernetes.default.svc.cluster.local\n;; connection timed out; no servers could be reached\n\n$ kubectl -n mailroom exec sorter -- nc -z -w2 -u 10.96.0.10 53; echo rc=$?\nrc=1"
+          }
+        ],
+        "prompt": "kube-dns is healthy and its EndpointSlice is empty. Which observation is the diagnosis?",
+        "options": [
+          {
+            "label": "The empty EndpointSlice — the Service exists and fronts nothing, so no query can be answered whatever the client sees",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "What that placeholder slice is",
+                  "text": "PORTS <unset> and ENDPOINTS <unset> mark a placeholder slice. The EndpointSlice controller keeps exactly one empty slice for a selector Service with no matching ready Pods, so that consumers can tell \"no backends\" apart from \"no data yet\"."
+                }
+              ],
+              "teach": "This is the fact that survives every other variable. The Service object is fine — right name, right ClusterIP, right ports — and it is a pointer to a set of ready Pods that is empty, so there is nothing on the other end of <code>10.96.0.10</code> to answer. Every <code>resolv.conf</code> in the cluster names that address, which is why the outage is total. Read it in the object rather than inferring it from the client: an empty slice is unambiguous, and it is the same evidence whether the client hung, errored, or retried."
+            }
+          },
+          {
+            "label": "The timeout — a hang proves the packets are being dropped on the network path",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The client-visible shape is not a stable signal here",
+                  "text": "$ kubectl -n kube-system get cm kube-proxy -o jsonpath='{.data.config\\.conf}' | grep -i '^mode'\nmode: \"\"\n\n$ kubectl -n mailroom exec sorter -- nc -z -w2 10.96.0.1 443 && echo OTHER-CLUSTERIP-OK\nOTHER-CLUSTERIP-OK"
+                }
+              ],
+              "teach": "Do not build the diagnosis on how the failure feels to the client. What a caller sees when it dials a ClusterIP with no ready endpoints depends on the proxy implementation and its mode, and on whether the query was UDP or TCP — so the same empty Service can look like a hang from one Pod and an instant error from another. Meanwhile, another ClusterIP answers from the same Pod, so the path itself is healthy. The authoritative signal is the object: the EndpointSlice is empty."
+            }
+          },
+          {
+            "label": "The Service is misconfigured — its selector no longer matches the CoreDNS Pod labels",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The selector is right; there is nothing to select",
+                  "text": "$ kubectl -n kube-system get svc kube-dns -o jsonpath='{.spec.selector}{\"\\n\"}'\n{\"k8s-app\":\"kube-dns\"}\n\n$ kubectl -n kube-system get deployment coredns -o jsonpath='{.spec.template.metadata.labels}{\"\\n\"}'\n{\"k8s-app\":\"kube-dns\"}"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not change or replace Service kube-dns. Checkable: kube-dns.metadata.uid and spec.clusterIP match the snapshot."
+                }
+              ],
+              "teach": "Selector and template labels are the same string, so the moment a Pod exists it will be selected. An empty slice has two possible causes — the selector matches nothing, or nothing exists to match — and you have already established which. Editing or replacing <code>kube-dns</code> would also change the ClusterIP that every Pod in the cluster has baked into its <code>resolv.conf</code>."
+            }
+          },
+          {
+            "label": "Deploy a second DNS Service in front of a new CoreDNS Deployment to restore resolution quickly",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "No Pod is pointed at it",
+                  "text": "$ kubectl -n kube-system get svc\nNAME         TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)                  AGE\nkube-dns     ClusterIP   10.96.0.10    <none>        53/UDP,53/TCP,9153/TCP   62d\nrescue-dns   ClusterIP   10.96.77.30   <none>        53/UDP,53/TCP            20s\n\n$ kubectl -n mailroom exec sorter -- cat /etc/resolv.conf | grep nameserver\nnameserver 10.96.0.10"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "A second DNS Deployment behind a new Service fails the endpoint pair: kube-dns still has none, and every resolv.conf in the cluster points at kube-dns."
+                }
+              ],
+              "teach": "This is the third named trap. The cluster DNS address is written into every Pod's <code>resolv.conf</code> by the kubelet when the Pod is created, from the kubelet's own <code>clusterDNS</code> setting — so a new Service at a new address is invisible to every workload that already exists. Repair the Service the cluster already trusts."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "note",
+            "title": "Grading notes, quoted",
+            "text": "Two routes score. Scale the CoreDNS Deployment back to its original replica count, or scale it to one. The graded end state is ready endpoints behind kube-dns and working resolution, not a replica number."
+          }
+        ],
+        "prompt": "What do you run?",
+        "options": [
+          {
+            "label": "kubectl -n kube-system scale deployment coredns --replicas=2",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Pods, then endpoints, then answers",
+                  "text": "$ kubectl -n kube-system scale deployment coredns --replicas=2\ndeployment.apps/coredns scaled\n\n$ kubectl -n kube-system get pods -l k8s-app=kube-dns\nNAME                       READY   STATUS    RESTARTS   AGE\ncoredns-7d9b8c4f6b-f4z8q   1/1     Running   0          12s\ncoredns-7d9b8c4f6b-nq6vt   1/1     Running   0          12s\n\n$ kubectl -n kube-system get endpointslice -l kubernetes.io/service-name=kube-dns\nNAME             ADDRESSTYPE   PORTS   ENDPOINTS             AGE\nkube-dns-t4b9c   IPv4          53      10.1.1.7,10.1.2.11    62d"
+                }
+              ],
+              "teach": "One field, and the machinery you have been reading runs in reverse: the ReplicaSet creates Pods, the scheduler places them, the readiness probe on CoreDNS's <code>ready</code> plugin passes, the EndpointSlice controller writes the ready addresses into the existing placeholder slice, and kube-proxy programs <code>10.96.0.10</code> to reach them. Two replicas is the usual default and gives you a spare; the grader scores ready endpoints and working lookups rather than the number itself."
+            }
+          },
+          {
+            "label": "kubectl -n kube-system rollout restart deployment coredns",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "Nothing to restart",
+                  "text": "$ kubectl -n kube-system rollout restart deployment coredns\ndeployment.apps/coredns restarted\n\n$ kubectl -n kube-system get deployment coredns\nNAME      READY   UP-TO-DATE   AVAILABLE   AGE\ncoredns   0/0     0            0           62d"
+                }
+              ],
+              "teach": "A restart is a template change that rolls Pods; with <code>spec.replicas: 0</code> the new ReplicaSet is also asked for zero Pods, so the command succeeds and changes nothing. The status line is identical afterwards, which is the tell. Restarts move workloads between versions, they do not create desire for replicas."
+            }
+          },
+          {
+            "label": "Scale to one replica and also set dnsPolicy on sorter as a belt-and-braces fix",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Pod mailroom/sorter has the snapshot uid and its spec matches the snapshot exactly, including dnsPolicy and dnsConfig. Two of the six points."
+                }
+              ],
+              "teach": "The first half scores and the second half throws away two points, which is a bad trade in any exam and a bad habit outside one. Once the real cause is fixed, a second overlapping change adds no reliability and does add a divergent Pod that behaves differently from every other Pod in the cluster. Fix one thing, verify, stop."
+            }
+          },
+          {
+            "label": "Edit the Corefile to add an explicit forward for cluster.local while you are in there",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Do not change the CoreDNS configuration. Checkable: ConfigMap kube-system/coredns matches the snapshot."
+                }
+              ],
+              "teach": "<code>cluster.local</code> is served by the <code>kubernetes</code> plugin from the API server, not forwarded anywhere, so the edit is wrong on its own terms as well as forbidden. Adding a forward for that zone is how a working cluster gets a resolution loop. Leave the config that was never at fault alone."
+            }
+          }
+        ]
+      },
+      {
+        "evidence": [
+          {
+            "type": "terminal",
+            "title": "Resolution is back",
+            "text": "$ kubectl -n mailroom exec sorter -- nslookup kubernetes.default.svc.cluster.local\nServer:    10.96.0.10\nAddress 1: 10.96.0.10 kube-dns.kube-system.svc.cluster.local\n\nName:      kubernetes.default.svc.cluster.local\nAddress 1: 10.96.0.1 kubernetes.default.svc.cluster.local"
+          },
+          {
+            "type": "note",
+            "title": "How the six points split",
+            "text": "2 pts  mailroom/sorter has the snapshot uid and its spec matches exactly, including dnsPolicy and dnsConfig.\n2 pts  kube-system/kube-dns has the snapshot uid and ClusterIP, its EndpointSlices list at least one ready address on port 53, and ConfigMap kube-system/coredns matches the snapshot.\n2 pts  nslookup from sorter returns the kubernetes Service ClusterIP, and the same lookup succeeds from a Pod the grader creates in a second namespace."
+          }
+        ],
+        "prompt": "sorter resolves again. What still has to be true?",
+        "options": [
+          {
+            "label": "That a brand-new Pod in another namespace resolves too, and that sorter, kube-dns and the coredns ConfigMap are all untouched",
+            "verdict": "right",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "The grader's own second probe",
+                  "text": "$ kubectl -n default run dnscheck --image=busybox:1.36 --restart=Never -it --rm -- \\\n    nslookup kubernetes.default.svc.cluster.local\nServer:    10.96.0.10\nAddress 1: 10.96.0.10 kube-dns.kube-system.svc.cluster.local\n\nName:      kubernetes.default.svc.cluster.local\nAddress 1: 10.96.0.1 kubernetes.default.svc.cluster.local\npod \"dnscheck\" deleted"
+                },
+                {
+                  "type": "terminal",
+                  "title": "And nothing else moved",
+                  "text": "$ kubectl -n mailroom get pod sorter -o jsonpath='{.metadata.uid}{\"  \"}{.spec.dnsPolicy}{\"  \"}{.spec.dnsConfig}{\"\\n\"}'\n5a9c2f18-7d34-4e6b-9012-8f3ab7c5d604  ClusterFirst\n\n$ kubectl -n kube-system get svc kube-dns -o custom-columns=UID:.metadata.uid,IP:.spec.clusterIP\nUID                                    IP\n0d81b6c4-2a97-4f13-8e50-9c6b4d7e1a25   10.96.0.10"
+                }
+              ],
+              "teach": "The second-namespace probe is the check that separates a cluster fix from a Pod fix, and it is cheap to run yourself — a throwaway Pod with <code>--rm</code> tests the path a new workload takes, including a fresh <code>resolv.conf</code> written by the kubelet. Then confirm the three objects you were told not to change: <code>sorter</code>'s uid and empty <code>dnsConfig</code>, <code>kube-dns</code>'s uid and ClusterIP, and the Corefile. Four of the six points are for restraint."
+            }
+          },
+          {
+            "label": "Scale CoreDNS higher, to three or four replicas, so this cannot happen again",
+            "verdict": "partial",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It scores, and it answers a question nobody asked",
+                  "text": "$ kubectl -n kube-system get deployment coredns\nNAME      READY   UP-TO-DATE   AVAILABLE   AGE\ncoredns   4/4     4            4           62d"
+                }
+              ],
+              "teach": "It does not lose points — the graded end state is ready endpoints and working resolution, not a specific replica count — and it does not address the cause, which was a deliberate scale to zero, not a capacity shortfall. More replicas would not have prevented an operator scaling the Deployment down. Restore what the cluster had, and if DNS capacity is a real concern, that is a sizing conversation with evidence behind it."
+            }
+          },
+          {
+            "label": "Nothing more — the lookup from sorter is the task",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "The grader then creates a Pod in a second namespace; the same lookup succeeds from it."
+                }
+              ],
+              "teach": "One Pod resolving is exactly what several of the wrong answers would also have produced, which is why the grader does not stop there. Two points ride on a Pod that does not exist yet, so create one and check. It also catches a real edge: a CoreDNS Pod that is Running but not ready leaves the slice empty again, and only a fresh lookup would reveal it."
+            }
+          },
+          {
+            "label": "Delete and recreate sorter so it picks up the restored DNS",
+            "verdict": "wrong",
+            "feedback": {
+              "evidence": [
+                {
+                  "type": "terminal",
+                  "title": "It never needed to",
+                  "text": "$ kubectl -n mailroom exec sorter -- nslookup kube-dns.kube-system.svc.cluster.local | tail -2\nName:      kube-dns.kube-system.svc.cluster.local\nAddress 1: 10.96.0.10 kube-dns.kube-system.svc.cluster.local"
+                },
+                {
+                  "type": "note",
+                  "title": "Grading line",
+                  "text": "Pod mailroom/sorter has the snapshot uid."
+                }
+              ],
+              "teach": "<code>resolv.conf</code> is written once at Pod creation and it was already correct, so there is nothing to pick up — the Pod resolves now because the server behind the address it always used came back. Recreating it changes the uid and costs two points, for a Pod that is already answering."
+            }
+          }
+        ]
+      }
+    ],
+    "closing": "Start at the client and stop there quickly: sorter's /etc/resolv.conf names 10.96.0.10, the cluster search list and ndots:5, so the Pod is configured correctly, and every other namespace fails the same way, which makes this a cluster fault rather than a Pod fault. That rules out the earlier DNS question's answer twice over — dnsPolicy: None with dnsConfig.nameservers, or dnsPolicy: Default, edits one Pod out of a broken cluster, and neither an external nor a Node resolver can answer a cluster.local name at all. Walk the documented chain instead: resolver, DNS Pods, Service, endpoints. There are no Pods with k8s-app=kube-dns, and the coredns Deployment reads READY 0/0 — the second number is the diagnosis, because 0/0 means nothing is wanted, so no controller errored and no event was written, while 0/2 would have meant Pods that cannot start. kube-dns itself is healthy and its EndpointSlice is a placeholder with PORTS and ENDPOINTS unset: a Service that exists and fronts nothing, at the address every resolv.conf in the cluster names. Do not reason from how the failure looks to the client — whether a query hangs or fails immediately depends on the proxy mode and the protocol, and it tells you nothing; the empty slice is the signal. Scale the Deployment back up, watch the Pods, then the slice, then the lookup. Do not rewrite the Corefile, which was never wrong and is not read when nothing is running; do not stand up a second DNS Service, which no Pod's resolv.conf points at; and do not touch sorter or kube-dns, where four of the six points quietly live. Finish with a lookup from a brand-new Pod in another namespace. See kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/ and kubernetes.io/docs/concepts/services-networking/dns-pod-service/."
   }
 };
