@@ -1757,5 +1757,995 @@ window.EXAM_QUESTIONS = [
       "https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/"
     ],
     "source": "EXAM-DRAFT-13-25.md"
+  },
+  {
+    "id": "exam-var-gaps-q01",
+    "title": "Hold mill at sixty percent CPU",
+    "points": 8,
+    "minutes": 9,
+    "unit": "u4",
+    "tier": null,
+    "topic": "Two autoscalers, one number",
+    "context": "Context `shoal`. Namespace `busy`. Deployment `mill` runs 2 replicas of image `nginx:1.27-alpine` in a single container named `web`. That container declares `limits.memory: 128Mi` and nothing else under `resources`. No LimitRange exists in `busy`. The Metrics Server is installed and `kubectl top pods -n busy` returns numbers for both Pods. No HorizontalPodAutoscaler exists anywhere in `busy`.",
+    "task": "Put Deployment `mill` under a HorizontalPodAutoscaler named `mill-hpa` in `busy`. It must hold average CPU utilization at 60 percent, never run fewer than 2 Pods, and never more than 8. The autoscaler must be working on live numbers: its status must carry a current CPU utilization, not an empty reading. Keep the container name `web` and the image `nginx:1.27-alpine`.",
+    "constraints": [
+      "Exactly one HorizontalPodAutoscaler in `busy`, named `mill-hpa`. Checkable: HPA list in `busy`.",
+      "Keep the container name and image. Checkable: pod template matches the snapshot on those two fields.",
+      "Do not create a second workload. Checkable: `mill` is the only Deployment in `busy`.",
+      "Do not install or change the Metrics Server. Checkable: `metrics-server` Deployment matches the snapshot."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "HorizontalPodAutoscaler `busy/mill-hpa` exists and is the only one in `busy`. Its stored apiVersion is `autoscaling/v2`. `spec.scaleTargetRef` names kind `Deployment`, apiVersion `apps/v1`, name `mill`. `spec.minReplicas` is 2 and `spec.maxReplicas` is 8."
+        },
+        {
+          "points": 2,
+          "text": "`spec.metrics` has exactly one entry. Its `type` is `Resource`, its `resource.name` is `cpu`, its `resource.target.type` is `Utilization`, and its `resource.target.averageUtilization` is 60."
+        },
+        {
+          "points": 2,
+          "text": "`status.currentMetrics` has an entry for `cpu` whose `current.averageUtilization` is set and not null. `status.desiredReplicas` is between 2 and 8 inclusive, and `status.currentReplicas` equals `mill`'s live `status.replicas`. As extra evidence, `status.conditions` may carry `ScalingActive: True`; the utilization reading is the field that decides this pair."
+        },
+        {
+          "points": 2,
+          "text": "Every container in `mill`'s pod template declares `resources.requests.cpu`. The container is still named `web` with image `nginx:1.27-alpine`, `mill` is still the only Deployment in `busy`, and `metrics-server` matches the snapshot."
+        }
+      ],
+      "notes": [
+        "Snapshot `mill`'s container name and image, the workload list in `busy`, and the `metrics-server` Deployment before scoring.",
+        "Gate the third and fourth pairs on the first.",
+        "Two routes score.",
+        "`kubectl autoscale deployment mill -n busy --cpu=60% --min=2 --max=8` writes an `autoscaling/v2` object with one Resource CPU Utilization metric at 60, which satisfies both spec pairs; a hand-written `autoscaling/v2` manifest reaches the same live object and also scores.",
+        "A correct HPA created while `web` still declares no CPU request fails the last two pairs.",
+        "Utilization is a percentage of the container's request, so with no request the Pod's CPU utilization is undefined, the autoscaler takes no action on that metric, and `status.currentMetrics` stays empty — `kubectl get hpa` prints `<unknown>/60%`.",
+        "Both spec pairs still pass, which is exactly why the status pair is graded separately.",
+        "`resource.target.type: AverageValue` with an `averageValue` fills `status.currentMetrics` but fails the second pair: the task names utilization.",
+        "`kubectl scale deployment mill --replicas=5` fails the third pair.",
+        "`status.currentMetrics` stays empty and the HPA never computed anything.",
+        "`minReplicas` or `maxReplicas` other than 2 and 8 fails the first pair, even when the live replica count looks right."
+      ]
+    },
+    "docsPath": "Search `horizontal pod autoscaler`.\nPage: Horizontal Pod Autoscaling\nhttps://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/\nSections: How does a HorizontalPodAutoscaler work,\nAlgorithm details.\nWalkthrough: HorizontalPodAutoscaler Walkthrough\nhttps://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/\nAPI: HorizontalPodAutoscaler v2\nhttps://kubernetes.io/docs/reference/kubernetes-api/autoscaling/horizontal-pod-autoscaler-v2/",
+    "expectedPath": [
+      "`kubectl get deploy mill -n busy -o yaml` and `kubectl top pods -n busy`\nLeft: `top` returns numbers, so the metrics pipeline works. The container sets only a memory limit. Continue.\nRight: `top` errors. The Metrics Server is the problem, and the task forbids changing it. Re-read the context.",
+      "Search `horizontal pod autoscaler`.\nLeft: Horizontal Pod Autoscaling page. For a target utilization the controller reads the metric as a percentage of the equivalent resource request on the containers in each Pod. If some container has no such request, the Pod's CPU utilization is not defined and the autoscaler takes no action for that metric.\nRight: the Metrics Server page. It explains where numbers come from, not why utilization is undefined.",
+      "Add `resources.requests.cpu` to `web` (for example `100m`), keep the memory limit, and apply.\nLeft: the rollout completes; Pods restart with a request.\nRight: you set a memory limit only and expected a CPU request to appear. A limit is copied into the request for that same resource, so a memory limit does nothing for CPU. Set the CPU request.",
+      "Create the HPA, either with `kubectl autoscale deployment mill -n busy --cpu=60% --min=2 --max=8` or from an `autoscaling/v2` manifest.\nLeft: `kubectl get hpa mill-hpa -n busy` prints a real percentage against `60%` within a minute or two.\nRight: TARGETS reads `<unknown>/60%`. No usable request yet, or the Pods have not been re-created since you added it. Wait for the rollout.\nRight: `kubectl autoscale ... --cpu-percent=60` errors on an unknown flag. Current kubectl takes `--cpu`, and a percentage sign selects utilization.",
+      "`kubectl get hpa mill-hpa -n busy -o yaml`\nLeft: `status.currentMetrics` carries a CPU entry with an `averageUtilization`. Done."
+    ],
+    "trap": "Create the HPA first and stop when the object exists. The spec is right and nothing scales. Second: assume the memory limit gives the container a CPU request. Third: reach for `--cpu-percent`, which current kubectl does not take. Fourth: switch to `AverageValue` to make the `<unknown>` go away, which answers a different question.",
+    "docs": [
+      "https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/",
+      "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/",
+      "https://kubernetes.io/docs/reference/kubernetes-api/autoscaling/horizontal-pod-autoscaler-v2/",
+      "https://kubernetes.io/docs/reference/kubectl/generated/kubectl_autoscale/",
+      "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/"
+    ],
+    "source": "EXAM-VAR-gaps.md"
+  },
+  {
+    "id": "exam-var-gaps-q02",
+    "title": "Back to the blue template",
+    "points": 6,
+    "minutes": 7,
+    "unit": "u4",
+    "tier": null,
+    "topic": "How a rollout actually moves",
+    "context": "Context `shoal`. Namespace `ship`. Deployment `deck` runs 3 replicas and is Available. `kubectl rollout history deployment/deck -n ship` lists revisions 1 to 4. Revision 2 ran image `nginx:1.26-alpine` with environment variable `TIER=blue`. Revision 3 ran `nginx:1.28-alpine` with `TIER=green`. Revision 4, the current one, runs `nginx:1.29-alpine` with `TIER=green`. Every revision carries a `kubernetes.io/change-cause` annotation; revision 2's reads `blue build`. `spec.revisionHistoryLimit` is at its default.",
+    "task": "`deck` is serving the wrong content. Put it back on the exact pod template that its history records at revision 2. Keep 3 replicas. Do not delete the Deployment and do not create a new one.",
+    "constraints": [
+      "The Deployment keeps its identity. Checkable: `deck.metadata.uid` matches the snapshot.",
+      "Replicas stay at 3. Checkable: `spec.replicas` is 3.",
+      "`deck` stays the only Deployment in `ship`. Checkable: Deployment list in `ship`."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "Deployment `ship/deck` has the snapshot uid, is the only Deployment in `ship`, `spec.replicas` is 3, and it reports 3 ready and 3 available replicas."
+        },
+        {
+          "points": 2,
+          "text": "The live pod template equals revision 2's template field for field, ignoring the `pod-template-hash` label. In particular the container image is `nginx:1.26-alpine` and the `TIER` environment variable is `blue`."
+        },
+        {
+          "points": 2,
+          "text": "`kubectl rollout history deployment/deck -n ship` lists a revision numbered above 4, and `--revision=<that number>` shows the `nginx:1.26-alpine` / `TIER=blue` template. Exactly one ReplicaSet owned by `deck` has 3 ready Pods, and its template is that same template."
+        }
+      ],
+      "notes": [
+        "Snapshot `deck.metadata.uid`, the Deployment list in `ship`, and the full pod template recorded at revision 2 (`kubectl rollout history deployment/deck -n ship --revision=2`) before scoring.",
+        "Gate the second and third pairs on the first.",
+        "Grade nothing from `kubernetes.io/change-cause`.",
+        "It is free text and proves nothing about the running template.",
+        "Two routes score.",
+        "`kubectl rollout undo deployment/deck -n ship --to-revision=2` reaches the end state.",
+        "So does reading `kubectl rollout history deployment/deck -n ship --revision=2` and then applying that template by hand: the Deployment matches the template by hash, re-uses the existing ReplicaSet, and records a new higher revision exactly as the undo does.",
+        "`kubectl rollout undo deployment/deck -n ship` with no `--to-revision` fails the second pair.",
+        "The default is the previous revision, which is 3 — `nginx:1.28-alpine` and `TIER=green`.",
+        "Setting only the image back to `nginx:1.26-alpine` and leaving `TIER=green` fails the second pair.",
+        "A revision is a whole pod template.",
+        "Annotating `kubernetes.io/change-cause: blue build` without changing the template scores 0 on the second and third pairs.",
+        "Deleting `deck` and creating it fresh from revision 2's template fails the first pair on the uid, however right the running Pods look.",
+        "A rollback that also changes replicas fails the first pair."
+      ]
+    },
+    "docsPath": "Search `rollback deployment revision`.\nPage: Deployments\nhttps://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment\nSections: Checking Rollout History of a Deployment,\nRolling Back to a Previous Revision.\nCommand: kubectl rollout undo\nhttps://kubernetes.io/docs/reference/kubectl/generated/kubectl_rollout/kubectl_rollout_undo/",
+    "expectedPath": [
+      "`kubectl rollout history deployment/deck -n ship`\nLeft: revisions 1 to 4 with their change causes. Continue.\nRight: `error: no rollout history found`. Wrong namespace or wrong name.",
+      "`kubectl rollout history deployment/deck -n ship --revision=2`\nLeft: the full pod template for that revision — image, environment, every other field. This is the target, and it is what will be graded.\nRight: `unable to find the specified revision`. The old ReplicaSet was pruned past `revisionHistoryLimit`, which defaults to 10. Then undo cannot reach it and you must rebuild the template by hand.",
+      "Search `rolling back a deployment`.\nLeft: Deployment page, Rolling Back a Deployment. `kubectl rollout undo` takes `--to-revision`, and each rollback updates the revision of the Deployment — the old number is not restored, a new higher one is written.\nRight: `kubectl rollout restart`. That re-creates Pods on the current template and changes nothing.",
+      "`kubectl rollout undo deployment/deck -n ship --to-revision=2`\nLeft: `kubectl rollout status deployment/deck -n ship` completes; `kubectl get deploy deck -n ship -o jsonpath='{.spec.template.spec.containers[0]}'` shows the blue image and `TIER=blue`.\nRight: the running Pods are `nginx:1.28-alpine`. You omitted `--to-revision` and landed on revision 3. Run it again with the flag.\nRight: history no longer lists a revision 2. That is expected — the blue template now sits at the new highest revision number."
+    ],
+    "trap": "Run `kubectl rollout undo` bare and land on revision 3. Second: match only the image and leave the environment variable. Third: chase the `CHANGE-CAUSE` column, which is an annotation anybody can write. Fourth: delete and re-create the Deployment from the old manifest.",
+    "docs": [
+      "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment",
+      "https://kubernetes.io/docs/reference/kubectl/generated/kubectl_rollout/kubectl_rollout_undo/",
+      "https://kubernetes.io/docs/reference/kubectl/generated/kubectl_rollout/kubectl_rollout_history/",
+      "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/deployment-v1/"
+    ],
+    "source": "EXAM-VAR-gaps.md"
+  },
+  {
+    "id": "exam-var-gaps-q03",
+    "title": "Ship the chart, then override it",
+    "points": 8,
+    "minutes": 9,
+    "unit": "u23",
+    "tier": null,
+    "topic": "Two state machines",
+    "context": "Context `shoal`. Helm 3 is installed on the exam host. Namespace `retail` exists and holds no workloads. Directory `/opt/charts/till` is an unpacked chart: `Chart.yaml` with `apiVersion: v2`, `name: till`, `version: 0.1.0`; `values.yaml` with `replicaCount: 1`, `image.repository: nginx`, `image.tag: 1.27-alpine`, `service.port: 80`; and `templates/` that render a Deployment `till` and a ClusterIP Service `till`. `helm list -n retail` is empty.",
+    "task": "Bring `/opt/charts/till` up in `retail` as release `till`, first exactly as the chart ships. Then move the same release forward so the running Deployment has 4 replicas and image tag `1.29-alpine`, with those two values recorded on the release as values you supplied. Leave the release deployed at revision 2. Do not edit anything under `/opt/charts/till`, and do not change the live objects with `kubectl`.",
+    "constraints": [
+      "The chart directory is untouched. Checkable: every file under `/opt/charts/till` matches the snapshot byte for byte.",
+      "Exactly one release in `retail`, named `till`. Checkable: `helm list -n retail`.",
+      "The Deployment and Service belong to the release. Checkable: both appear in `helm get manifest till -n retail`.",
+      "The chart's other defaults are unchanged. Checkable: `helm get values till -n retail -a` still reports image repository `nginx` and service port 80."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "`helm list -n retail` shows exactly one release, `till`, with STATUS `deployed` and REVISION 2. `helm history till -n retail` shows revision 1 superseded and revision 2 deployed. `helm get values till -n retail --revision 1` — user-supplied values only, without `-a` — is empty: revision 1 shipped the chart with no overrides."
+        },
+        {
+          "points": 2,
+          "text": "`helm get values till -n retail` — user-supplied values only, without `-a` — reports the replica count as 4 and the image tag as `1.29-alpine`, and reports no other override. `helm get values till -n retail -a` still shows image repository `nginx` and service port 80."
+        },
+        {
+          "points": 2,
+          "text": "Deployment `retail/till` appears in `helm get manifest till -n retail`, has `spec.replicas` 4, its container image ends in `nginx:1.29-alpine`, and it reports 4 ready replicas."
+        },
+        {
+          "points": 2,
+          "text": "Service `retail/till` appears in the same manifest and serves port 80. Every file under `/opt/charts/till` matches the snapshot."
+        }
+      ],
+      "notes": [
+        "Snapshot every file under `/opt/charts/till` before scoring.",
+        "Gate the last two pairs on the first.",
+        "Two routes score.",
+        "`helm install till /opt/charts/till -n retail` followed by `helm upgrade till /opt/charts/till -n retail --set replicaCount=4 --set image.tag=1.29-alpine` lands the end state.",
+        "So does writing an override file outside the chart and running the upgrade with `-f /tmp/prod.yaml`: both record the same user-supplied values on revision 2.",
+        "`kubectl scale deployment till -n retail --replicas=4` plus `kubectl set image` fails the first two pairs.",
+        "The live Deployment reads 4 and `1.29-alpine`, so a grader that looked only at the cluster would pass it — but the release is still revision 1 and its user-supplied values are empty.",
+        "The two state machines have diverged, and the next `helm upgrade` would undo the change.",
+        "Editing `values.yaml` inside the chart and upgrading fails the last pair on the snapshot and the second pair on the empty user values.",
+        "`helm upgrade --install` run twice, with the overrides on both runs, fails the first pair.",
+        "The release does reach revision 2, deployed, with the right user values and the right live objects — but `helm get values till -n retail --revision 1` reports the overrides too, so the chart was never shipped as it ships.",
+        "That revision-1 reading is the only thing that separates this path from the correct one.",
+        "`helm uninstall` and a fresh `helm install` with the overrides fails the first pair.",
+        "It is revision 1."
+      ]
+    },
+    "docsPath": "Search helm docs for `helm upgrade values`.\nPage: Helm Install\nhttps://helm.sh/docs/helm/helm_install/\nPage: Helm Upgrade\nhttps://helm.sh/docs/helm/helm_upgrade/\nSections: chart argument forms, `-f` and `--set`\nprecedence.\nRelease state: Helm Get Values\nhttps://helm.sh/docs/helm/helm_get_values/\nand Helm History\nhttps://helm.sh/docs/helm/helm_history/",
+    "expectedPath": [
+      "`helm list -n retail` and `ls /opt/charts/till`\nLeft: no release; `Chart.yaml`, `values.yaml`, `templates/` present. Continue.\nRight: a release already exists. Read its history before you add to it.",
+      "Search helm docs for `helm install`.\nLeft: Helm Install page. A chart argument may be a path to an unpacked chart directory. `-f` takes a values file, `--set` takes values on the command line, and the right-most one wins.\nRight: the chart repository pages. There is no repository here; the chart is a local directory.",
+      "`helm install till /opt/charts/till -n retail`\nLeft: `helm list -n retail` shows `till`, revision 1, deployed. `kubectl get deploy till -n retail` shows 1/1. `helm get values till -n retail --revision 1` is empty, which is what proves this revision shipped the chart as it ships.\nRight: the install fails because the namespace is missing. Add `--create-namespace`, or use the namespace that exists.",
+      "`helm upgrade till /opt/charts/till -n retail --set replicaCount=4 --set image.tag=1.29-alpine`\nLeft: revision 2, deployed. `helm get values till -n retail` lists exactly those two keys.\nRight: `helm get values` is empty. You upgraded without the overrides, or you edited `values.yaml` instead of passing values.\nRight: replicas moved but the tag did not. Your key path does not match the chart — `helm get values till -n retail -a` shows the shape the chart actually reads.",
+      "`kubectl get deploy,svc -n retail`\nLeft: 4/4 ready on `nginx:1.29-alpine`, Service on 80. Done."
+    ],
+    "trap": "Fix the live objects with `kubectl scale` and `kubectl set image`. The cluster looks right and the release knows nothing about it. Second: edit the chart's `values.yaml`, which changes the chart rather than the release. Third: uninstall and reinstall with the overrides, which throws away revision 1. Fourth: run `helm upgrade --install` twice with the overrides on both runs, which lands on revision 2 and never ships the chart as it ships. Fifth: guess the value key names instead of reading `values.yaml`.",
+    "docs": [
+      "https://helm.sh/docs/helm/helm_install/",
+      "https://helm.sh/docs/helm/helm_upgrade/",
+      "https://helm.sh/docs/helm/helm_list/",
+      "https://helm.sh/docs/helm/helm_history/",
+      "https://helm.sh/docs/helm/helm_get_values/",
+      "https://helm.sh/docs/helm/helm_get_manifest/",
+      "https://helm.sh/docs/topics/charts/"
+    ],
+    "source": "EXAM-VAR-gaps.md"
+  },
+  {
+    "id": "exam-var-gaps-q04",
+    "title": "Three changes, one overlay",
+    "points": 6,
+    "minutes": 8,
+    "unit": "u23",
+    "tier": null,
+    "topic": "Review what the API will see",
+    "context": "Context `shoal`. Namespace `stock`. Directory `/opt/kustomize/inventory/base` holds `kustomization.yaml` with `resources: [deployment.yaml]` and `deployment.yaml`: Deployment `ledger`, 1 replica, one container named `web` on image `nginx:1.27-alpine`, `spec.selector.matchLabels` of `app: ledger`. That base was applied to `stock` some time ago, so Deployment `stock/ledger` is live and Available. Directory `/opt/kustomize/inventory/overlays/prod` exists and is empty.",
+    "task": "Fill `/opt/kustomize/inventory/overlays/prod` so that `kubectl apply -k` on it changes the live Deployment `stock/ledger` to 3 replicas, container image `nginx:1.29-alpine`, and adds the label `tier=prod` to the Deployment object. Then apply it. The overlay must build on the base rather than restate it. Do not edit anything under `base/`, and do not change the live Deployment with `kubectl edit`, `kubectl scale`, or `kubectl set`.",
+    "constraints": [
+      "`base/` is untouched. Checkable: every file under `/opt/kustomize/inventory/base` matches the snapshot.",
+      "The overlay builds on the base. Checkable: the overlay's `kustomization.yaml` has a `resources` entry that resolves to `/opt/kustomize/inventory/base`.",
+      "The Deployment keeps its identity and its selector. Checkable: `ledger.metadata.uid` and `spec.selector` match the snapshot."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "`kubectl kustomize /opt/kustomize/inventory/overlays/prod` renders exactly one object: Deployment `ledger`, with `spec.replicas` 3, container `web` on `nginx:1.29-alpine`, `metadata.labels` containing `tier: prod`, and `spec.selector` equal to the snapshot. The overlay's `kustomization.yaml` names the base under `resources`."
+        },
+        {
+          "points": 2,
+          "text": "`base/` matches the snapshot, and `kubectl kustomize /opt/kustomize/inventory/base` still renders 1 replica on `nginx:1.27-alpine`."
+        },
+        {
+          "points": 2,
+          "text": "Live Deployment `stock/ledger` has the snapshot uid and the snapshot `spec.selector`, `spec.replicas` is 3, container `web` runs `nginx:1.29-alpine`, `metadata.labels` carries `tier: prod`, and it reports 3 ready replicas."
+        }
+      ],
+      "notes": [
+        "Snapshot the files under `/opt/kustomize/inventory/base`, and `ledger.metadata.uid` and `ledger.spec.selector`, before scoring.",
+        "Gate the third pair on the first.",
+        "Two routes score.",
+        "An overlay using the `images`, `replicas`, and `labels` fields reaches the end state; so does an overlay whose `patches` entry carries an inline strategic-merge patch setting the same three things.",
+        "Grading is on what the build renders and what the cluster holds, not on which transformer was used.",
+        "`commonLabels: {tier: prod}` — or `labels` with `includeSelectors: true` — fails.",
+        "Both write the label into `spec.selector` as well, and the render alone looks plausible, which is why the selector is graded in the first pair.",
+        "The apply is then rejected: a Deployment's `spec.selector` is immutable, so the live object never reaches 3 replicas and the third pair scores 0 too.",
+        "Copying `deployment.yaml` into the overlay and editing it fails the first pair.",
+        "The build renders the right object but the overlay does not name the base, so the base and the overlay drift apart on the next change.",
+        "Editing `base/deployment.yaml` fails the second pair, even when the live Deployment is correct.",
+        "`kubectl scale` and `kubectl set image` fail the first pair: the overlay renders nothing useful."
+      ]
+    },
+    "docsPath": "Search `kustomization`.\nPage: Declarative Management of Kubernetes Objects Using\nKustomize\nhttps://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/\nSections: Bases and Overlays, setting images, labels.\nField reference: images\nhttps://kubectl.docs.kubernetes.io/references/kustomize/kustomization/images/\nreplicas\nhttps://kubectl.docs.kubernetes.io/references/kustomize/kustomization/replicas/\nlabels\nhttps://kubectl.docs.kubernetes.io/references/kustomize/kustomization/labels/",
+    "expectedPath": [
+      "`kubectl kustomize /opt/kustomize/inventory/base` and `kubectl get deploy ledger -n stock -o yaml`\nLeft: base renders 1 replica on `nginx:1.27-alpine`; the live object matches and its selector is `app: ledger`. Continue.\nRight: the live object differs from the base. Someone changed it outside kustomize. Note it; you still build the overlay against the base.",
+      "Search `kustomization overlay`.\nLeft: Declarative Management with Kustomize. An overlay is a `kustomization.yaml` whose `resources` names the base directory. `images` sets `newTag` or `newName`, `replicas` sets `count` by object `name`, and `labels` takes `pairs` with `includeSelectors` off by default. `commonLabels` is deprecated and always writes selectors.\nRight: the patches guide alone. A patch works too, but read the transformers first — they are shorter and they do not touch the selector.",
+      "Write the overlay: `resources: [../../base]`, `images` with `name: nginx` and `newTag: 1.29-alpine`, `replicas` with `name: ledger` and `count: 3`, `labels` with `pairs: {tier: prod}` and no `includeSelectors`.\nLeft: `kubectl kustomize /opt/kustomize/inventory/overlays/prod` shows 3 replicas, the new tag, `tier: prod` in `metadata.labels`, and `spec.selector` still `app: ledger`.\nRight: the rendered `spec.selector` now carries `tier: prod`. You used `commonLabels`, or you set `includeSelectors: true`. Remove it.\nRight: the build cannot find a `kustomization.yaml`. The `resources` path does not resolve. Count the `../` levels.",
+      "`kubectl apply -k /opt/kustomize/inventory/overlays/prod`\nLeft: the Deployment is configured; it rolls to 3/3 on the new image.\nRight: `The Deployment \"ledger\" is invalid: spec.selector: ... field is immutable`. The overlay is rewriting the selector. Fix the label transformer and apply again."
+    ],
+    "trap": "Use `commonLabels` because it is the field everybody remembers. It rewrites the selector and the apply is rejected. Second: set `includeSelectors: true` to be thorough, with the same result. Third: copy the base Deployment into the overlay and edit it, which renders correctly and defeats the point. Fourth: check `kubectl kustomize` output and forget to apply.",
+    "docs": [
+      "https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/",
+      "https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/images/",
+      "https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/replicas/",
+      "https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/labels/",
+      "https://kubernetes.io/docs/reference/kubectl/generated/kubectl_kustomize/"
+    ],
+    "source": "EXAM-VAR-gaps.md"
+  },
+  {
+    "id": "exam-var-gaps-q05",
+    "title": "One door, two paths",
+    "points": 8,
+    "minutes": 9,
+    "unit": "u15",
+    "tier": null,
+    "topic": "Who owns which object",
+    "context": "Context `shoal`. The Gateway API v1 CRDs are installed and a controller runs. GatewayClass `edge` exists and reports `Accepted: True`; its controller assigns an address to every Gateway of that class. Namespace `front` holds Service `alpha` (ClusterIP, port 80) and Service `beta` (ClusterIP, port 80). Each `alpha` Pod answers every HTTP path with 200 and the word `alpha`; each `beta` Pod answers with the word `beta`. No Gateway, HTTPRoute, or Ingress exists in `front`.",
+    "task": "Put both Services behind one HTTP entry point on port 80 in `front`, served by GatewayClass `edge`. A request carrying Host header `shop.example.com` for `/alpha`, and for paths under it such as `/alpha/v1`, must be answered by `alpha`. The same Host for `/beta` and paths under it must be answered by `beta`. A request for `/gamma` must not reach either Service. Do not use an Ingress.",
+    "constraints": [
+      "Do not create, change, or delete Services in `front`. Checkable: the Service list and both Service specs match the snapshot.",
+      "Do not change GatewayClass `edge`. Checkable: `edge` matches the snapshot.",
+      "Exactly one Gateway in `front`. Checkable: Gateway list in `front`.",
+      "No Ingress anywhere in `front`. Checkable: Ingress list in `front` is empty."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "Exactly one Gateway exists in `front`, at apiVersion `gateway.networking.k8s.io/v1`. Its `spec.gatewayClassName` is `edge`. It has a listener with `protocol: HTTP` on `port: 80`. Its `status.addresses` is non-empty."
+        },
+        {
+          "points": 2,
+          "text": "At least one HTTPRoute in `front` has a `parentRefs` entry naming that Gateway, and its `hostnames` list is exactly `shop.example.com`. For that parent, `status.parents[].conditions` reports `Accepted: True` and `ResolvedRefs: True`. Every `backendRefs` entry names `alpha` or `beta` on port 80."
+        },
+        {
+          "points": 2,
+          "text": "Through the Gateway address with Host `shop.example.com`: `/alpha` and `/alpha/v1` return 200 and the word `alpha`; `/beta` and `/beta/v1` return 200 and the word `beta`."
+        },
+        {
+          "points": 2,
+          "text": "Through the same address with the same Host, `/gamma` returns 404 and reaches neither Service. The Services in `front`, GatewayClass `edge`, and the empty Ingress list all match the snapshot."
+        }
+      ],
+      "notes": [
+        "Snapshot the Services in `front` and GatewayClass `edge` before scoring.",
+        "Gate the two live pairs on `status.addresses` being non-empty.",
+        "Two routes score.",
+        "One HTTPRoute with two rules — one matching `PathPrefix: /alpha` to `alpha`, one matching `PathPrefix: /beta` to `beta` — reaches the end state.",
+        "So do two HTTPRoutes, one per prefix, both with `parentRefs` on the same Gateway.",
+        "The grader counts Gateways, not routes.",
+        "`path.type: Exact` on `/alpha` fails the third pair: `/alpha/v1` returns 404.",
+        "A rule whose only path match is `PathPrefix: /` to `alpha` fails the fourth pair: `/gamma` returns 200.",
+        "An HTTPRoute created in another namespace fails the second and third pairs.",
+        "A listener's `allowedRoutes.namespaces.from` defaults to `Same`, so the route never attaches and the parent status does not report `Accepted: True`.",
+        "A Gateway and route that are syntactically correct but name a GatewayClass that does not exist fail the first pair: no controller claims it, so no address appears.",
+        "An Ingress that produces the same routing fails the fourth pair."
+      ]
+    },
+    "docsPath": "Search `gateway api`.\nPage: Gateway API\nhttps://kubernetes.io/docs/concepts/services-networking/gateway/\nSections: API kinds, the Gateway and HTTPRoute examples,\ncross-namespace routing.\nPath matching: HTTP routing\nhttps://gateway-api.sigs.k8s.io/guides/http-routing/\nConditions: GEP-1364\nhttps://gateway-api.sigs.k8s.io/geps/gep-1364/",
+    "expectedPath": [
+      "`kubectl get gatewayclass,gateway,httproute,svc -n front`\nLeft: `edge` is Accepted, both Services are ClusterIP on 80, nothing else exists. Continue.\nRight: no GatewayClass at all. Then the CRDs or the controller are missing and no Gateway will ever get an address.",
+      "Search `gateway api httproute`.\nLeft: Gateway API page. A Gateway names one GatewayClass and declares `listeners`; an HTTPRoute attaches through `parentRefs` and carries `hostnames` and `rules`, each rule with `matches` and `backendRefs`. By default a Gateway accepts routes only from its own namespace.\nRight: the Ingress page. It solves the same problem with different objects, and the task rules it out.",
+      "Create the Gateway: `gatewayClassName: edge`, one listener named `http`, `protocol: HTTP`, `port: 80`. Apply.\nLeft: `kubectl get gateway -n front` shows an address after a moment.\nRight: ADDRESS stays empty. The class name is wrong, or its controller is not running. Check `kubectl describe gateway`.",
+      "Create the HTTPRoute: `parentRefs` naming the Gateway, `hostnames: [shop.example.com]`, one rule matching `PathPrefix: /alpha` to backend `alpha:80` and one matching `PathPrefix: /beta` to `beta:80`. Apply.\nLeft: `kubectl get httproute <name> -n front -o yaml` shows the parent with `Accepted: True` and `ResolvedRefs: True`.\nRight: `ResolvedRefs: False`. A backend name or port does not match a Service in this namespace.\nRight: `Accepted: False`, reason names namespaces. The route is not in the Gateway's namespace and the listener only takes `Same`.",
+      "Send the five requests with the Host header set.\nLeft: `/alpha`, `/alpha/v1` say `alpha`; `/beta`, `/beta/v1` say `beta`; `/gamma` is 404. Done.\nRight: `/gamma` returns `alpha`. A rule matches `/`. Narrow it.\nRight: everything 404s. Wrong Host header, or the route has not been programmed yet."
+    ],
+    "trap": "Use `path.type: Exact` and lose `/alpha/v1`. Second: add a catch-all rule \"to be safe\", which then serves `/gamma`. Third: put the HTTPRoute in a different namespace and expect it to attach. Fourth: create the Gateway and stop before the route, or the route and stop before the Gateway — neither object routes anything on its own.",
+    "docs": [
+      "https://kubernetes.io/docs/concepts/services-networking/gateway/",
+      "https://gateway-api.sigs.k8s.io/guides/http-routing/",
+      "https://gateway-api.sigs.k8s.io/guides/getting-started/simple-gateway/",
+      "https://gateway-api.sigs.k8s.io/geps/gep-1364/"
+    ],
+    "source": "EXAM-VAR-gaps.md"
+  },
+  {
+    "id": "exam-var-gaps-q06",
+    "title": "Empty the node, keep the promise",
+    "points": 8,
+    "minutes": 10,
+    "unit": "u13",
+    "tier": null,
+    "topic": "Drain protects, it does not upgrade",
+    "context": "Context `shoal`. Workers `worker-0`, `worker-1`, and `worker-2` are all Ready and schedulable. Namespace `mill` runs Deployment `press` with 3 replicas labelled `app=press`, one on each worker, all Ready. PodDisruptionBudget `mill/press-pdb` (policy/v1) selects `app=press` with `minAvailable: 3`; `kubectl get pdb -n mill` shows ALLOWED DISRUPTIONS 0. DaemonSet `mill/logs` runs one Pod on every node. Deployment `mill/tmpjob` runs one Pod, `scratch`, currently on `worker-1`, and that Pod mounts an `emptyDir` volume.",
+    "task": "`worker-1` is going down for a kernel update. Leave the cluster with `worker-1` still a member, refusing new Pods, and running no workload Pods — only the Pods a node is expected to keep. Every application must still have the availability its owner asked for. Do not weaken or delete any policy object.",
+    "constraints": [
+      "`press-pdb` is unchanged. Checkable: its spec matches the snapshot.",
+      "DaemonSet `logs` is unchanged. Checkable: its spec matches the snapshot.",
+      "`worker-1` stays a cluster member. Checkable: the Node object exists and is Ready.",
+      "`tmpjob` keeps one ready replica. Checkable: `tmpjob` reports 1 ready replica."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "Node `worker-1` exists, is Ready, and is unschedulable: `spec.unschedulable` is true, or it carries the `node.kubernetes.io/unschedulable` `NoSchedule` taint."
+        },
+        {
+          "points": 2,
+          "text": "The only Pods running on `worker-1` are managed by a DaemonSet or are mirror Pods. No `press` Pod and no `tmpjob` Pod runs there. DaemonSet `logs` still has a ready Pod on `worker-1`."
+        },
+        {
+          "points": 2,
+          "text": "PodDisruptionBudget `mill/press-pdb` matches the snapshot exactly — still `minAvailable: 3`, same selector — and its `status.currentHealthy` is at least its `status.desiredHealthy`."
+        },
+        {
+          "points": 2,
+          "text": "Deployment `press` reports at least 3 ready replicas, every one of them on `worker-0` or `worker-2`. Deployment `tmpjob` reports 1 ready replica, not on `worker-1`. DaemonSet `logs` matches the snapshot and is ready on all three nodes."
+        }
+      ],
+      "notes": [
+        "Snapshot `press-pdb`, DaemonSet `logs`, and the Node list before scoring.",
+        "Gate the second pair on the first.",
+        "Two routes score.",
+        "`kubectl scale deployment press -n mill --replicas=4` and then `kubectl drain worker-1 --ignore-daemonsets --delete-emptydir-data` reaches the end state.",
+        "So does raising `spec.replicas` to 4 in the Deployment manifest and applying it, then running `kubectl cordon worker-1` before the same drain — drain marks the node unschedulable itself, so the extra cordon changes nothing.",
+        "Scaling `press` back to 3 after the drain also scores.",
+        "The temporary scale-up is a means, not the goal: the fourth pair asks for at least 3 ready `press` replicas off `worker-1`, and the third pair asks for the original budget reporting `currentHealthy` at or above `desiredHealthy`.",
+        "Draining without making room first fails.",
+        "With 3 replicas and `minAvailable: 3` the budget allows zero disruptions, every eviction is refused with 429 Too Many Requests, and the drain never completes: `worker-1` still holds a `press` Pod.",
+        "The cordon happened, so the first pair scores and the second does not.",
+        "Deleting `press-pdb`, or lowering it to `minAvailable: 2`, empties the node and fails the third pair.",
+        "The node looks perfect and the promise was broken.",
+        "Draining without `--delete-emptydir-data` stops on `scratch` and fails the second pair.",
+        "Draining without `--ignore-daemonsets` leaves the node unschedulable and still holding the `press` and `tmpjob` Pods.",
+        "Drain marks the node unschedulable before it evicts anything, so the first pair scores and the second does not.",
+        "`kubectl delete node worker-1` fails the first pair.",
+        "Two paths reach the graded end state by the wrong route.",
+        "`--disable-eviction` after scaling to 4 skips the budget check, and at 4 replicas the budget was never actually violated.",
+        "`kubectl cordon worker-1` followed by `kubectl delete pod` on the `press` and `scratch` Pods also empties the node, and the `press` replacement lands on another worker.",
+        "End-state grading cannot separate either from an eviction.",
+        "Both score.",
+        "Note them in feedback; a raw delete drops `currentHealthy` to 2 for as long as the replacement takes to go Ready, which is the disruption the budget exists to refuse."
+      ]
+    },
+    "docsPath": "Search `safely drain node`.\nPage: Safely Drain a Node\nhttps://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/\nSections: draining with a PodDisruptionBudget,\n`--ignore-daemonsets`.\nCommand: kubectl drain\nhttps://kubernetes.io/docs/reference/kubectl/generated/kubectl_drain/\nEviction result: API-initiated Eviction\nhttps://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/",
+    "expectedPath": [
+      "`kubectl get nodes` and `kubectl get pods -n mill -o wide`\nLeft: three Ready workers; `press` spread one per node; `logs` everywhere; `scratch` on `worker-1`. Continue.",
+      "`kubectl drain worker-1`\nLeft: the node is cordoned at once, then the command errors, naming DaemonSet-managed Pods and Pods with local storage. The message names the two flags you need. Note that the cordon already happened; the node is unschedulable even though nothing moved.\nRight: it starts and then hangs on evicting a `press` Pod. Stop it and look at the budget.",
+      "`kubectl get pdb -n mill`\nLeft: ALLOWED DISRUPTIONS is 0. With `minAvailable: 3` over 3 replicas nothing can ever be evicted. Continue.\nRight: ALLOWED DISRUPTIONS is 1 or more. Then the drain would have finished; re-read why it stalled.",
+      "Search `safely drain a node`.\nLeft: Safely Drain a Node. Drain marks the node unschedulable and evicts through the eviction API, which respects PodDisruptionBudgets. Requiring zero voluntary evictions means the drain never completes. The fix is to give the budget room, not to remove it.\nRight: the `--disable-eviction` flag. It forces delete and bypasses PodDisruptionBudget checks. That is the opposite of what the task asks for.",
+      "`kubectl scale deployment press -n mill --replicas=4`\nLeft: the fourth Pod goes Ready on `worker-0` or `worker-2`; ALLOWED DISRUPTIONS becomes 1.\nRight: the fourth Pod is Pending. No room on the other workers; the drain still cannot proceed.",
+      "`kubectl drain worker-1 --ignore-daemonsets --delete-emptydir-data`\nLeft: it evicts `scratch` and the `press` Pod and returns. `kubectl get pods -n mill -o wide` shows only a `logs` Pod on `worker-1`.\nRight: it stalls again. Another budget, or the replacement Pod has not gone Ready yet. Watch `kubectl get pdb -n mill`."
+    ],
+    "trap": "Delete or relax `press-pdb` to make the drain finish. Second: reach for `--disable-eviction`, which skips the budget check entirely. Third: forget `--delete-emptydir-data` and leave `scratch` behind. Fourth: `kubectl delete node`, which removes the member rather than draining it. Fifth: read the first failed drain as \"nothing happened\" and miss that the node is already cordoned.",
+    "docs": [
+      "https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/",
+      "https://kubernetes.io/docs/reference/kubectl/generated/kubectl_drain/",
+      "https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/",
+      "https://kubernetes.io/docs/tasks/run-application/configure-pdb/",
+      "https://kubernetes.io/docs/reference/kubernetes-api/policy-resources/pod-disruption-budget-v1/"
+    ],
+    "source": "EXAM-VAR-gaps.md"
+  },
+  {
+    "id": "exam-var-gaps-q07",
+    "title": "One claim binds, one waits",
+    "points": 6,
+    "minutes": 7,
+    "unit": "u10",
+    "tier": null,
+    "topic": "Pending on purpose",
+    "context": "Context `shoal`. Namespace `vault` exists and is empty of your objects. A CSI driver registered as `csi.example.com` runs in the cluster and provisions volumes on demand; its volumes are reachable only from the node that owns them. The cluster has one StorageClass, `fast`, with provisioner `csi.example.com` and `volumeBindingMode: Immediate`. `fast` is not marked default, and there is no default class. No PersistentVolume and no PersistentVolumeClaim exists.",
+    "task": "Add a StorageClass named `late` that provisions through `csi.example.com` and does not commit a volume until a Pod that needs it has been scheduled. Then in `vault` create two 1Gi `ReadWriteOnce` claims on `late`: `used`, which Pod `reader` (image `busybox:1.36`, command `sleep 3600`) mounts at `/data`; and `spare`, which no Pod uses. Do not change or delete StorageClass `fast`, do not make any class the cluster default, and do not create PersistentVolumes yourself.",
+    "constraints": [
+      "`fast` is unchanged. Checkable: `fast` matches the snapshot.",
+      "No class is the cluster default. Checkable: no StorageClass carries `storageclass.kubernetes.io/is-default-class: \"true\"`.",
+      "Every PersistentVolume was provisioned by the driver. Checkable: each PV has `spec.csi.driver: csi.example.com` and a `claimRef`.",
+      "`reader` runs one container. Checkable: Pod spec."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "StorageClass `late` exists, `provisioner` is `csi.example.com`, `volumeBindingMode` is `WaitForFirstConsumer`, and it is not marked default. `fast` matches the snapshot and no class is default."
+        },
+        {
+          "points": 2,
+          "text": "PVC `vault/used` is `Bound`. Its `storageClassName` is `late`, its request is 1Gi, and its access mode is `ReadWriteOnce`. Pod `vault/reader` is Running on a node, uses `busybox:1.36`, and mounts `used` at `/data`. The PV named by `used.spec.volumeName` has `spec.csi.driver: csi.example.com` and a `claimRef` naming `vault/used`."
+        },
+        {
+          "points": 2,
+          "text": "PVC `vault/spare` exists, its `storageClassName` is `late`, its request is 1Gi, and it is still `Pending` with an empty `spec.volumeName`. No Pod in any namespace references `spare`."
+        }
+      ],
+      "notes": [
+        "Snapshot StorageClass `fast` and the StorageClass list before scoring.",
+        "Gate the second and third pairs on `late` reporting `WaitForFirstConsumer`.",
+        "Two routes score.",
+        "Creating `late`, then both claims, then the Pod reaches the end state; so does creating `late`, then the Pod and `used` together, then `spare`.",
+        "The grader reads the end state and does not care about the order.",
+        "A StorageClass with the right provisioner but `volumeBindingMode: Immediate` — or the field left out, which means `Immediate` — fails.",
+        "`used` still ends Bound and `reader` still Runs, so a grader that checked only the consumed claim would pass it.",
+        "`spare` binds as well, so the third pair scores 0, and the first pair scores 0 on the field itself.",
+        "The unconsumed claim is the whole proof.",
+        "Creating a PersistentVolume by hand and letting `spare` bind to it fails the third pair and the PV constraint.",
+        "Marking `late` default to make binding \"work\" fails the first pair.",
+        "A `spare` on class `fast` fails the third pair: it binds at once, and it was never on the class under test.",
+        "`reader` left Pending fails the second pair.",
+        "Binding waits for the scheduler, so a Pod that never scheduled proves nothing."
+      ]
+    },
+    "docsPath": "Search `volume binding mode`.\nPage: Storage Classes\nhttps://kubernetes.io/docs/concepts/storage/storage-classes/\nSections: Provisioner, Reclaim Policy, Volume Binding\nMode.\nConcept: Persistent Volumes\nhttps://kubernetes.io/docs/concepts/storage/persistent-volumes/\nSection: Provisioning, Binding.",
+    "expectedPath": [
+      "`kubectl get sc,pv,pvc -A`\nLeft: only `fast`, `Immediate`, not default; no PVs; no PVCs. Continue.",
+      "Search `storage class volume binding mode`.\nLeft: Storage Classes page. `volumeBindingMode` defaults to `Immediate`, which binds and provisions as soon as the claim exists. `WaitForFirstConsumer` delays both until a Pod using the claim is created, so the volume is provisioned to match that Pod's scheduling constraints.\nRight: the PersistentVolume page's static provisioning section. That is hand-made volumes, and the task forbids them.",
+      "Create `late` with `provisioner: csi.example.com` and `volumeBindingMode: WaitForFirstConsumer`. Apply.\nLeft: `kubectl get sc` shows both classes and `VOLUMEBINDINGMODE` `WaitForFirstConsumer` for `late`.\nRight: the API rejects the class for a missing `provisioner`. That field is required.",
+      "Create both claims on `late`, then Pod `reader` mounting `used`.\nLeft: `kubectl get pvc -n vault` shows `used` Bound and `spare` Pending. `kubectl describe pvc spare -n vault` shows a `WaitForFirstConsumer` event: waiting for first consumer to be created before binding.\nRight: both claims are Bound. The class is `Immediate`, or the claims landed on `fast`. `volumeBindingMode` cannot be edited on an existing class — delete `late` and create it again.\nRight: `used` stays Pending and `reader` stays Pending. Read `describe pod reader`: the node may have no capacity, or the driver is not provisioning.",
+      "`kubectl get pv`\nLeft: exactly one PV, bound to `vault/used`. Done."
+    ],
+    "trap": "Leave `volumeBindingMode` out and get `Immediate` by default. Second: create only the consumed claim, which proves nothing about when binding happens. Third: try to edit `volumeBindingMode` on a live StorageClass. Fourth: make `late` the default class so the claims pick it up without naming it.",
+    "docs": [
+      "https://kubernetes.io/docs/concepts/storage/storage-classes/",
+      "https://kubernetes.io/docs/concepts/storage/persistent-volumes/",
+      "https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/"
+    ],
+    "source": "EXAM-VAR-gaps.md"
+  },
+  {
+    "id": "exam-var-gaps-q08",
+    "title": "A zone of its own",
+    "points": 6,
+    "minutes": 8,
+    "unit": "u9",
+    "tier": null,
+    "topic": "Fallthrough is not forwarding",
+    "context": "Context `shoal`. ConfigMap `coredns` in `kube-system` holds one Corefile with a single `.:53` server block: `errors`, `health` with `lameduck 5s`, `ready`, `kubernetes cluster.local in-addr.arpa ip6.arpa` with `pods insecure`, `fallthrough in-addr.arpa ip6.arpa` and `ttl 30`, then `prometheus :9153`, `forward . /etc/resolv.conf`, `cache 30`, `loop`, `reload`, `loadbalance`. Deployment `coredns` in `kube-system` runs 2 Ready replicas. Namespace `probe` holds Pod `dig`, a debug image with `dig` and `nslookup`, using cluster DNS. A resolver at `10.96.90.53` is authoritative for `corp.internal`. Today `db.corp.internal` resolves nowhere.",
+    "task": "Every Pod in the cluster must resolve names under `corp.internal` through the resolver at `10.96.90.53`. Names in `cluster.local` and public names must keep resolving exactly as they do now, and none of them may be sent to `10.96.90.53`. Leave the existing `.:53` server block exactly as it is and add whatever you need beside it. The change must survive a restart of the DNS Pods.",
+    "constraints": [
+      "The `.:53` block is unchanged. Checkable: that block in the live Corefile matches the snapshot line for line.",
+      "No Pod's DNS settings changed. Checkable: every Pod's `dnsPolicy` and `dnsConfig` match the snapshot.",
+      "The DNS Service is unchanged. Checkable: `kube-system/kube-dns` matches the snapshot, ClusterIP included.",
+      "CoreDNS is healthy. Checkable: Deployment `kube-system/coredns` reports 2 ready replicas."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "ConfigMap `kube-system/coredns` holds a second server block for zone `corp.internal`, and that block holds a `forward` line whose destination is `10.96.90.53`. Accept any zone argument on that line: `forward . 10.96.90.53` and `forward corp.internal 10.96.90.53` are both valid inside the block, and both serve the zone. The `.:53` block matches the snapshot line for line: still `kubernetes cluster.local in-addr.arpa ip6.arpa`, still `forward . /etc/resolv.conf`."
+        },
+        {
+          "points": 2,
+          "text": "The running CoreDNS Pods serve that configuration. From Pod `probe/dig`, a lookup of `db.corp.internal` is answered. Deployment `coredns` reports 2 ready replicas. Do not read the client's SERVER line: every Pod queries the cluster DNS address, so `dig` and `nslookup` report `10.96.0.10` on a correct answer."
+        },
+        {
+          "points": 2,
+          "text": "From the same Pod, `kubernetes.default.svc.cluster.local` still resolves to the `kubernetes` Service ClusterIP, and a name that only the node resolver can answer — a public name — still resolves. Every Pod's `dnsPolicy` and `dnsConfig` and Service `kube-dns` match the snapshot."
+        }
+      ],
+      "notes": [
+        "Snapshot the Corefile, every Pod's `dnsPolicy` and `dnsConfig`, and Service `kube-system/kube-dns` before scoring.",
+        "Gate the second and third pairs on the first.",
+        "Two routes score.",
+        "Editing the ConfigMap and waiting for the `reload` plugin to pick it up — allow two minutes — reaches the end state.",
+        "So does editing it and then running `kubectl rollout restart deployment coredns -n kube-system`.",
+        "Both leave the Pods serving the new zone, which is what the second pair reads.",
+        "Replacing `forward . /etc/resolv.conf` in the `.:53` block with `forward . 10.96.90.53` fails the first and third pairs.",
+        "`db.corp.internal` does resolve, so the second pair passes and a grader that only tested the new name would pass the whole thing — but every public name now goes to a resolver that is not authoritative for it.",
+        "Adding a `forward corp.internal 10.96.90.53` line inside the `.:53` block fails the first pair.",
+        "The zone does resolve, but there is no second server block and the default block no longer matches the snapshot.",
+        "The task states that the default block stays as it is.",
+        "The same line inside a `corp.internal` block scores.",
+        "Adding `dnsConfig` nameservers to Pod `dig` fails the second constraint and the third pair, and leaves every other Pod unable to resolve the zone.",
+        "Editing the ConfigMap and never getting CoreDNS to load it fails the second pair.",
+        "So does a Corefile that CoreDNS refuses: the Pods CrashLoopBackOff and the replica check fails with it.",
+        "Creating a second ConfigMap under a new name fails the first pair.",
+        "The Deployment mounts `coredns`."
+      ]
+    },
+    "docsPath": "Search `customizing dns service`.\nPage: Customizing DNS Service\nhttps://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/\nSections: CoreDNS ConfigMap options, the stub domain\nexample, the `reload` plugin.\nConcept: DNS for Services and Pods\nhttps://kubernetes.io/docs/concepts/services-networking/dns-pod-service/",
+    "expectedPath": [
+      "`kubectl get cm coredns -n kube-system -o yaml` and `kubectl get deploy coredns -n kube-system`\nLeft: one `.:53` block, `reload` present, 2 replicas Ready. Save a copy of the Corefile before you edit. Continue.",
+      "`kubectl exec -n probe dig -- nslookup db.corp.internal`\nLeft: NXDOMAIN. The zone is not served anywhere yet.",
+      "Search `custom dns nameservers`.\nLeft: Customizing DNS Service. CoreDNS picks the server block whose zone matches the query, so a stub domain is its own block: `corp.internal:53 { errors cache 30  forward . 10.96.90.53 }` placed beside `.:53`. The `reload` plugin picks up a changed Corefile; allow two minutes.\nRight: the `fallthrough` directive in the `kubernetes` plugin. That decides which plugin handles a name inside one block; it does not send a zone to another resolver.\nRight: the Pod `dnsConfig` page. That changes one Pod's resolver, not the cluster's.",
+      "Edit the ConfigMap: append the `corp.internal:53` block after the closing brace of `.:53`. Leave `.:53` alone. Apply.\nLeft: `kubectl get cm coredns -n kube-system -o yaml` shows both blocks and an untouched `.:53`.\nRight: the new block is nested inside `.:53`. CoreDNS rejects the file and the Pods CrashLoopBackOff. Put it after the closing brace.",
+      "Wait for `reload`, or `kubectl rollout restart deployment coredns -n kube-system`.\nLeft: `kubectl get pods -n kube-system -l k8s-app=kube-dns` shows 2 Ready.\nRight: CrashLoopBackOff. `kubectl logs` names the Corefile line. Fix the syntax; restore your copy if you must.",
+      "Re-run the three lookups from `probe/dig`.\nLeft: `db.corp.internal` answers; `kubernetes.default.svc.cluster.local` still answers the Service ClusterIP; a public name still answers. Done. The SERVER line still reads `10.96.0.10` on all three: your Pod always asks cluster DNS, and cluster DNS decides which block handles the name.\nRight: `db.corp.internal` is still NXDOMAIN. The reload has not happened yet, or the zone name in the block is misspelled."
+    ],
+    "trap": "Point the default block's `forward` at `10.96.90.53` and send the whole internet there. Second: nest the new block inside `.:53` and crash CoreDNS. Third: expect the `kubernetes` plugin's `fallthrough` to forward the zone. Fourth: fix Pod `dig` with `dnsConfig` and call it done. Fifth: test immediately and conclude it failed — `reload` can take two minutes.",
+    "docs": [
+      "https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/",
+      "https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/",
+      "https://kubernetes.io/docs/tasks/administer-cluster/coredns/"
+    ],
+    "source": "EXAM-VAR-gaps.md"
+  },
+  {
+    "id": "exam-var-diffs-v01",
+    "title": "press will not start",
+    "points": 6,
+    "minutes": 7,
+    "unit": "u6",
+    "tier": null,
+    "topic": "Why is it still Pending",
+    "context": "Context `mesa`. The control plane is managed, so the only Node objects are the three workers `mesa-w1`, `mesa-w2`, and `mesa-w3`. No Node carries a taint. Each Node reports 4 CPU allocatable, and existing Pods already request about half of that on every Node. Namespace `mill` holds Deployment `press` (1 replica, image `nginx:1.27-alpine`) and Deployment `hopper`, which is Available. The single `press` Pod has been Pending since it was created.",
+    "task": "Make Deployment `press` in `mill` Available with one ready replica. Its Pod must be placed by `default-scheduler`. Keep the name, the image, and one replica.",
+    "constraints": [
+      "Do not add, change, or delete Node labels or taints. Checkable: Node labels and taints match the snapshot.",
+      "Do not set `spec.nodeName` in the pod template. Checkable: the template field is empty, and the Pod has a `Scheduled` event from `default-scheduler`.",
+      "Do not delete, scale, or change Deployment `hopper` or any other workload in `mill`. Checkable: those objects match the snapshot.",
+      "The container must keep a declared request for both CPU and memory. Checkable: `requests.cpu` and `requests.memory` are both present and nonzero."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "Deployment `mill/press` has the snapshot uid, image `nginx:1.27-alpine`, `spec.replicas` 1, and 1 ready and 1 available replica."
+        },
+        {
+          "points": 2,
+          "text": "Its Pod is Running on a Node, `spec.nodeName` is unset in the pod template, and the Pod has a `Scheduled` event whose reporting component is `default-scheduler`."
+        },
+        {
+          "points": 2,
+          "text": "The container's `requests.cpu` and `requests.memory` are both present and nonzero. Node labels and taints, and every other workload in `mill`, match the snapshot."
+        }
+      ],
+      "notes": [
+        "Snapshot Node labels and taints, every other workload in `mill`, and `press.metadata.uid` before scoring.",
+        "Gate the last four points on the uid pair.",
+        "Two routes score.",
+        "Lower `requests.cpu` to a value that fits the free allocatable CPU on one Node.",
+        "Or lower it and set an equal limit, which also makes the Pod Guaranteed.",
+        "Both end with a Running Pod and a nonzero CPU request.",
+        "Deleting the requests block scores 0 on the last pair.",
+        "The Pod runs, but it now requests nothing.",
+        "A toleration, a `nodeSelector`, or node affinity scores 0 on the first two pairs: the Pod is still Pending.",
+        "`spec.nodeName: mesa-w1` scores 0 on the second pair.",
+        "It has no `Scheduled` event, and the kubelet rejects the Pod for `OutOfcpu` because the Node cannot fit it either.",
+        "Deleting `hopper` to free CPU fails the last pair."
+      ]
+    },
+    "docsPath": "Search `pod stays pending`.\nPage: Debug Pods\nhttps://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/\nSection: My pod stays pending.\nCapacity reference: Node Status → Capacity and Allocatable\nhttps://kubernetes.io/docs/concepts/architecture/nodes/#node-status",
+    "expectedPath": [
+      "`kubectl get pods -n mill -o wide`\nLeft: one Pending Pod, `NODE` empty. Continue.\nRight: the Pod is Running. Nothing to do; re-read.",
+      "`kubectl describe pod -n mill <pending-pod>`\nLeft: `Warning  FailedScheduling` from `default-scheduler`, message `0/3 nodes are available: 3 Insufficient cpu.` Every Node was filtered for the same resource reason. That is a capacity answer, not a placement answer.\nRight: the census names an untolerated taint or an unmatched node selector. That is the original Pending question, and a toleration would be the fix. It does not say that here.\nRight: the census names an unbound claim. That is V02, not this question.",
+      "Search `pod stays pending`.\nLeft: Debug Pods. A Pending Pod that no Node can hold is a resource problem: compare the Pod's requests with each Node's `allocatable`.\nRight: the taints and tolerations page. It explains a reason the census did not report.",
+      "`kubectl describe node mesa-w1` and read `Allocatable` and `Allocated resources`.\nLeft: 4 CPU allocatable, about half already requested. The `press` request is larger than what is free on every Node. Lower it.\nRight: the Node reports plenty free. Then re-read the Pod's request; a `6` is six whole CPUs, and a `6m` is six thousandths of one.",
+      "Patch the container's `requests.cpu` down and wait.\nLeft: Available 1/1; `describe` shows `Scheduled` from `default-scheduler`.\nRight: still Pending with the same census. Your value is still bigger than the free allocatable CPU."
+    ],
+    "trap": "Reaches for a toleration or node affinity, because the original Pending question was an untolerated control-plane taint. Nothing here is tainted, so the edit changes nothing and the Pod stays Pending. Second: forces the Pod with `spec.nodeName`, which skips the scheduler and gets the Pod rejected by the kubelet with `OutOfcpu`. Third: deletes `hopper` to make room. Fourth: strips the requests block entirely, which schedules the Pod and gives it no share of the Node.",
+    "docs": [
+      "https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/",
+      "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+      "https://kubernetes.io/docs/concepts/architecture/nodes/#node-status",
+      "https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/"
+    ],
+    "source": "EXAM-VAR-diffs.md"
+  },
+  {
+    "id": "exam-var-diffs-v02",
+    "title": "ledger will not start",
+    "points": 8,
+    "minutes": 9,
+    "unit": "u10",
+    "tier": null,
+    "topic": "Four reasons, four checks",
+    "context": "Context `mesa`. Namespace `archive`. Pod `ledger` (image `nginx:1.27-alpine`) mounts PersistentVolumeClaim `ledger-data` at `/var/lib/ledger`. `ledger` has been Pending since it was created. The cluster has one StorageClass, `standard-rwo`. It is the default class, it provisions dynamically, and its `volumeBindingMode` is `WaitForFirstConsumer`. No Node carries a taint. Every Node has free allocatable CPU and memory.",
+    "task": "Make Pod `archive/ledger` Running. It must keep the name `ledger`, keep the image `nginx:1.27-alpine`, and mount a claim named `ledger-data` at `/var/lib/ledger`, and that claim must be Bound to at least 2Gi of ReadWriteOnce storage.",
+    "constraints": [
+      "`archive` must end with exactly one Pod, named `ledger`, running one container on `nginx:1.27-alpine`. Checkable: the Pod list in `archive`, and the Pod's container image.",
+      "`ledger` must mount `ledger-data` at `/var/lib/ledger`. Checkable: the Pod's volume and volume mount.",
+      "Do not create, change, or delete any StorageClass. Checkable: the StorageClass list and specs match the snapshot.",
+      "`archive` must end with exactly one PersistentVolumeClaim. Checkable: the claim list in `archive` is exactly `ledger-data`."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "`archive` holds exactly one Pod, named `ledger`. It is Running on a Node, runs one container on `nginx:1.27-alpine`, and mounts PersistentVolumeClaim `ledger-data` at `/var/lib/ledger`."
+        },
+        {
+          "points": 3,
+          "text": "`archive/ledger-data` is the only claim in `archive`. Its phase is `Bound`, its access mode is ReadWriteOnce, and its bound PersistentVolume is at least 2Gi."
+        },
+        {
+          "points": 3,
+          "text": "The StorageClass list and specs match the snapshot. `kubectl exec ledger -n archive -- touch /var/lib/ledger/probe` succeeds."
+        }
+      ],
+      "notes": [
+        "Snapshot `ledger`'s container image, its volume and volume mount, and the StorageClass list before scoring.",
+        "Gate the storage pairs on the Pod Running.",
+        "Two routes score.",
+        "Replace the claim with one that names the existing class `standard-rwo`, which provisions the volume dynamically.",
+        "Or create a 2Gi ReadWriteOnce PersistentVolume yourself and replace the claim with one that has `storageClassName: \"\"` and binds to it.",
+        "Both end Bound, and both leave the class list untouched.",
+        "Both routes need Pod `ledger` deleted first.",
+        "A claim in active use by a Pod object — a Pending Pod counts — is held by the `kubernetes.io/pvc-protection` finalizer and stays `Terminating` until no Pod uses it.",
+        "Re-creating `ledger` afterwards with the same name, image, and mount scores; the grader reads the end state, not the uid.",
+        "Creating a StorageClass with the name the claim already uses fails the last triple.",
+        "It binds the volume and keeps the typo as cluster configuration.",
+        "A second claim, such as `ledger-data-2`, fails the middle triple even when it is Bound: `ledger` still mounts `ledger-data`.",
+        "Editing the Pod to add a toleration, a `nodeSelector`, or node affinity fails the first pair.",
+        "It is still Pending.",
+        "A `ledger` that starts without the volume, or that mounts it anywhere but `/var/lib/ledger`, fails the first pair.",
+        "A second Pod left in `archive` fails the first pair too.",
+        "A Bound claim with a Pending Pod scores 0 on every pair."
+      ]
+    },
+    "docsPath": "Search `persistentvolumeclaim pending`.\nPage: Persistent Volumes\nhttps://kubernetes.io/docs/concepts/storage/persistent-volumes/\nSections: Class, Binding, Storage Object in Use\nProtection, and Volume binding mode on Storage Classes\nhttps://kubernetes.io/docs/concepts/storage/storage-classes/\nSymptom page: Debug Pods\nhttps://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/",
+    "expectedPath": [
+      "`kubectl describe pod ledger -n archive`\nLeft: `Warning  FailedScheduling`, message `0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims.` The scheduler stopped before it looked at any Node. This is a volume answer, not a placement answer.\nRight: the census reads `3 Insufficient cpu.` That is V01. Right: it names an untolerated taint. That is the original Pending question.",
+      "`kubectl get pvc -n archive`\nLeft: `ledger-data` is `Pending`, and its `STORAGECLASS` column names a class you do not recognise. Continue.\nRight: the claim is `Bound`. Then the Pod is Pending for another reason; go back to the census.",
+      "`kubectl describe pvc ledger-data -n archive`\nLeft: `Warning  ProvisioningFailed` from `persistentvolume-controller`, message `storageclass.storage.k8s.io \"standrd-rwo\" not found`. Nothing provisions this claim, because the class it asks for is not an object in this cluster.\nRight: `Normal  WaitForFirstConsumer  waiting for first consumer to be created before binding`. That is a healthy delayed-binding claim, not this fault.",
+      "`kubectl get storageclass`\nLeft: one class, `standard-rwo`. The claim's class name differs by one character. Compare the two strings, do not skim them.\nRight: the named class does exist. Then read the provisioner and its events instead.",
+      "Replace the claim. Save `ledger`'s manifest, delete Pod `ledger`, delete `ledger-data`, apply the claim again with the same name, 2Gi, ReadWriteOnce, and `storageClassName: standard-rwo`, then apply `ledger` again unchanged.\nLeft: the claim goes Bound once the new `ledger` is scheduled, and `ledger` turns Running.\nRight: the API rejects your edit of the live claim's `spec`. `storageClassName` cannot be patched. Replace the object instead.\nRight: the claim sits at `Terminating` and never goes. Storage Object in Use Protection holds it while a Pod object uses it, and a Pending Pod is a use. Delete `ledger` first; do not strip the finalizer.\nRight: the claim stays Pending with `WaitForFirstConsumer`. That class binds only when a Pod needs it; re-create `ledger` and watch again."
+    ],
+    "trap": "Reaches for tolerations, node affinity, or a bigger Node, because the original Pending question was scheduling. The scheduler never reached a Node here, and the edit changes nothing. Second: creates a StorageClass whose name matches the typo. The claim binds and the cluster now carries the mistake. Third: creates a second claim with the right class and leaves the Pod pointing at the old one. Fourth: deletes the claim while `ledger` still exists, watches it hang at `Terminating`, and strips the `kubernetes.io/pvc-protection` finalizer by hand instead of deleting the Pod. Fifth: drops the volume from `ledger` to make it Run, which starts a Pod with no storage.",
+    "docs": [
+      "https://kubernetes.io/docs/concepts/storage/persistent-volumes/",
+      "https://kubernetes.io/docs/concepts/storage/storage-classes/",
+      "https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/",
+      "https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/"
+    ],
+    "source": "EXAM-VAR-diffs.md"
+  },
+  {
+    "id": "exam-var-diffs-v03",
+    "title": "beacon-svc refuses every caller",
+    "points": 6,
+    "minutes": 7,
+    "unit": "u8",
+    "tier": null,
+    "topic": "It resolves, nothing answers",
+    "context": "Context `verdigris`. Namespace `relay`. Deployment `beacon` is Available with 3 ready replicas. Its Pods carry label `app=beacon` and declare one container port, named `http`, number 8080. Each `beacon` Pod answers an HTTP request on 8080 with 200 and its own name. Service `beacon-svc` in `relay` is ClusterIP and publishes port 80. Pod `caller` in `relay` resolves `beacon-svc` to the Service ClusterIP, and every request to it fails at once with a refused connection. No NetworkPolicy exists in the cluster.",
+    "task": "Make an in-cluster HTTP request to `beacon-svc` on port 80 reach a `beacon` Pod and return 200. `beacon-svc` must keep its name, its ClusterIP, and port 80. Do not change Deployment `beacon`, its Pods, or their labels.",
+    "constraints": [
+      "Do not change Deployment `beacon` or any Pod label in `relay`. Checkable: the Deployment and the Pod labels match the snapshot.",
+      "Keep the Service object and its address. Checkable: `beacon-svc.metadata.uid` and `spec.clusterIP` match the snapshot.",
+      "Keep the published port at 80. Checkable: `spec.ports[*].port` contains 80."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "Service `relay/beacon-svc` has the snapshot uid and clusterIP, `type` is `ClusterIP`, and it publishes port 80."
+        },
+        {
+          "points": 2,
+          "text": "The EndpointSlices for `beacon-svc` list the three ready `beacon` Pod addresses, and every port entry they carry is 8080."
+        },
+        {
+          "points": 2,
+          "text": "From a Pod in `relay`, an HTTP request to `beacon-svc:80` returns 200 from a `beacon` Pod. Deployment `beacon` and the Pod labels match the snapshot."
+        }
+      ],
+      "notes": [
+        "Snapshot Deployment `beacon`, the Pod labels in `relay`, `beacon-svc.metadata.uid`, and `beacon-svc.spec.clusterIP` before scoring.",
+        "Gate the request pair on the endpoint pair.",
+        "Two routes score.",
+        "Set `targetPort: 8080`, or set `targetPort: http` and let the name resolve against the container port.",
+        "Both put 8080 in the EndpointSlice.",
+        "Changing `port` to 8080 fails the first and third pairs.",
+        "The caller asks for port 80.",
+        "Deleting and recreating the Service fails the first pair.",
+        "The ClusterIP changes.",
+        "Editing the selector, or relabelling the `beacon` Pods to match it, fails the last pair.",
+        "The selector already matches; the Pod labels are graded.",
+        "A Service with the right `targetPort` and no ready endpoints fails the endpoint pair."
+      ]
+    },
+    "docsPath": "Search `debug service endpoints`.\nPage: Debugging Services\nhttps://kubernetes.io/docs/tasks/debug/debug-application/debug-service/\nSections: Does the Service have any Endpoints, Is the\nService correct.\nField reference: Service → Defining a Service\nhttps://kubernetes.io/docs/concepts/services-networking/service/",
+    "expectedPath": [
+      "`kubectl get endpointslice -n relay -l kubernetes.io/service-name=beacon-svc`\nLeft: one slice, `ADDRESSTYPE` IPv4, `ENDPOINTS` lists three addresses, and `PORTS` reads `9090`. Membership is correct and the port is not. The selector is not the fault.\nRight: `ENDPOINTS` is empty. Then the selector or Pod readiness is the fault, which is the original unreachable-Service question, not this one.",
+      "Search `debug service no endpoints`.\nLeft: Debugging Services. Work down the list: does the Service exist, does it have endpoints, is the Service correct. The port a Service forwards to is `targetPort` on the Pod, and it is not the same field as `port`.\nRight: the kube-proxy or CNI pages. Traffic is being delivered; it lands on a port nothing listens on.",
+      "Compare the two numbers. `kubectl get svc beacon-svc -n relay -o yaml` and `kubectl get pod -n relay -l app=beacon -o jsonpath='{.items[0].spec.containers[*].ports}'`\nLeft: Service `port: 80`, `targetPort: 9090`; container port `http` = 8080. The Service forwards to a port no container holds, so the connection is refused at once.\nRight: they already agree. Then read the container's listen address; a process bound to 127.0.0.1 refuses the same way.",
+      "Patch `targetPort` to 8080 or to `http`. Re-read the slice, then send the request.\nLeft: `PORTS` reads `8080`; the request returns 200.\nRight: `PORTS` is `<unset>` or the endpoint vanished. You used a port name the container does not declare.\nRight: refused still. You changed `port` instead of `targetPort`, so the caller's port 80 is gone."
+    ],
+    "trap": "Reaches for the selector, because the original unreachable Service was a selector that matched nothing. Here the EndpointSlice already lists all three Pods, so relabelling or re-selecting changes nothing. Second: reads \"refused\" as \"no backend\" and restarts the Deployment. Third: renumbers `port` instead of `targetPort`, which moves the published port away from the caller. Fourth: deletes and recreates the Service and loses the ClusterIP.",
+    "docs": [
+      "https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/",
+      "https://kubernetes.io/docs/concepts/services-networking/service/",
+      "https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/",
+      "https://kubernetes.io/docs/tutorials/services/connect-applications-service/"
+    ],
+    "source": "EXAM-VAR-diffs.md"
+  },
+  {
+    "id": "exam-var-diffs-v04",
+    "title": "courier cannot reach parcel-svc",
+    "points": 8,
+    "minutes": 10,
+    "unit": "u25",
+    "tier": null,
+    "topic": "An address is not reachability",
+    "context": "Context `verdigris`. Namespace `depot` runs Deployment `parcel` (3 ready replicas, label `app=parcel`, container port 8080) behind Service `parcel-svc`, ClusterIP, port 80 with `targetPort` 8080. Its EndpointSlice lists all three ready Pods. `depot` also runs Pod `strongbox`, label `app=strongbox`, listening on 8443. Namespace `dispatch` runs Deployment `courier`, label `app=courier`. From a `courier` Pod, `parcel-svc.depot.svc.cluster.local` resolves to the Service ClusterIP, and every request to it hangs until it times out. The same request from a Pod in namespace `ops` returns 200. The CNI is a conformant NetworkPolicy implementation.",
+    "task": "Make HTTP requests from the `courier` Pods to `parcel-svc.depot.svc.cluster.local` on port 80 return 200. `courier` Pods must keep working DNS, and they must still be unable to open any other connection, including to `strongbox` on 8443. Do not widen access beyond what the task needs.",
+    "constraints": [
+      "Do not change Service `parcel-svc`, Deployment `parcel`, or any label in `depot`. Checkable: those objects match the snapshot.",
+      "Do not change any NetworkPolicy in `depot`. Checkable: the policy list and specs in `depot` match the snapshot.",
+      "`courier` Pods must stay denied everywhere else. Checkable: the live negative probes in `verify`."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 3,
+          "text": "From a `courier` Pod, an HTTP request to `parcel-svc.depot.svc.cluster.local:80` returns 200 from a `parcel` Pod."
+        },
+        {
+          "points": 2,
+          "text": "From a `courier` Pod, a DNS lookup of that same name still returns the Service ClusterIP."
+        },
+        {
+          "points": 3,
+          "text": "From a `courier` Pod, a TCP connection to the `strongbox` Pod address on 8443 does not complete, and a connection to any address outside the cluster does not complete. Every object and NetworkPolicy in `depot`, and every Pod label, matches the snapshot."
+        }
+      ],
+      "notes": [
+        "Snapshot `depot` objects, `depot` NetworkPolicies, and the Pod labels in both namespaces before scoring.",
+        "Gate the negative triple on the first triple.",
+        "A namespace that lets everything out scores 0 there.",
+        "Two routes score.",
+        "Add an egress rule to the existing policy, or create a second NetworkPolicy in `dispatch` that selects `app=courier` and adds only that rule.",
+        "Policies are additive, so both end with the same effective permission.",
+        "Deleting the policy in `dispatch` fails the negative triple.",
+        "An egress rule with an empty `to` fails the negative triple.",
+        "An egress rule that allows TCP 80 instead of 8080 fails the first triple.",
+        "`ports` in a NetworkPolicy names a port on the Pods the rule selects, and the `parcel` Pods listen on 8080.",
+        "The Service publishes 80; the policy never sees a Service.",
+        "A new ingress policy in `depot` fails the constraint check and does not help: nothing in `depot` denies ingress.",
+        "Changing `parcel-svc.targetPort` fails the last triple."
+      ]
+    },
+    "docsPath": "Search `network policy egress`.\nPage: Network Policies\nhttps://kubernetes.io/docs/concepts/services-networking/network-policies/\nSections: Behavior of to and from selectors, Default\npolicies, and What you can't do with network policies.\nWalkthrough: Declare Network Policy\nhttps://kubernetes.io/docs/tasks/administer-cluster/declare-network-policy/",
+    "expectedPath": [
+      "Confirm the backend is healthy first. `kubectl get endpointslice -n depot -l kubernetes.io/service-name=parcel-svc`\nLeft: `ENDPOINTS` lists three addresses and `PORTS` reads `8080`. From `ops` the request returns 200, so the Service and its backends work.\nRight: `ENDPOINTS` empty, or `PORTS` disagrees with the container port. Then the fault is V03 or the original selector question, not this one.",
+      "Read the shape of the failure. The name resolves and the connection hangs; it is not refused, and it is not an empty answer. Something is dropping packets on the path.",
+      "`kubectl get networkpolicy -A`\nLeft: `dispatch` holds a policy that selects `app=courier` with `policyTypes: [Ingress, Egress]` and one egress rule for DNS. An egress policy that selects a Pod denies everything it does not allow. `depot` holds none, so the backend side permits all ingress.\nRight: a policy in `depot` selects `app=parcel`. Then the deny is on the server side, which is the original policy question. It is not what you have.",
+      "Search `network policy egress`.\nLeft: Network Policies. `to` selects the peer Pods, and `ports` is \"a numerical or named port on a pod\" — a port on those peer Pods, not the Service port a caller dials. Pair the peer and the port inside one rule item; two sibling items widen the peer set instead.\nRight: the Services page. A policy cannot name a Service; it selects the Pods behind it.",
+      "Add the rule: `to` with `namespaceSelector` `kubernetes.io/metadata.name: depot` and `podSelector` `app: parcel` in the same item, `ports` TCP 8080. Apply, then run all three probes.\nLeft: 200 from `parcel`, DNS still answers, `strongbox:8443` still hangs.\nRight: still hanging. Your rule allows TCP 80. `to` selected the `parcel` Pods, so `ports` must name a port those Pods hold, and that is 8080. Allow 8080.\nRight: `strongbox:8443` now answers. Your peer items are siblings, or your `to` is empty. Narrow it.\nRight: DNS broke. You replaced the DNS rule instead of adding beside it."
+    ],
+    "trap": "Reaches for the Service or the backend, because the original unreachable-Service questions were both on the server side. The Service is correct, the endpoints are ready, and another namespace already gets 200; the deny is in the caller's namespace. Second: deletes the policy, which fixes the symptom and removes the containment. Third: writes an ingress policy in `depot`, which nothing was blocking. Fourth: allows TCP 80, the Service port, rather than 8080, the Pod port.",
+    "docs": [
+      "https://kubernetes.io/docs/concepts/services-networking/network-policies/",
+      "https://kubernetes.io/docs/reference/kubernetes-api/policy-resources/network-policy-v1/",
+      "https://kubernetes.io/docs/tasks/administer-cluster/declare-network-policy/",
+      "https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/"
+    ],
+    "source": "EXAM-VAR-diffs.md"
+  },
+  {
+    "id": "exam-var-diffs-v05",
+    "title": "slate-w2 has been NotReady for twenty minutes",
+    "points": 8,
+    "minutes": 10,
+    "unit": "u20",
+    "tier": null,
+    "topic": "What separates a NotReady node",
+    "context": "Context `slate`. Nodes: `slate-cp1` (Ready), `slate-w1` (Ready), `slate-w2` (NotReady for twenty minutes). You have root SSH to every Node. On `slate-w2`, `systemctl is-active kubelet` prints `active`, and the kubelet process has been up for twenty minutes with no restarts. Nothing on `slate-w2` was changed in this session.",
+    "task": "Make `slate-w2` Ready again and show that the scheduler can place a Pod on it. No reboot. No package installs and no binary copies. The fix must survive `systemctl daemon-reload`, a restart of the kubelet, and a later restart of the Node's services.",
+    "constraints": [
+      "Do not edit the kubelet unit, its drop-ins, or its configuration file. Checkable: those files match the snapshot byte for byte.",
+      "Do not delete or recreate the Node object. Checkable: `slate-w2.metadata.uid` matches the snapshot.",
+      "Do not cordon, drain, or taint any Node. Checkable: `spec.unschedulable` and the taints on every Node match the snapshot."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "`kubectl get nodes` shows `slate-w2` Ready, and the Node has the snapshot uid."
+        },
+        {
+          "points": 2,
+          "text": "On `slate-w2`, the container runtime service is `active` and `enabled`, and `crictl --runtime-endpoint <node endpoint> version` answers with the runtime name and version."
+        },
+        {
+          "points": 2,
+          "text": "After `systemctl daemon-reload` and `systemctl restart kubelet` on `slate-w2`, the runtime stays `active` and the Node returns to Ready."
+        },
+        {
+          "points": 2,
+          "text": "The grader creates a probe Pod with required node affinity on `kubernetes.io/hostname=slate-w2` and no preset `spec.nodeName`. It becomes Running on `slate-w2`. The kubelet unit, drop-ins, and configuration file match the snapshot, and every Node's taints and `spec.unschedulable` match the snapshot."
+        }
+      ],
+      "notes": [
+        "Snapshot the kubelet unit file, its drop-in directory, its configuration file, `slate-w2.metadata.uid`, and every Node's taints and `spec.unschedulable` before scoring.",
+        "Gate the probe pair on the Ready pair.",
+        "Two routes score.",
+        "`systemctl enable --now containerd`, or `systemctl start containerd` followed by `systemctl enable containerd`.",
+        "A masked unit must be unmasked first.",
+        "Any route that ends active and enabled passes.",
+        "Starting the runtime without enabling it fails the second pair.",
+        "The Node is Ready now and NotReady after the next service restart.",
+        "Restarting or reinstalling the kubelet fails the Ready pair.",
+        "The kubelet was already up.",
+        "Editing the kubelet unit fails the last pair, however Ready the Node looks.",
+        "Deleting the Node object so the kubelet re-registers fails the uid check, and it does not make the Node Ready."
+      ]
+    },
+    "docsPath": "Search `node conditions ready`.\nPage: Nodes\nhttps://kubernetes.io/docs/concepts/architecture/nodes/\nSection: Conditions.\nRuntime reference: Container Runtimes\nhttps://kubernetes.io/docs/setup/production-environment/container-runtimes/\nTooling: Debugging Kubernetes nodes with crictl\nhttps://kubernetes.io/docs/tasks/debug/debug-cluster/crictl/",
+    "expectedPath": [
+      "`kubectl get nodes` and `kubectl describe node slate-w2`\nLeft: one Node is NotReady while the others are Ready, so this is node-local. The Ready condition is `False` with reason `KubeletNotReady`, and its message holds `container runtime is down` and `PLEG is not healthy: ...`. The kubelet is running and reporting; it is reporting that the runtime is not there.\nRight: the Node is missing from the list entirely. Then the kubelet never registered, which is the original kubelet question.\nRight: reason `KubeletNotReady` with a network message. Then the CNI, not the runtime, is the fault.",
+      "SSH to `slate-w2`. `systemctl status kubelet` and `journalctl -u kubelet -n 50`.\nLeft: the unit is `active (running)`. The log repeats failures to reach the CRI socket: the dial to `/run/containerd/containerd.sock` fails, and the PLEG relist never succeeds. The kubelet is healthy; its runtime is not.\nRight: the unit is failing and its `ExecStart` names a path that does not exist. That is the original NotReady question. It does not say that here.",
+      "`systemctl status containerd`\nLeft: `inactive (dead)` and `disabled`, or `masked`. That is the whole fault: the kubelet cannot create, list, or inspect containers without the runtime.\nRight: `active (running)`. Then compare the socket path the kubelet uses with the one the runtime serves.",
+      "Search `container runtimes`.\nLeft: Container Runtimes, and the CRI page. The kubelet talks to the runtime over the CRI socket; it never starts containers itself.\nRight: the kubelet reference page. Its flags are not the fault; nothing about the unit changed.",
+      "Start the runtime and enable it, then confirm from both sides: `crictl version` on the Node, and `kubectl get nodes` on the control plane.\nLeft: `crictl` answers, and `slate-w2` flips to Ready within a heartbeat.\nRight: `crictl` answers and the Node stays NotReady. Wait one more heartbeat, then re-read the Ready message for a second aggregated error.\nRight: the runtime is active but not enabled. `systemctl is-enabled containerd` says `disabled`. Enable it; the task requires it to survive a restart."
+    ],
+    "trap": "Restarts, reinstalls, or edits the kubelet unit, because the original NotReady question was a broken `ExecStart`. The kubelet here has been up for twenty minutes and says so. Second: starts the runtime and never enables it, so the Node fails again after the next restart. Third: deletes the Node object to force a fresh registration. Fourth: cordons or drains the Node to hide the symptom.",
+    "docs": [
+      "https://kubernetes.io/docs/concepts/architecture/nodes/",
+      "https://kubernetes.io/docs/concepts/architecture/cri/",
+      "https://kubernetes.io/docs/setup/production-environment/container-runtimes/",
+      "https://kubernetes.io/docs/tasks/debug/debug-cluster/crictl/",
+      "https://kubernetes.io/docs/tasks/debug/debug-cluster/"
+    ],
+    "source": "EXAM-VAR-diffs.md"
+  },
+  {
+    "id": "exam-var-diffs-v06",
+    "title": "invoicer never becomes Ready",
+    "points": 6,
+    "minutes": 7,
+    "unit": "u14",
+    "tier": null,
+    "topic": "Delivery has semantics",
+    "context": "Context `verdigris`. Namespace `billing`. Deployment `invoicer` (1 replica, image `nginx:1.27-alpine`) has been at READY 0/1 since it was created, with 0 restarts. ConfigMap `billing/invoicer-config` holds three keys: `LOG_LEVEL=info`, `REGION=eu-west-1`, and `apiKey=prod-77`. The container declares environment variable `API_KEY` from that ConfigMap. The image is present on every Node.",
+    "task": "Make Deployment `invoicer` Available with one ready replica. Its container must read `API_KEY=prod-77` from ConfigMap `invoicer-config` at start. Keep the Deployment, its name, its image, and one replica. `invoicer-config` must keep `LOG_LEVEL=info` and `REGION=eu-west-1` unchanged.",
+    "constraints": [
+      "Do not delete or recreate Deployment `invoicer`. Checkable: `invoicer.metadata.uid` matches the snapshot.",
+      "Keep the image `nginx:1.27-alpine` and one replica. Checkable: the template image and `spec.replicas`.",
+      "`API_KEY` must come from the ConfigMap, not from a literal. Checkable: the live template sets `API_KEY` through `valueFrom.configMapKeyRef` naming `invoicer-config`.",
+      "Keep the two other ConfigMap entries. Checkable: `LOG_LEVEL` and `REGION` match the snapshot."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "Deployment `billing/invoicer` has the snapshot uid, image `nginx:1.27-alpine`, `spec.replicas` 1, and 1 ready and 1 available replica."
+        },
+        {
+          "points": 2,
+          "text": "`kubectl exec deploy/invoicer -n billing -- printenv API_KEY` prints `prod-77`."
+        },
+        {
+          "points": 2,
+          "text": "In the live pod template, `API_KEY` is set through `valueFrom.configMapKeyRef` whose `name` is `invoicer-config`. ConfigMap `invoicer-config` still holds `LOG_LEVEL=info` and `REGION=eu-west-1`."
+        }
+      ],
+      "notes": [
+        "Snapshot `invoicer.metadata.uid`, `invoicer.spec.replicas`, and ConfigMap `invoicer-config` before scoring.",
+        "Gate the last four points on the uid pair.",
+        "Two routes score.",
+        "Point the reference at the key the ConfigMap already holds, `apiKey`.",
+        "Or add the key the reference already names, `api-key: prod-77`, to the ConfigMap and let the kubelet's next create attempt pick it up.",
+        "Both end with a running container that read the value from the ConfigMap.",
+        "Setting `optional: true` on the reference fails the second pair.",
+        "The container starts and the Deployment reports Available, but `API_KEY` is unset.",
+        "A literal `value: prod-77` fails the third pair.",
+        "Deleting `LOG_LEVEL` or `REGION` fails the third pair.",
+        "Deleting and recreating the Deployment fails the uid pair.",
+        "Changing the image fails the first pair."
+      ]
+    },
+    "docsPath": "Search `configmap environment variable`.\nPage: Configure a Pod to Use a ConfigMap\nhttps://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/\nSection: Define container environment variables using\nConfigMap data.\nSymptom page: Debug Pods\nhttps://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/",
+    "expectedPath": [
+      "`kubectl get pods -n billing`\nLeft: one Pod, `READY 0/1`, `STATUS CreateContainerConfigError`, `RESTARTS 0`. Nothing has run, so nothing has crashed.\nRight: `CrashLoopBackOff` with a rising restart count. That is a process that starts and exits; read its logs. Right: `ImagePullBackOff`. That is the registry.",
+      "`kubectl logs -n billing deploy/invoicer`\nLeft: the command fails; there is no container to read from. That confirms the container was never created.\nRight: log lines appear. Then the container did start, and you are on the wrong branch.",
+      "`kubectl describe pod -n billing <pod>`\nLeft: the container `State` is `Waiting` with `Reason: CreateContainerConfigError`, and an event `Warning Failed` carries `Error: couldn't find key api-key in ConfigMap billing/invoicer-config`. The kubelet cannot assemble the container's configuration, so it never calls the runtime.\nRight: the same reason names a Secret. Then the same method applies to a Secret key.",
+      "`kubectl get configmap invoicer-config -n billing -o yaml`\nLeft: the keys are `LOG_LEVEL`, `REGION`, and `apiKey`. The reference asks for `api-key`. Keys are matched exactly, and a hyphen is not a case change.\nRight: the key is there. Then read the `name` in the reference and the Pod's namespace.",
+      "Search `configmap environment variable`.\nLeft: Configure a Pod to Use a ConfigMap. A `configMapKeyRef` names a ConfigMap and one key. The key must exist unless the reference is `optional`, and `optional` leaves the variable unset.\nRight: the mounted-ConfigMap section. Environment variables are resolved when the container is created, not refreshed like a mounted file.",
+      "Correct the key name in the reference, apply, and wait for 1/1.\nLeft: `printenv API_KEY` prints `prod-77`.\nRight: Available, but `printenv` prints nothing. You set `optional: true` rather than fixing the name."
+    ],
+    "trap": "Reads \"0/1 and not Ready\" as a crash or a probe fault, because the original workload-down questions were a stale mounted credential and a failing readiness probe. Restart counts stay at 0 here and `kubectl logs` has nothing to show, because the container was never created. Second: sets `optional: true`, which starts the container and silently drops the value. Third: hardcodes the value in the template, which passes the file check and abandons the ConfigMap. Fourth: deletes the Deployment to \"reset\" it.",
+    "docs": [
+      "https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/",
+      "https://kubernetes.io/docs/concepts/configuration/configmap/",
+      "https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/",
+      "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/"
+    ],
+    "source": "EXAM-VAR-diffs.md"
+  },
+  {
+    "id": "exam-var-diffs-v07",
+    "title": "nothing resolves anywhere",
+    "points": 6,
+    "minutes": 8,
+    "unit": "u9",
+    "tier": null,
+    "topic": "The endpoint is itself a Service",
+    "context": "Context `slate`. Namespace `mailroom` runs Pod `sorter` (image `busybox:1.36`, default `dnsPolicy`). No in-cluster name resolves from `sorter`, including `kubernetes.default.svc.cluster.local`. Its `/etc/resolv.conf` names one nameserver, the cluster DNS address `10.96.0.10`, with the usual search list and `ndots:5`. Service `kube-system/kube-dns` exists and holds that ClusterIP. Pods in every other namespace fail the same way. Node-level resolution on each Node works.",
+    "task": "Restore in-cluster DNS. Every Pod must again resolve `kubernetes.default.svc.cluster.local` and other in-cluster names through the cluster DNS address it already has.",
+    "constraints": [
+      "Do not change Pod `sorter`. Checkable: `sorter.metadata.uid` and `sorter.spec` match the snapshot.",
+      "Do not change the CoreDNS configuration. Checkable: ConfigMap `kube-system/coredns` matches the snapshot.",
+      "Do not change or replace Service `kube-dns`. Checkable: `kube-dns.metadata.uid` and `spec.clusterIP` match the snapshot."
+    ],
+    "verify": {
+      "items": [
+        {
+          "points": 2,
+          "text": "Pod `mailroom/sorter` has the snapshot uid and its spec matches the snapshot exactly, including `dnsPolicy` and `dnsConfig`."
+        },
+        {
+          "points": 2,
+          "text": "Service `kube-system/kube-dns` has the snapshot uid and ClusterIP, and its EndpointSlices list at least one ready address on port 53. ConfigMap `kube-system/coredns` matches the snapshot."
+        },
+        {
+          "points": 2,
+          "text": "`kubectl exec sorter -n mailroom -- nslookup kubernetes.default.svc.cluster.local` returns the `kubernetes` Service ClusterIP. The grader then creates a Pod in a second namespace; the same lookup succeeds from it."
+        }
+      ],
+      "notes": [
+        "Snapshot `sorter.metadata.uid`, `sorter.spec`, ConfigMap `kube-system/coredns`, and `kube-dns.metadata.uid` and `spec.clusterIP` before scoring.",
+        "Gate the lookup pair on the endpoint pair.",
+        "Two routes score.",
+        "Scale the CoreDNS Deployment back to its original replica count, or scale it to one.",
+        "The graded end state is ready endpoints behind `kube-dns` and working resolution, not a replica number.",
+        "`dnsPolicy: Default` on `sorter` fails the first pair, and it fails the last pair too: the Node resolver cannot answer `kubernetes.default.svc.cluster.local`.",
+        "`dnsConfig.nameservers` on `sorter` fails the same two pairs, and it would fix one Pod out of the whole cluster.",
+        "A second DNS Deployment behind a new Service fails the endpoint pair.",
+        "`kube-dns` still has none, and every `resolv.conf` in the cluster points at `kube-dns`.",
+        "Editing the Corefile fails the endpoint pair.",
+        "A Running CoreDNS Pod with no ready endpoint behind `kube-dns` fails the endpoint pair."
+      ]
+    },
+    "docsPath": "Search `debugging dns resolution`.\nPage: Debugging DNS Resolution\nhttps://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/\nSections: Check if the DNS pod is running, Is DNS service\nup, Are DNS endpoints exposed.\nConcept: DNS for Services and Pods\nhttps://kubernetes.io/docs/concepts/services-networking/dns-pod-service/",
+    "expectedPath": [
+      "`kubectl exec sorter -n mailroom -- cat /etc/resolv.conf`\nLeft: one nameserver, `10.96.0.10`, the cluster DNS address, with the cluster search list. The Pod's DNS configuration is correct, so the Pod is not the fault.\nRight: the nameserver is a public address, or the search list is missing. That is the original `dnsPolicy` question, and it is a per-Pod fault. Every namespace fails here, so it is not that.",
+      "Search `debugging dns resolution`.\nLeft: Debugging DNS Resolution. Work down its order: the Pod's resolver, then the DNS Pods, then the Service, then its endpoints.\nRight: the Pod DNS policy page. That page changes one Pod; the whole cluster is failing.",
+      "`kubectl get pods -n kube-system -l k8s-app=kube-dns`\nLeft: no Pods at all. Nothing is serving DNS.\nRight: Pods exist and are `CrashLoopBackOff`. Then read their logs; a Corefile error looks like this too.",
+      "`kubectl get deployment coredns -n kube-system`\nLeft: `READY 0/0`. The Deployment was scaled to zero, so no CoreDNS Pod exists to answer.\nRight: `READY 0/2`. Then the Pods cannot be created or cannot become ready, which is a different fault.",
+      "`kubectl get endpointslice -n kube-system -l kubernetes.io/service-name=kube-dns`\nLeft: no addresses. The Service is healthy and it fronts nothing. `kube-dns` has no ready endpoint, so nothing answers on `10.96.0.10` and no lookup can succeed. How the failure looks to the client — a refusal or a hang — depends on the proxy mode; it is not what tells you the cause.\nRight: addresses are listed. Then the Pods are up and the fault is inside CoreDNS.",
+      "`kubectl scale deployment coredns -n kube-system --replicas=2`, then re-run both checks.\nLeft: the slice lists ready addresses on 53, and the lookup from `sorter` answers.\nRight: Pods are Running and the slice is still empty. Their readiness probe is failing; read the CoreDNS logs before touching anything else."
+    ],
+    "trap": "Edits `sorter`'s `dnsPolicy` or `dnsConfig`, because the original DNS question was a per-Pod policy. That change can make one Pod resolve public names and it cannot resolve a cluster name, and it leaves every other Pod broken. Second: rewrites the Corefile to \"fix\" CoreDNS, which was never wrong. Third: deploys a second DNS service beside `kube-dns`, which no Pod's `resolv.conf` points at. Fourth: reads the failure shape — a hang, or an instant error — as a network fault and starts on the CNI.",
+    "docs": [
+      "https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/",
+      "https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/",
+      "https://kubernetes.io/docs/tasks/administer-cluster/coredns/",
+      "https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/"
+    ],
+    "source": "EXAM-VAR-diffs.md"
   }
 ];

@@ -28,6 +28,8 @@ const SOURCE_FILES = [
   'transcripts/killer-sh/EXAM-DOCS-u15-u27.md',
   'transcripts/killer-sh/EXAM-DRAFT-00-12.md',
   'transcripts/killer-sh/EXAM-DRAFT-13-25.md',
+  'transcripts/killer-sh/EXAM-VAR-gaps.md',
+  'transcripts/killer-sh/EXAM-VAR-diffs.md',
 ];
 
 const FIELD_NAMES = [
@@ -240,7 +242,7 @@ function parseQuestion(block, file, source) {
   const lines = block.split('\n');
   const header = lines[0];
   const headerMatch =
-    /^## (Q\d+) — (.+?)\s*·\s*(\d+) points\s*·\s*~(\d+) min\s*·\s*unit (u\d+)(?:\s*·\s*(\S.*?))?\s*$/.exec(
+    /^## ([QV]\d+) — (.+?)\s*·\s*(\d+) points\s*·\s*~(\d+) min\s*·\s*unit (u\d+)(?:\s*·\s*(\S.*?))?\s*$/.exec(
       header,
     );
   if (!headerMatch) fail(file, null, `unparsable header: ${JSON.stringify(header)}`);
@@ -282,7 +284,7 @@ function parseQuestion(block, file, source) {
  * holds. Count its `| QNN |` rows so a drifted table (or a drifted file)
  * fails loudly instead of shipping a silently short question bank. */
 function expectedCount(text) {
-  const rows = text.match(/^\|\s*Q\d+\s*\|/gm);
+  const rows = text.match(/^\|\s*[QV]\d+\s*\|/gm);
   if (rows) return rows.length;
   // EXAM-DRAFT-13-25 declares its count in prose instead of a table.
   const prose = /(\d+) questions\s*·/.exec(text);
@@ -295,7 +297,7 @@ function parseFile(relPath) {
   const want = expectedCount(text);
   if (want === 0) fail(relPath, null, 'no rows found in the index table');
 
-  const headerRe = /^## Q\d+ /gm;
+  const headerRe = /^## [QV]\d+ /gm;
   const starts = [];
   let m;
   while ((m = headerRe.exec(text))) starts.push(m.index);
