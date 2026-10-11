@@ -1,0 +1,14 @@
+## OPEN
+A Pod stays Pending while every node shows free CPU. The scheduler checks declared requests, not current CPU use, but resources are only one constraint. This is the scheduler queue and binding segment of the request path. We follow the queue, the scheduling and binding cycles, node filtering and scoring, reservation, how binding records the chosen node, Pending events, and preemption. Afterward, you can use Pod events to find the blocking constraint and explain whether preemption can help.
+
+## CLOSE
+When a Pod stays Pending, first ask whether it has a node name. If it does not, read its scheduling events before you inspect node use. Test each reported constraint against readiness, schedulability, taints, labels, allocatable resources, topology, storage, and the Pod's declared requests. Preemption helps only if removing lower-priority Pods would make a node feasible and the pending Pod's policy allows preemption. A node name marks the handoff. The scheduler chose a node, and that node's kubelet now owns the Pod's lifecycle.
+
+## Why mine is better
+B says, “The scheduler is not broken and the nodes are not full.” That sentence assumes the diagnosis before the module proves it. I use a visible contradiction: free CPU with a Pending Pod. B also says declared requests “decide everything.” My second sentence limits that claim to resource checks and keeps other constraints in view. My structure names both scheduler cycles and the bind result, so it matches the module beats more closely. My close starts with a reusable diagnostic question: does the Pod have a node name?
+
+## Where B beats mine
+B's sentence “No kubelet has been asked to run the Pod yet” states the ownership boundary with exceptional clarity. Its opening promise, “read a Pending Pod's events and name the constraint that stopped it,” is shorter and more direct than mine. B's “Read the events before you read the nodes” is a sharper standalone rule than any single sentence in my close.
+
+## Accuracy notes
+At v1.36, A and B both say the Pod “has passed every gate.” That is too broad. A Pod can exist without a node name while schedulingGates still block every scheduling attempt. B says declared requests decide everything and live usage decides nothing. For default CPU and memory fit checks, the scheduler uses requests instead of current use. Requests do not decide taints, affinity, topology, storage, scheduling gates, or other plugin results. B says, “The scheduler already recorded which constraint eliminated what.” FailedScheduling events summarize reasons and node counts, not a complete node-by-node map. A's “in a second or two” is an observation, not a scheduler guarantee. Queue delay, backoff, permits, preemption, and binding can take longer. A and B say the failure moves to kubelet and runtime boundaries after binding. The kubelet owns Pod lifecycle, but later failures can also involve storage, networking, or other node services.

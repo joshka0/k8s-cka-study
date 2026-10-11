@@ -17,3 +17,6 @@ video/out/*.log
 # Untracking first would break every player on the live site, not just the
 # ones that have no file yet.
 video/out/*.mp4
+
+# generated audio intermediates (mp3s are committed)
+*.wav

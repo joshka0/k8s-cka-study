@@ -36,7 +36,8 @@ const MIME = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.apkg': 'application/octet-stream',
-  '.md': 'text/plain; charset=utf-8'
+  '.md': 'text/plain; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8'
 };
 
 const EMPTY = { xp: 0, streak: 0, lastDay: null, done: {}, srs: {} };
