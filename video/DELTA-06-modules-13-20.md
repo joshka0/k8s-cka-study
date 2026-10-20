@@ -89,7 +89,7 @@ in an earlier cut. Read them carefully and follow them exactly. In particular:
 4. One short motion render, one beat, with path and duration.
 5. A still re-rendered from an earlier module proving your extensions changed
    nothing there.
-6. `npx tsc --noEmit`.
+6. `npm run typecheck`.
 7. Anything in a `visual.spec` you could not realise, and what you did instead.
 
 You cannot view images. Say so plainly and report what your checks show rather
