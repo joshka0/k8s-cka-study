@@ -89,7 +89,7 @@ Report with real commands and real output:
 4. One short motion render, one beat, with path and duration.
 5. A still re-rendered from the pilot proving your `sandbox` and `probes`
    extensions did not change it.
-6. `npx tsc --noEmit`.
+6. `npm run typecheck`.
 7. Anything in a `visual.spec` you could not realise, and what you did instead.
 
 You cannot view images. Say so plainly and report what your checks show rather

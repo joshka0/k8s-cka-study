@@ -8,7 +8,8 @@
     "compositions": "remotion compositions src/index.ts",
     "still": "remotion still src/index.ts",
     "render": "remotion render src/index.ts",
-    "measure": "node scripts/measure-narration.mjs"
+    "measure": "node scripts/measure-narration.mjs",
+    "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.0",
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "tsrs": "0.14.0-ts7.1.0-dev.20260929",
     "typescript": "^5.5.0"
   }
 }
